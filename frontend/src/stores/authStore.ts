@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { jwtDecode } from 'jose';
 
 interface User {
-  id: string;
-  email: string;
-  name: string;
-  roles: string[];
+  username: string;
+  role: string;
+  email?: string;
+  name?: string;
+  roles?: string[];
   avatar?: string;
 }
 
@@ -56,12 +56,20 @@ export const useAuthStore = create<AuthState>()(
 
       hasRole: (role: string) => {
         const { user } = get();
-        return user?.roles?.includes(role) || false;
+        if (!user) return false;
+        // Support both 'role' (string) and 'roles' (array) fields
+        if (user.role) return user.role === role;
+        if (user.roles) return user.roles.includes(role);
+        return false;
       },
 
       hasAnyRole: (roles: string[]) => {
         const { user } = get();
-        return roles.some((role) => user?.roles?.includes(role)) || false;
+        if (!user) return false;
+        // Support both 'role' (string) and 'roles' (array) fields
+        if (user.role) return roles.includes(user.role);
+        if (user.roles) return user.roles.some((r) => roles.includes(r));
+        return false;
       },
     }),
     {

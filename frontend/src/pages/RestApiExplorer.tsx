@@ -21,7 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Play, Copy, ChevronRight } from 'lucide-react';
+import { Play, Copy, ChevronRight, Terminal } from 'lucide-react';
 import { apiClient } from '@/services/api';
 import { toast } from 'sonner';
 
@@ -307,85 +307,94 @@ export default function RestApiExplorer() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">REST API Explorer</h1>
-        <p className="text-muted-foreground">
-          Interactive testing interface for all API endpoints
-        </p>
+      {/* Swagger-style Header */}
+      <div className="border-b pb-6">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="h-12 w-12 rounded-lg bg-gradient-primary flex items-center justify-center">
+            <Terminal className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">REST API Documentation</h1>
+            <p className="text-sm text-muted-foreground">OpenAPI 3.0 Compatible Interface</p>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">API v1.0</Badge>
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">ISO 10303 SMRL</Badge>
+          <Badge variant="outline">Base: /api</Badge>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Endpoints List */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Endpoints</CardTitle>
-            <CardDescription>{API_ENDPOINTS.length} endpoints available</CardDescription>
-          </CardHeader>
-          <CardContent className="max-h-[calc(100vh-200px)] overflow-auto">
-            <Accordion type="single" collapsible className="w-full">
+      <div className="grid grid-cols-1 gap-4">
+        {/* Swagger-style Endpoints */}
+        <div className="space-y-2">
+          <div className="text-sm font-semibold text-muted-foreground mb-4">
+            {API_ENDPOINTS.length} Operations
+          </div>
+          <Accordion type="single" collapsible className="w-full space-y-2">
               {Object.entries(groupedEndpoints).map(([blueprint, endpoints]) => (
-                <AccordionItem key={blueprint} value={blueprint}>
-                  <AccordionTrigger>
-                    <div className="flex items-center gap-2">
-                      <ChevronRight className="h-4 w-4" />
-                      <span className="font-semibold">{blueprint}</span>
-                      <Badge variant="outline" className="ml-auto">
-                        {endpoints.length}
+                <AccordionItem key={blueprint} value={blueprint} className="border rounded-lg">
+                  <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-semibold text-base">{blueprint}</span>
+                      <Badge variant="secondary" className="ml-2">
+                        {endpoints.length} endpoints
                       </Badge>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-1">
+                  <AccordionContent className="px-4 pb-4">
+                    <div className="space-y-2 mt-2">
                       {endpoints.map((endpoint, index) => (
-                        <button
+                        <Card
                           key={index}
-                          onClick={() => handleSelectEndpoint(endpoint)}
-                          className={`w-full text-left p-2 rounded-md hover:bg-muted transition-colors ${
-                            selectedEndpoint === endpoint ? 'bg-muted' : ''
+                          className={`cursor-pointer transition-all hover:shadow-md ${
+                            selectedEndpoint === endpoint ? 'ring-2 ring-primary shadow-md' : ''
                           }`}
+                          onClick={() => handleSelectEndpoint(endpoint)}
                         >
-                          <div className="flex items-center gap-2">
-                            <Badge className={`${METHOD_COLORS[endpoint.method]} text-white text-xs`}>
-                              {endpoint.method}
-                            </Badge>
-                            <code className="text-xs truncate">{endpoint.path}</code>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
-                            {endpoint.description}
-                          </p>
-                        </button>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <Badge 
+                                className={`${METHOD_COLORS[endpoint.method]} text-white text-xs font-bold shrink-0 mt-0.5`}
+                              >
+                                {endpoint.method}
+                              </Badge>
+                              <div className="flex-1 min-w-0">
+                                <code className="text-sm font-mono font-semibold block mb-1">{endpoint.path}</code>
+                                <p className="text-xs text-muted-foreground">
+                                  {endpoint.description}
+                                </p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
-          </CardContent>
-        </Card>
+        </div>
 
-        {/* Request/Response */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>
-              {selectedEndpoint ? (
-                <div className="flex items-center gap-2">
-                  <Badge className={`${METHOD_COLORS[selectedEndpoint.method]} text-white`}>
-                    {selectedEndpoint.method}
-                  </Badge>
-                  <code className="text-sm">{selectedEndpoint.path}</code>
+        {/* Try It Out Panel */}
+        {selectedEndpoint && (
+        <Card className="border-2 border-primary/20 shadow-lg">
+          <CardHeader className="border-b bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge className={`${METHOD_COLORS[selectedEndpoint.method]} text-white font-bold px-3 py-1`}>
+                  {selectedEndpoint.method}
+                </Badge>
+                <div>
+                  <code className="text-base font-mono font-semibold">{selectedEndpoint.path}</code>
+                  <p className="text-sm text-muted-foreground mt-1">{selectedEndpoint.description}</p>
                 </div>
-              ) : (
-                'Select an endpoint'
-              )}
-            </CardTitle>
-            {selectedEndpoint && (
-              <CardDescription>{selectedEndpoint.description}</CardDescription>
-            )}
+              </div>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700">Try it out</Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedEndpoint ? (
-              <>
                 {/* Path Parameters */}
                 {pathParamKeys.length > 0 && (
                   <div className="space-y-2">
@@ -499,14 +508,9 @@ export default function RestApiExplorer() {
                     </TabsContent>
                   </Tabs>
                 )}
-              </>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                Select an endpoint from the left to test it
-              </div>
-            )}
           </CardContent>
         </Card>
+      )}
       </div>
     </div>
   );

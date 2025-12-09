@@ -12,10 +12,11 @@ import { Label } from '@ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ui/tabs';
 import { Separator } from '@ui/separator';
+import { Badge } from '@ui/badge';
 import { Database, Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
@@ -45,21 +46,20 @@ export default function Login() {
     setIsLoading(true);
     try {
       const response = await apiClient.post<{
-        token: string;
+        access_token: string;
         user: {
-          id: string;
-          email: string;
-          name: string;
-          roles: string[];
+          username: string;
+          role: string;
         };
       }>('/auth/login', data);
 
-      setAuth(response.token, response.user);
+      setAuth(response.access_token, response.user);
       toast.success('Login successful!');
       navigate('/dashboard');
     } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Invalid credentials';
       toast.error('Login failed', {
-        description: error.response?.data?.error || 'Invalid credentials',
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -81,10 +81,14 @@ export default function Login() {
           <div className="flex items-center justify-center mb-4">
             <Database className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl text-center">MBSE Knowledge Graph</CardTitle>
+          <CardTitle className="text-2xl text-center">MBSE-Led Platform</CardTitle>
           <CardDescription className="text-center">
-            Sign in to access your engineering data
+            Simulation engineering collaboration for distributed teams
           </CardDescription>
+          <div className="flex justify-center gap-2 mt-2">
+            <Badge variant="secondary" className="text-xs">Multi-Location</Badge>
+            <Badge variant="secondary" className="text-xs">Multi-Tool</Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="credentials" className="w-full">
@@ -96,16 +100,16 @@ export default function Login() {
             <TabsContent value="credentials" className="space-y-4">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@company.com"
-                    {...register('email')}
+                    id="username"
+                    type="text"
+                    placeholder="admin"
+                    {...register('username')}
                     disabled={isLoading}
                   />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email.message}</p>
+                  {errors.username && (
+                    <p className="text-sm text-destructive">{errors.username.message}</p>
                   )}
                 </div>
 

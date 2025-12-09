@@ -106,7 +106,7 @@ except Exception as e:
 try:
     from src.web.routes.auth import auth_bp
 
-    app.register_blueprint(auth_bp)
+    app.register_blueprint(auth_bp, url_prefix='/api')
     print("✓ Registered Authentication routes (/api/auth/)")
 except Exception as e:
     print(f"Warning: Could not register Auth routes: {e}")
@@ -668,20 +668,66 @@ def get_relationships_rest(rel_type):
 
 @app.route("/api/artifacts", methods=["GET"])
 def get_artifacts_summary():
-    """Get summary of all SysML/UML artifacts in the graph"""
+    """Search for artifacts with filters or get summary if no filters provided"""
+    # Check if search parameters are provided
+    artifact_type = request.args.get("type")
+    name = request.args.get("name", "")
+    comment = request.args.get("comment", "")
+    limit = int(request.args.get("limit", 100))
+    
     conn = get_connection()
     try:
-        # Get node type counts
-        query = """
-        MATCH (n)
-        WITH labels(n)[0] AS artifact_type, 
-             n.type AS xmi_type,
-             count(n) AS count
-        RETURN artifact_type, xmi_type, count
-        ORDER BY count DESC
-        """
-        result = conn.execute_query(query, {})
-        return jsonify({"data": [dict(r) for r in result]})
+        # If any search parameters provided, do a search
+        if artifact_type or name or comment:
+            # Build dynamic query
+            conditions = []
+            params = {"limit": limit}
+            
+            # Handle "All" as no filter
+            if artifact_type and artifact_type != "All":
+                label_filter = f"n:{artifact_type}"
+            else:
+                label_filter = "n"
+            
+            query = f"MATCH ({label_filter})\nWHERE 1=1\n"
+            
+            if name:
+                conditions.append("n.name =~ ('(?i).*' + $name + '.*')")
+                params["name"] = name
+            
+            if comment:
+                conditions.append("n.comment =~ ('(?i).*' + $comment + '.*')")
+                params["comment"] = comment
+            
+            if conditions:
+                query += "AND " + " AND ".join(conditions) + "\n"
+            
+            query += """
+            RETURN n.id AS id,
+                   n.uid AS uid,
+                   n.name AS name,
+                   labels(n)[0] AS type,
+                   n.comment AS comment,
+                   n.qualified_name AS qualified_name
+            ORDER BY n.name
+            LIMIT $limit
+            """
+            
+            result = conn.execute_query(query, params)
+            # Return array directly for frontend compatibility
+            return jsonify([dict(r) for r in result])
+        else:
+            # No search parameters - return summary
+            query = """
+            MATCH (n)
+            WITH labels(n)[0] AS artifact_type, 
+                 n.type AS xmi_type,
+                 count(n) AS count
+            RETURN artifact_type, xmi_type, count
+            ORDER BY count DESC
+            """
+            result = conn.execute_query(query, {})
+            return jsonify({"data": [dict(r) for r in result]})
     finally:
         conn.close()
 

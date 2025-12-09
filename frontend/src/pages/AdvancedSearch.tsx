@@ -13,6 +13,12 @@ import {
   SelectValue,
 } from '@ui/select';
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@ui/tabs';
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,7 +28,7 @@ import {
 } from '@ui/table';
 import { Badge } from '@ui/badge';
 import { Skeleton } from '@ui/skeleton';
-import { Search, ExternalLink } from 'lucide-react';
+import { Search, ExternalLink, List, Network } from 'lucide-react';
 
 interface SearchResult {
   id: string;
@@ -50,6 +56,7 @@ export default function AdvancedSearch() {
     name: '',
     comment: '',
   });
+  const [viewMode, setViewMode] = useState<'table' | 'graph'>('table');
 
   const { data: results, isLoading, refetch } = useQuery<SearchResult[]>({
     queryKey: ['artifacts', searchParams],
@@ -147,17 +154,31 @@ export default function AdvancedSearch() {
         </CardContent>
       </Card>
 
-      {/* Results Table */}
+      {/* Results with Table/Graph View */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Search Results
-            {results && (
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({results.length} found)
-              </span>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Search Results
+              {results && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({results.length} found)
+                </span>
+              )}
+            </CardTitle>
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'table' | 'graph')}>
+              <TabsList>
+                <TabsTrigger value="table" className="flex items-center gap-1">
+                  <List className="h-4 w-4" />
+                  Table
+                </TabsTrigger>
+                <TabsTrigger value="graph" className="flex items-center gap-1">
+                  <Network className="h-4 w-4" />
+                  Graph
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -167,53 +188,82 @@ export default function AdvancedSearch() {
               ))}
             </div>
           ) : results && results.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>UID</TableHead>
-                    <TableHead>Comment</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {results.map((artifact: SearchResult, index: number) => (
-                    <TableRow key={artifact.uid || index}>
-                      <TableCell>
-                        <Badge variant="outline">{artifact.type}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {artifact.name || '(unnamed)'}
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs">{artifact.uid}</code>
-                      </TableCell>
-                      <TableCell className="max-w-md truncate">
-                        {artifact.comment || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            window.open(
-                              `/api/${artifact.type.toLowerCase()}/${encodeURIComponent(
-                                artifact.uid
-                              )}`,
-                              '_blank'
-                            )
-                          }
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <Tabs value={viewMode}>
+              <TabsContent value="table" className="mt-0">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>UID</TableHead>
+                        <TableHead>Comment</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {results.map((artifact: SearchResult, index: number) => (
+                        <TableRow key={artifact.uid || index}>
+                          <TableCell>
+                            <Badge variant="outline">{artifact.type}</Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {artifact.name || '(unnamed)'}
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs">{artifact.uid}</code>
+                          </TableCell>
+                          <TableCell className="max-w-md truncate">
+                            {artifact.comment || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                window.open(
+                                  `/api/${artifact.type.toLowerCase()}/${encodeURIComponent(
+                                    artifact.uid
+                                  )}`,
+                                  '_blank'
+                                )
+                              }
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+              <TabsContent value="graph" className="mt-0">
+                <div className="border rounded-lg p-8 bg-muted/20 min-h-[400px]">
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <Network className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Graph Visualization</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Interactive graph view showing relationships between nodes. 
+                      {results.length} nodes ready to visualize.
+                    </p>
+                    <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {results.slice(0, 12).map((artifact: SearchResult, index: number) => (
+                        <Card key={index} className="card-corporate">
+                          <CardContent className="p-4 text-center">
+                            <Badge variant="outline" className="mb-2">{artifact.type}</Badge>
+                            <div className="text-sm font-medium truncate">{artifact.name || '(unnamed)'}</div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Full graph visualization with D3.js coming soon
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="flex h-32 items-center justify-center text-muted-foreground">
               {results ? 'No results found' : 'Enter search criteria and click Search'}

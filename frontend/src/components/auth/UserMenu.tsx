@@ -38,18 +38,23 @@ export default function UserMenu() {
 
   if (!user) return null;
 
+  // Get initials from username (first 2 chars) or name if available
   const initials = user.name
     ?.split(' ')
     .map((n) => n[0])
     .join('')
-    .toUpperCase() || user.email[0].toUpperCase();
+    .toUpperCase() || user.username?.substring(0, 2).toUpperCase() || 'U';
+
+  // Display name: use name if available, otherwise username
+  const displayName = user.name || user.username;
+  const displayEmail = user.email || `${user.username}@mbse.local`;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarImage src={user.avatar} alt={displayName} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
@@ -57,10 +62,15 @@ export default function UserMenu() {
       <DropdownMenuContent className="w-64" align="end">
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+            <p className="text-sm font-medium leading-none">{displayName}</p>
+            <p className="text-xs leading-none text-muted-foreground">{displayEmail}</p>
             <div className="flex gap-1 mt-2">
-              {user.roles.map((role) => (
+              {user.role && (
+                <Badge variant="secondary" className="text-xs">
+                  {user.role}
+                </Badge>
+              )}
+              {user.roles?.map((role) => (
                 <Badge key={role} variant="secondary" className="text-xs">
                   {role}
                 </Badge>
@@ -77,7 +87,7 @@ export default function UserMenu() {
           <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
-        {user.roles.includes('admin') && (
+        {(user.role === 'admin' || user.roles?.includes('admin')) && (
           <DropdownMenuItem onClick={() => navigate('/admin')}>
             <Shield className="mr-2 h-4 w-4" />
             Admin Panel

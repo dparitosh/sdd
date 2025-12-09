@@ -1,17 +1,30 @@
-# MBSE Neo4j Knowledge Graph
+# MBSE-Led Simulation Engineering Collaboration
 
-A Python-based application for creating knowledge graphs from XMI files (ISO 10303 SMRL) using Neo4j, with a REST API for simulation integration and AI assistant support.
+A distributed collaboration platform for Model-Based Systems Engineering (MBSE) enabling simulation engineering collaboration across locations, organisations, and software platforms. Built on Neo4j knowledge graph technology with ISO 10303 SMRL compliance.
 
 ## 🎯 Overview
 
-This application processes XMI files from the ISO 10303 Systems Modeling Representation Language (SMRL) and transforms them into a knowledge graph stored in Neo4j. It's designed for Model-Based Systems Engineering (MBSE) applications and provides REST API access for integration with external simulation tools and AI assistants.
+**MBSE-Led Simulation Engineering Collaboration** provides distributed infrastructure for collaborative systems engineering and simulation workflows. Transform XMI files into intelligent knowledge graphs, enabling secure multi-location collaboration with multiple modeling and simulation tools.
 
-**✨ New in v2.0:**
+### Distributed Infrastructure
+- **Multi-Location Collaboration**: Secure collaboration across distributed teams
+- **Multi-Organisation Support**: Cross-organisational data sharing and integration
+- **Multi-Platform Integration**: Connect diverse software platforms and tools
+- **Distributed Processes**: Support for distributed modeling and simulation workflows
+- **Distributed Datasets**: Unified access to distributed engineering data
+
+### MBSE-Led Simulation Workflow
+1. **Step 1 - Generate Geometry**: Create 3D models and CAD geometry across distributed design teams
+2. **Step 2 - Mesh & Simulate**: Apply mesh generation and run simulations with multiple tools
+3. **Step 3 - Results Interpretation**: Analyze and visualize simulation results collaboratively
+
+**✨ Key Capabilities:**
 - ✅ **100% ISO SMRL Compliance** - Full alignment with ISO 10303-4443 standard
 - 🚀 **High-Performance Service Layer** - Connection pooling + caching (99% faster)
 - 📊 **Optimized Database** - 25 indexes for lightning-fast queries
 - 🤖 **AI Integration** - MCP server for Claude Desktop and AI assistants
 - 🔄 **SMRL v1 API** - Full CRUD operations compliant with ISO standard
+- 🌐 **Distributed Collaboration** - Multi-site, multi-tool, multi-organisation
 
 ## Features
 
@@ -27,6 +40,8 @@ This application processes XMI files from the ISO 10303 Systems Modeling Represe
 - **Batch Processing**: Process multiple XMI files efficiently
 - **Graph Queries**: Pre-built Cypher queries for common MBSE patterns
 - **Cloud-Ready**: Configured for Neo4j Aura cloud database
+- **Multi-Tool Integration**: Support for multiple modeling and simulation platforms
+- **Distributed Workflows**: Coordinate geometry generation, meshing, simulation, and analysis
 
 ### Enterprise Features (NEW! ✨)
 - **ISO SMRL Compliance**: 100% alignment with ISO 10303-4443 standard
