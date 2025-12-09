@@ -23,11 +23,15 @@
     "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": [
-        "./src/*"
+        "./frontend/src/*"
+      ],
+      "@ui/*": [
+        "./frontend/src/components/ui/*"
       ]
     },
   },
   "include": [
-    "src"
+    "frontend/src/**/*",
+    "src/components/ui/**/*"
   ]
 }

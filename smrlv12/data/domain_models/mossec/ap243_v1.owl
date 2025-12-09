@@ -1,0 +1,2544 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://standards.iso.org/iso/10303/-243/tech/reference_data/ap243-en-v1#"
+     xml:base="http://standards.iso.org/iso/10303/-243/tech/reference_data/ap243-en-v1"
+     xmlns:coreRd="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#"
+     xmlns:core="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:terms="http://purl.org/dc/terms/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:ap243V1="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <owl:Ontology rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1">
+        <owl:imports rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1"/>
+        <dc:date xml:lang="en">2019-08-28</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:coverage xml:lang="en">Reference data relating to a single AP.</dc:coverage>
+        <dc:language>en</dc:language>
+        <dc:type>WD</dc:type>
+		<skos:note>ISO/TC 184/SC 4/WG12 N10851</skos:note>
+        <rdfs:comment xml:lang="en">This ontology is the reference data for ISO 10303-243.</rdfs:comment>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839733946_610667_15219 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839733946_610667_15219">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7da4a41-079b-0136-74f2-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity input assignment whose members are deployed by an activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity deploys assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839733946_921066_15218 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839733946_921066_15218">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7dcabe0-079b-0136-74f5-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity output assignment whose members are created by an activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity creates assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839734126_563116_15888 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839734126_563116_15888">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#098e6057-5847-4b33-8d12-dffd37bfd805"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual part version hierachy relationship indicating that the related is a quality report instance of the relating</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>model instance to quality report instance relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839734406_877846_16450 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839734406_877846_16450">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#83b2a250-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method assignment of a sensitivity to the activity method input assignment for an activity method</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity method sensitivity assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839734886_794997_18310 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#_18_4_1_1b310459_1505839734886_794997_18310">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#83b2a250-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method assignment of the type of output that the method may generate</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity method output assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#a254a156-6bc4-40a6-baba-26a45a87e94 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#a254a156-6bc4-40a6-baba-26a45a87e94">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#82f3e630-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity assignment in which the concepts represented by the items are objectives of the activity or should be satisfied by items managed by the activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity requirement</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#a7a41850-c542-4e72-b6c4-a2f406cd511a -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#a7a41850-c542-4e72-b6c4-a2f406cd511a">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c8111fc0-079b-0136-76bd-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">a breakdown of a system composed of a set of related elements that define the spatial aspects of the system</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>spatial zone breakdown identifier</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ab485c99-afdf-42bf-9eba-456d8eebcf32 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ab485c99-afdf-42bf-9eba-456d8eebcf32">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#72409435-85b3-4ddf-b041-96cb63bdfd90"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>description document assignment of the a document that contains information about the results of a study</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study report document assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b14bf516-ac22-4ff6-a033-a6091f068ed1 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b14bf516-ac22-4ff6-a033-a6091f068ed1">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#72409435-85b3-4ddf-b041-96cb63bdfd90"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>description document assignment  of the specific detailed numeric data or content of a model instance</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>A URL to a location in a product data management application.</skos:example>
+        <skos:example>A file containing the model results.</skos:example>
+        <skos:prefLabel>model instance result documents assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b3738636-9943-47f0-b2c3-6cf8811fd15c -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b3738636-9943-47f0-b2c3-6cf8811fd15c">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7e17090-079b-0136-7528-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">date for when the approval was actually approved</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual approval date assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b73f82ca-420d-42f2-87b2-a69cb5f86a99 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b73f82ca-420d-42f2-87b2-a69cb5f86a99">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#29aa7be0-e6c3-4412-ab9b-7b5096242eae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>general part that is a concept to be varied, added, investigated, recommended or decided</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>concept part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#baceb638-1bb2-48d9-803d-832e1184a501 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#baceb638-1bb2-48d9-803d-832e1184a501">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#29aa7be0-e6c3-4412-ab9b-7b5096242eae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>part accessible constuent that represents the definition of something inside a part  (a constituent) that is made accessible.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>accessible constituent part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#c02e891f-3d30-423f-afd9-e8765930ea22 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#c02e891f-3d30-423f-afd9-e8765930ea22">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#835280f0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method that may be used  to generate a specific type of model data</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>model applicable activity method</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#cd497dc2-3018-481e-ad38-36f714359166 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#cd497dc2-3018-481e-ad38-36f714359166">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#24b43cfd-4090-42e8-8875-7e127a7b934b"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection assignment that indicates that the assigned collection is an architecture of the system of interest to which it is assigned.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>architecture of</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d7abee42-5208-439a-8808-79e29ad1f93e -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d7abee42-5208-439a-8808-79e29ad1f93e">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7f22110-079b-0136-75a5-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">approving party that references to person or organization who are planned to approve the approval</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">planned approver assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#db717860-3e31-4910-9a4a-40525a656580 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#db717860-3e31-4910-9a4a-40525a656580">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c0d8f11c-88c6-4f14-9592-511a58493e5f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection that represents a template for a collaborative modelling process</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>CMT</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>collaborative model template</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ddf7c82e-4add-4439-91c4-bd8e7f341ceb -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ddf7c82e-4add-4439-91c4-bd8e7f341ceb">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#84853490-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>actual activity to model an item</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This is a generic class and may include analyis, design, design change, testing and amendment activities.</skos:note>
+        <skos:prefLabel>actual modelling activity</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e43c44ff-eb1e-4380-a51f-de32d7cc37ba -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e43c44ff-eb1e-4380-a51f-de32d7cc37ba">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c8111fc1-079b-0136-76be-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">an element of a system that represents a spatial aspect of the system</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">spatial breakdown element TO BE REMOVED when altlabel subClassOf</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e8829c66-4a15-4131-b270-a62b03c3b345 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e8829c66-4a15-4131-b270-a62b03c3b345">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#31641ac0-8787-4339-bee1-3e8ffdd0b147"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>derivation part version relationship that indicates that the Relating item is extracted from the Related item.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>extracted from part version relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#state_of_collection"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>state definition that specifies the state of an associative model network</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>state of associative model network</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ef96925a-45a0-4e97-9864-de199774ce3a -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ef96925a-45a0-4e97-9864-de199774ce3a">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6781f712-7af4-414e-b0bd-eea84ccf9888"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>general part model part that is the definition of a report on the quality of a model part</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>quality report part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f51cf675-748b-4016-84e3-683528f67ad7 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f51cf675-748b-4016-84e3-683528f67ad7">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#adc16360-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>next assembly view usage that identifies an item to be an assembly constituent of another item</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>assembly constituent relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f541ee14-1650-4c6d-8c20-2d8210a7dd23 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f541ee14-1650-4c6d-8c20-2d8210a7dd23">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#da087081-166f-4049-8c16-c664d02ca89f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>additional information document assignment of documents that is identified as formal</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>concept supporting document assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f58e94cb-6849-44ce-95a4-7bce03f4ba29 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f58e94cb-6849-44ce-95a4-7bce03f4ba29">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c0d8f11c-88c6-4f14-9592-511a58493e5f"/>
+        <skos:prefLabel>component realization association collection</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f9062770-1459-4902-bd73-29179ed92786 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f9062770-1459-4902-bd73-29179ed92786">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b347e0c0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>part version to individual part version association where the individual part version (instance) may be implementing the part version (concept)</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>instance to concept implements association</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#fd48096e-806e-49de-bd2c-1a0328de747a -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#fd48096e-806e-49de-bd2c-1a0328de747a">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#eb56a499-cc28-42ce-9587-922e784def59"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection membership that indicates that something is included in an architecture and so part of the definition of that architecture.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>architecture inclusion membership</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#state_of_collection -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#state_of_collection">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#10d2993b-4896-4887-8535-844467faa30d"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>to be relpaced when reference data for Core model CTC for collection is available</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>state of collection</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0a44f54f-e2aa-42e2-878f-9eb62cf4c1fa -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0a44f54f-e2aa-42e2-878f-9eb62cf4c1fa">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c4c19a30-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>realized individual part that represents a model of an item managed at the collaborative level where the model can exist or is the identification of something needs to be modelled or simulated</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>model instance</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0c5dc203-f038-4dee-9396-6790024d0507 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0c5dc203-f038-4dee-9396-6790024d0507">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80ebd60-079b-0136-769b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">a breakdown of a system is composed of a set of related elements that support the logical operation of the system</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">logical breakdown TO BE REMOVED when altlabel subClassOf</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0dde7120-fd09-4cd1-8784-c50a8bf5a2f1 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0dde7120-fd09-4cd1-8784-c50a8bf5a2f1">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7da4a41-079b-0136-74f2-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>the items (concepts) to be varied, added, investigated, recommended or decided by the activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity concept assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#00bcb7b6-9f9a-43aa-a317-bb3fe4329ded -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#00bcb7b6-9f9a-43aa-a317-bb3fe4329ded">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#7d47e7a1-b56f-4b27-84ba-2b7a29f3595f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>hierarchy part version relationship that indicates a related part version from which characteristics are inherited</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>&quot;wing mesh model type&quot; and &quot;engine mesh model type&quot; may inherit from &quot;mesh model type&quot;, so they shall obey the definition of &quot;mesh model type&quot; as well as their own specific definitions.</skos:example>
+        <skos:note>This is the concatenation of the part version characteristics, rather than inheritance in the computing language sense.</skos:note>
+        <skos:prefLabel>inherits from part version relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#007542fd-a9c9-4af0-bb2f-a55965d91df4 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#007542fd-a9c9-4af0-bb2f-a55965d91df4">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#83b2a250-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method assignment of the type of input needed by the method</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity method input assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#02b621e6-ac72-4998-b5ae-0f9ef2969a81 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#02b621e6-ac72-4998-b5ae-0f9ef2969a81">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#72409435-85b3-4ddf-b041-96cb63bdfd90"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>description document assignment that is the definition of a requirement</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>requirement definition document assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0345baa1-a55a-4efc-879d-d08044e26eac -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0345baa1-a55a-4efc-879d-d08044e26eac">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#bf3a0b60-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>The identification of the life cycle phase of an item being managed or evolved for a goal.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This is the identification of a Programme not a representation of all aspects and activities needed to achieve the goal for the item as that can include management of organization, resources, activities, scheduling  planning as well as a the management of the development of item or family of items.</skos:note>
+        <skos:prefLabel>programme</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1c7a0d41-7d3c-41ff-9e39-a73feaf06407 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1c7a0d41-7d3c-41ff-9e39-a73feaf06407">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#7d47e7a1-b56f-4b27-84ba-2b7a29f3595f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>hierachy part version relationship indicating that the related is a quality report of the relating</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>model type to quality report type relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1e25e372-d2f1-4a32-8095-c3c05c108703 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1e25e372-d2f1-4a32-8095-c3c05c108703">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#da087081-166f-4049-8c16-c664d02ca89f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">additional information document assignment that references a document that provides additional information about an approval</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>A document containg the rationale for approving, or not approving the item.</skos:example>
+        <skos:example>A document containing scanned signatures of the approvers of the item.</skos:example>
+        <skos:prefLabel xml:lang="en">approval rationale document assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#10d0022a-f0dd-4d98-81d3-86543b299ae6 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#10d0022a-f0dd-4d98-81d3-86543b299ae6">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#29aa7be0-e6c3-4412-ab9b-7b5096242eae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>general part that is a value of a distribution</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>distribution value part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#13e8832a-18bf-4d20-97df-9de122f6ed04 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#13e8832a-18bf-4d20-97df-9de122f6ed04">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c2d3ace0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>property value assignment of a property that is a statistical moment</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>statistical moment property value assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#16718fc8-0083-408d-ac86-fa3023671038 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#16718fc8-0083-408d-ac86-fa3023671038">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>study to validate something against requirements</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may include analyis, design, design change, testing and amendment activities.</skos:note>
+        <skos:prefLabel>study validation activity</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b72f5420-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>planned activity to study a package of work controlled and managed at the collaboration level</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2d685d05-a490-4c75-b516-5f8ae6002644 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2d685d05-a490-4c75-b516-5f8ae6002644">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#a2321940-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual assembly relationship identifying the items that are accessible constituents of an individual part</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>A relationship betwwen a geometry model and a publication of a surface that is a consitiuent on that model.</skos:example>
+        <skos:prefLabel>individual assembly constituent relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2190324e-acc3-487e-8a9a-7a7ddcd6fbdf -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2190324e-acc3-487e-8a9a-7a7ddcd6fbdf">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#86b3ad50-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">approval assignment that is an authorization to do something, or approve something</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">authorization assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#22c2ac64-7702-48da-8d20-13cdd75aa572 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#22c2ac64-7702-48da-8d20-13cdd75aa572">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7e3d2e0-079b-0136-7530-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>planned date assignment that specifies the date and time beyond which something should cease to occur or exist</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>The planned end date assignment may assign a date to something that is before the date assigned by a planned deadline date assignment but the not vice versa.</skos:note>
+        <skos:prefLabel>planned deadline date assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#222c6892-0900-4d64-93a5-916f08fab454 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#222c6892-0900-4d64-93a5-916f08fab454">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#84099bf0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method relationship between an a (generic) activity method and its use as a method for a specific application</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>applicable method relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2241f1b1-183f-4035-b534-4478d4cdecea -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2241f1b1-183f-4035-b534-4478d4cdecea">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7efbec1-079b-0136-7595-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>actual person organization assignment that assigns a person or organization responsible for coordinating execution of something</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>actual synchroniser assignment</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual synchronizer assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2489334b-3566-4dfa-bb7d-2a388e9bd3b2 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2489334b-3566-4dfa-bb7d-2a388e9bd3b2">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#31641ac0-8787-4339-bee1-3e8ffdd0b147"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>derivation part version relationshtip that is a reference to the format (type) for the distribution</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>distribution type version relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#268c4787-d6af-4518-9e6a-49f7df2ec6c2 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#268c4787-d6af-4518-9e6a-49f7df2ec6c2">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#da087081-166f-4049-8c16-c664d02ca89f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>additional information document assignment of documentation that is identified as formal</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>formal documentation document assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#28d0996f-4c59-4477-a08a-237842063201 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#28d0996f-4c59-4477-a08a-237842063201">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7efbec0-079b-0136-75a0-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>actual observer assignment to a person or organization that are interested in the item</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual watcher assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3b690809-04ea-4032-852d-fcff9dec71c2 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3b690809-04ea-4032-852d-fcff9dec71c2">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c0d8f11c-88c6-4f14-9592-511a58493e5f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection of the set of elements that define the design and structure of a system of interest.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>architecture</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3ece863c-b6c8-4245-9405-af015095063a -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3ece863c-b6c8-4245-9405-af015095063a">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>study to integrate sub system models into a system model and to assess the design and behaviour at the system level</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may include analyis, design, design change, testing and amendment activities.</skos:note>
+        <skos:prefLabel>study integration activity</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3380ac3c-e884-4e2c-a7b5-e31ed352dad0 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3380ac3c-e884-4e2c-a7b5-e31ed352dad0">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#eea929c3-0513-412f-bbc4-e8c25a64efe9"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>An assumption assignment that indicates the association between an Assumption and the other item is the context in which the assumption is made.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>assumption context assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#38c7417d-1456-4ad2-ae06-1474ab40a7b7 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#38c7417d-1456-4ad2-ae06-1474ab40a7b7">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#835280f0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method that may be used  to generate the model data</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>The activity method is not restricted to a single type of model.</skos:note>
+        <skos:prefLabel>model activity method</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#387bbf17-7a94-41d9-bdef-e33aa6df1733 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#387bbf17-7a94-41d9-bdef-e33aa6df1733">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c4c19a30-130a-0135-b552-598f1b1392ae"/>
+        <skos:prefLabel>parametric distribution part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4a42c91d-ee92-477d-b180-8eeb6c70a3f5 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4a42c91d-ee92-477d-b180-8eeb6c70a3f5">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#a28912e0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual part accessible constituent represents something inside an individual part (a constituent) that is made accessible</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>The name of a surface publication in a CAD model; the number of a node in an FE model; the name of a cell in a spreadsheet.</skos:example>
+        <skos:prefLabel>individual part accessible constituent</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4b732206-9ebc-4e1e-841c-8feddbe0bc3c -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4b732206-9ebc-4e1e-841c-8feddbe0bc3c">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>study to progress the evolution of something in the concept and development stages of the lifecycle.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This is a generic class and may include analyis, design, design change, testing and amendment activities.</skos:note>
+        <skos:prefLabel>study modelling activity</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#40c75983-e5d2-4ce3-810a-ecdb7de840b5 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#40c75983-e5d2-4ce3-810a-ecdb7de840b5">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7e3d2e1-079b-0136-752e-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">date when the approval is planned to be approved</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>planned approval date assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#424c64b5-da60-4379-adb1-c0acdb8fa094 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#424c64b5-da60-4379-adb1-c0acdb8fa094">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>study to develop a method or build a model of something that can then be used as a resource in other studies</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may include analyis, design, design change, testing and amendment activities.</skos:note>
+        <skos:prefLabel>study methodology development activity</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#43bad98e-472f-4476-91fc-53870710af20 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#43bad98e-472f-4476-91fc-53870710af20">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80ebd61-079b-0136-769c-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">an element of a system that supports the logical operation of the system</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">logical breakdown element TO BE REMOVED when altlabel subClassOf</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#47ffe698-99ff-40b2-8f0e-25c6596719f4 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#47ffe698-99ff-40b2-8f0e-25c6596719f4">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c0d8f11c-88c6-4f14-9592-511a58493e5f"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection of the model instance and key value instance realized individual parts that together comprise a set of results for the study activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>AMN</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#10d2993b-4896-4887-8535-844467faa30d"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>state definition that specifies the state of an individual part view</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This will become part of the 10303-4000 reference data</skos:note>
+        <skos:prefLabel>state of individual part view</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#50458a71-7c60-4d71-aadc-a4636212e409 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#50458a71-7c60-4d71-aadc-a4636212e409">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#537e6225-29d7-4028-8397-096cdae5b9b2"/>
+        <rdfs:comment>required resource assignment that is a required resource that has been used or should be used.</rdfs:comment>
+        <skos:prefLabel>required resource used assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#505c697c-70e6-4028-a9cc-8715359eca35 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#505c697c-70e6-4028-a9cc-8715359eca35">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7da4a41-079b-0136-74f2-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity input assignment whose members are managed by an activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity input managed</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5464da37-0aab-478f-9ef4-07fcb248cded -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5464da37-0aab-478f-9ef4-07fcb248cded">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c4c19a30-130a-0135-b552-598f1b1392ae"/>
+        <skos:prefLabel>non-parametric distribution part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#557da2a1-49cf-4053-a51b-d038d1f8bb0c -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#557da2a1-49cf-4053-a51b-d038d1f8bb0c">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#82f3e630-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity assignment in which the items provide a context for the Activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activty context</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6a524fdb-cece-4084-a553-9bd04ca4cbb6 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6a524fdb-cece-4084-a553-9bd04ca4cbb6">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b2046440-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>part to individual part association that identifies the type for the instance</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>instance to type association</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6c72ff4d-ec5c-4a67-950a-f2c2fd3f4633 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6c72ff4d-ec5c-4a67-950a-f2c2fd3f4633">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#83615252-c407-47c3-bec5-9b3c1945703e"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A property definition value type that is numerical and can have decimal places.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>type real</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6cf5b2e4-199d-4ab5-844e-ba968a034460 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6cf5b2e4-199d-4ab5-844e-ba968a034460">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7e17091-079b-0136-7525-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>contractual document assignment that is a document assigned as the source of an information right</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>information right source</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6d989614-ce38-4a09-8e01-6a0ed78d9720 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6d989614-ce38-4a09-8e01-6a0ed78d9720">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#8c284ede-a307-4818-8ef9-3c85376c3ee8"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a relationship to other instances of collection that composed together make up the full collection.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>A team for one discipline may have several alternative collections of models that can be used to to generate the same results but with different fidelity computations. Another team may require a specific fidelity model as input to their template and so create a collection for their team that is composed of the other collection with the required fidelity.</skos:example>
+        <skos:prefLabel>collaborative model template is composed of relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6f26a6e6-5e37-4982-aba8-be0393944a47 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6f26a6e6-5e37-4982-aba8-be0393944a47">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#8c284ede-a307-4818-8ef9-3c85376c3ee8"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection version sequence relationship that indicates that one architecture is evolved from another architecture.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This enables the tracking of a diverging and converging evolution tree alongside the linear evolutions implied by the architecture (collection) versions.</skos:note>
+        <skos:prefLabel>architecture evolved from relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6f9c7e41-8588-4729-93b3-ea622234d22c -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6f9c7e41-8588-4729-93b3-ea622234d22c">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#83615252-c407-47c3-bec5-9b3c1945703e"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A property definition value type that is numerical with no decimal places.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>type integer</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#625330f6-ccf9-4faa-873a-c406032a2cfa -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#625330f6-ccf9-4faa-873a-c406032a2cfa">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#a28912e0-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual part that represents something in the product</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>Examples are physicals things like aircraft, fuselage, wing, engine, or a systems like a fuel system, electrical system.</skos:example>
+        <skos:prefLabel>component</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-01ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>state of planned activity that specifies the state of a study</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>state of study</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#653e09e3-174e-460b-9486-2ebe01494d0b -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#653e09e3-174e-460b-9486-2ebe01494d0b">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#83615252-c407-47c3-bec5-9b3c1945703e"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A property definition value type that can have values of true or false.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>type boolean</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6781f712-7af4-414e-b0bd-eea84ccf9888 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6781f712-7af4-414e-b0bd-eea84ccf9888">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#29aa7be0-e6c3-4412-ab9b-7b5096242eae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>general part that is the definition of a model managed at the collaborative level</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>model part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6973ee4-5013-4ebd-b637-762f8a8d7313 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#6973ee4-5013-4ebd-b637-762f8a8d7313">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#8ad25d50-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">a relationship between Breakdown Elements that is not structural</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">breakdown element association</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7d2ec6be-5408-478a-9dab-b056f4ec2a4a -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7d2ec6be-5408-478a-9dab-b056f4ec2a4a">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#adc16360-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual part version hierarchy relationship that structures the components, establishing a relationship between a component and its immediate parent assembly in a product structure</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>Links between ModelInstances and usage of Components are represented by ComponentRealizationAssociation.</skos:example>
+        <skos:prefLabel>component assembly usage</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7fb3a82d-3ffa-48a0-84a7-f1da9c00d96f -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7fb3a82d-3ffa-48a0-84a7-f1da9c00d96f">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0a44f54f-e2aa-42e2-878f-9eb62cf4c1fa"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>realized individual part model instance that is a report on the quality of a  model instance</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>quality report instance</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#70f4b1cd-fa65-40b0-acd8-53d8edaac443 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#70f4b1cd-fa65-40b0-acd8-53d8edaac443">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#ddd44673-ace5-414b-a52e-761536cf2951"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual part version relationship in which the Relating IndividualPartVersion is an evolution of the Relating IndividualPartVersion</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>The relationship is the similar to versioning but does not  imply a linear progression, instead the evolution allows a diverging and converging progression, so there may be more than one &quot;latest version&quot;.</skos:note>
+        <skos:prefLabel>individual part version evolved from relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7518e7ad-1ae6-4aa6-9aef-1df787ea19b3 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7518e7ad-1ae6-4aa6-9aef-1df787ea19b3">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2bd42b78-f852-4ee1-b461-aa485e0fbb26"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>study to assess the relative merite of alterantive solutions (trade study)</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may include analyis, design, design change, testing and amendment activities.</skos:note>
+        <skos:prefLabel>study trade activity</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#78547c1d-a484-4248-aa64-eae4f6d5703f -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#78547c1d-a484-4248-aa64-eae4f6d5703f">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#a3c3b5c0-130a-0135-b552-598f1b1392ae"/>
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b347e0c0-130a-0135-b552-598f1b1392ae"/>
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#89f39610-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>An association that indicates the related item contains a value pertaining to the relating item.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>value of</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8a6b91db-b693-4ddb-af1b-4841136d68f3 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8a6b91db-b693-4ddb-af1b-4841136d68f3">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7efbec1-079b-0136-7595-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>actual person organization assignment that assigns a person or organization as the actual agent who is controlling something</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual controller assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8d15024a-6725-4b38-802f-70f30fb9d43c -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8d15024a-6725-4b38-802f-70f30fb9d43c">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#6217fd26-355a-459f-9161-96e084bed65c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>individual part version derivation relationship that indicates that the Relating item is extracted from the Related item.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>individual part version extracted from relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8e2864f6-782f-4d3b-8bb2-1758acbef60f -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8e2864f6-782f-4d3b-8bb2-1758acbef60f">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#83615252-c407-47c3-bec5-9b3c1945703e"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A property definition value type that is a string.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>type string</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8e88c4d2-a3a9-466b-bc27-1bd2e8dfd2a7 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8e88c4d2-a3a9-466b-bc27-1bd2e8dfd2a7">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#100f2e65-888d-4363-b5ea-762efa5296cd"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>detail part that is the definition of a key piece of information available at the collaboration level</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>key value part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8eebe3ad-896c-40f0-9972-35a7f3529ce1 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8eebe3ad-896c-40f0-9972-35a7f3529ce1">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#83b2a250-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method assignment of the activity method that is planned to be used if there are more than one available</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>planned activity method assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#829f294a-73b1-4976-81d0-b50b101bb5b6 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#829f294a-73b1-4976-81d0-b50b101bb5b6">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c4c19a30-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>realized individual part that represents a key piece of information exposed from a model and made available at the collaboration level, where the information can exist or is the identification of information to be modelled</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>key value instance</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#83615252-c407-47c3-bec5-9b3c1945703e -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#83615252-c407-47c3-bec5-9b3c1945703e">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c0c6c5e0-130a-0135-b552-598f1b1392ae"/>
+        <rdfs:comment>property definition that is the type of the value</rdfs:comment>
+        <skos:example>boolean, string, float, integer</skos:example>
+        <skos:prefLabel>property definition value type</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#89768be1-1638-4ee2-b911-ca6ad9956a57 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#89768be1-1638-4ee2-b911-ca6ad9956a57">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#83b2a250-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>activity method assignment of the activity method that is preferred if there are more than one available</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>preferred activity method assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9ac0b926-a13d-4c40-9b20-22fe8cf8a0ee -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9ac0b926-a13d-4c40-9b20-22fe8cf8a0ee">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#fa0025d0-a9de-435f-881c-c8cc3bdbd601"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A relationship that indicates that the related item is included in an architecture.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>architecture inclusion relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9d12ac7b-269f-4bf6-a9de-ddcc1c872648 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9d12ac7b-269f-4bf6-a9de-ddcc1c872648">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#29aa7be0-e6c3-4412-ab9b-7b5096242eae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>general part that is a distribution</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>distribution part</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9db3124e-dfbf-4709-9652-0b1ceec84641 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9db3124e-dfbf-4709-9652-0b1ceec84641">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#72409435-85b3-4ddf-b041-96cb63bdfd90"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>description document assignment of documents that contain the distribution data that defines the distribution</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>distribution data document assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9dbac8c3-f284-4715-afad-093b74a305e8 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9dbac8c3-f284-4715-afad-093b74a305e8">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#c4c19a30-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>realized individual part that represents a distribution of a value of an item managed at the collaborative level</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>distribution value instance</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9314c790-4f38-4dd6-b320-d3a9adb1418d -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9314c790-4f38-4dd6-b320-d3a9adb1418d">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#eb56a499-cc28-42ce-9587-922e784def59"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a collection membership to indicate that something belongs to the collection view</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>belongs to association</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9431f112-59de-4e33-b3ec-976d79f5e658 -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9431f112-59de-4e33-b3ec-976d79f5e658">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#a4d96b80-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A relationship that indicates the part is a value for a distribution.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>distribution value relationship</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#96f3907e-9688-48fe-883f-fac34f4094ed -->
+
+    <owl:Class rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#96f3907e-9688-48fe-883f-fac34f4094ed">
+        <rdfs:subClassOf rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7efbec1-079b-0136-7595-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">approving party that references to person or organization who actually approved the approval</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">actual approver assignment</skos:prefLabel>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#a0905eca-9d3b-47c7-a0a0-c5255c0fd3fa -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#a0905eca-9d3b-47c7-a0a0-c5255c0fd3fa">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates that a work needed to carry out the verification has begun and is ongoing</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification started</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#aea6f1a9-ad27-4f3a-9439-a7db8e4a2173 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#aea6f1a9-ad27-4f3a-9439-a7db8e4a2173">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 3534-1:2006,  Statistics — Vocabulary and symbols — Part 1: General statistical terms and terms used in probability: Clause 1.15</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>sum of values divided by the number of values</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>arithmetic mean</skos:altLabel>
+        <skos:altLabel>average</skos:altLabel>
+        <skos:altLabel>sample mean</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>mean</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b0aa892e-64a0-4030-9346-99eaa2177390 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b0aa892e-64a0-4030-9346-99eaa2177390">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of study where the work has begun but not yet competed to identify the inputs, resources, goals and concepts</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study proposed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b4a8917d-2573-4ab9-ab48-594f642910c1 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#b4a8917d-2573-4ab9-ab48-594f642910c1">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates the item is verified by logical proof</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification logical proof</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#c44e05ba-7267-40db-a2df-2180bb6bc7e0 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#c44e05ba-7267-40db-a2df-2180bb6bc7e0">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where further effort on the member activities is stopped until further notice but not formally cancelled</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network paused</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#c65fa13c-fd1f-4aba-b1ae-c2489f997cd2 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#c65fa13c-fd1f-4aba-b1ae-c2489f997cd2">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the inputs or resources have been opened but the real work for the activity has not yet started</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity open</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#cc5a98c9-3713-4444-9b34-7aa29ef9d3e -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#cc5a98c9-3713-4444-9b34-7aa29ef9d3e">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where all the member activities are no longer required</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network cancelled</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d1a33ff8-48b0-4a97-836d-51dd66c77581 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d1a33ff8-48b0-4a97-836d-51dd66c77581">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9dbac8c3-f284-4715-afad-093b74a305e8"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 2394:2015, 2.2.18</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>inherent variability typically associated with the loading environment, the geometry of the structure, and the material properties</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>aleatoric</skos:altLabel>
+        <skos:altLabel>aleatory</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>aleatory uncertainty</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d7420d16-8c62-4683-9bbf-45440055dcd7 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d7420d16-8c62-4683-9bbf-45440055dcd7">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to failure to find the method</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed method not found</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d75089c4-4d1b-4271-9868-826c3b37b504 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d75089c4-4d1b-4271-9868-826c3b37b504">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of the study where the work has been stopped and cannot be restarted but assessment and recommendation reports can be competed and validated</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study stopped</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d8b51a5c-e50e-4f72-8c2a-a13a699acc91 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#d8b51a5c-e50e-4f72-8c2a-a13a699acc91">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state has begun and is ongoing</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>started</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#dd0c9365-775b-44a8-850c-b5825bf720bc -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#dd0c9365-775b-44a8-850c-b5825bf720bc">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully for an unknown reason</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed unknown reason</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#df8e7096-e2e1-4777-8ba6-bc1d2d158ab6 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#df8e7096-e2e1-4777-8ba6-bc1d2d158ab6">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b636774a-e24a-444c-a45f-aa0fd1928b85"/>
+        <dc:creator>Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">instance of state observed where the observed approval state is passed</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">state observed approval passed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e45611bd-90bf-4b54-9f2e-db72fc302a82 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e45611bd-90bf-4b54-9f2e-db72fc302a82">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-01ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of planned activity where there is an associated actual activity</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>planned activity happening</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e4c35122-a3d3-44ed-baf4-aab4aace5fef -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e4c35122-a3d3-44ed-baf4-aab4aace5fef">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to failure to validate a license</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed license validation</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e5e44c7c-69a9-4ce0-910e-94d3b96c733a -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e5e44c7c-69a9-4ce0-910e-94d3b96c733a">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates the item is verified by qualitative estimation</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification qualitative estimation</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e7033fe3-dd27-4b23-b324-2c8126c764bb -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e7033fe3-dd27-4b23-b324-2c8126c764bb">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 3534-1:2006,  Statistics — Vocabulary and symbols — Part 1: General statistical terms and terms used in probability: Clause 2.36</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>moment of order where r equals 2 in the centred probability distribution of the random variable</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>variance</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e7f2c34c-0bcf-4daf-a7f4-f6ea16d6d404 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e7f2c34c-0bcf-4daf-a7f4-f6ea16d6d404">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where one or more of the member activities has begun and is ongoing</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network started</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ed28ed29-fa05-4264-945b-3c5087548ac5 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ed28ed29-fa05-4264-945b-3c5087548ac5">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state is unknown</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>unknown</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ef475213-2cb4-4d18-9b53-c161c8e5f8ac -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#ef475213-2cb4-4d18-9b53-c161c8e5f8ac">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-01ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of planned activity where the inputs, resources and persons are being identified</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>planned activity new</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f1e5646d-85a6-4758-b11c-d510ad75db19 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f1e5646d-85a6-4758-b11c-d510ad75db19">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of the study where the recommendations have been validated</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study recommendations validated</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f3a277a3-2742-4b45-b8a2-ae9b57f78874 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f3a277a3-2742-4b45-b8a2-ae9b57f78874">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa90-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of activity that indicates that the activity has been aborted</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>activity cancelled</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f4b71fda-c6a4-42c3-b54d-fd770ca6b7c9 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f4b71fda-c6a4-42c3-b54d-fd770ca6b7c9">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of study where the study has been temporarily stopped from happening (paused) but can be restarted</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study paused</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f6ca2d89-955e-49bc-bc36-06be996903da -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#f6ca2d89-955e-49bc-bc36-06be996903da">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to a failure to launch</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed launch</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#fd083844-0847-4460-b6e4-6629d87a856d -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#fd083844-0847-4460-b6e4-6629d87a856d">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9dbac8c3-f284-4715-afad-093b74a305e8"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 2394:2015, 2.2.19</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>lack of knowledge that, in principle, can be reduced by measurements or improved theories</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>epistemic</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>The exact borderline between aleatory and epistemic is not always unambiguous.</skos:note>
+        <skos:prefLabel>epistemic uncertainty</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0a82ceed-393b-47ca-b076-29d3a312aab4 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0a82ceed-393b-47ca-b076-29d3a312aab4">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state is authorised</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may be related to the state of an assigned approval.</skos:note>
+        <skos:prefLabel>authorised</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0c8ef45b-810d-43f4-ad32-6f36c8515e13 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0c8ef45b-810d-43f4-ad32-6f36c8515e13">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>type qualifier that specifies the value is the difference between adjacent values</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>step size</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>increment</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0e7e2cd0-f2e7-4efc-b711-24d39ab00d30 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0e7e2cd0-f2e7-4efc-b711-24d39ab00d30">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of the study where the assessment and recommendation reports have been competed and it is ready for validation recommendations</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>study assessment complete</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0eed5ca4-361c-42bc-8188-48e9e9a1abdf -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#0eed5ca4-361c-42bc-8188-48e9e9a1abdf">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9dbac8c3-f284-4715-afad-093b74a305e8"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>EN 1540:2011, 5.2.1.2</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>uncertainty associated with random errors</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>random</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>random uncertainty</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#07354503-5583-4c99-bbfb-e81c81f7dfaf -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#07354503-5583-4c99-bbfb-e81c81f7dfaf">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state is not synchonised with other related items and that this is acceptable</rdfs:comment>
+        <skos:prefLabel>acceptably unsynchronised</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1ec845df-46e4-4802-9a32-2c91756994ed -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1ec845df-46e4-4802-9a32-2c91756994ed">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#8659a670-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>A set of activities and processes required to generate a model or perform simulation using a model.</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>modelling and simulation</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1f499469-532f-4e67-a864-1522d46ab596 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#1f499469-532f-4e67-a864-1522d46ab596">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where the work to set up the member activities has not been completed or approval to begin member activities has not yet been granted</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network proposed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#125e81e3-cd78-4752-ae5d-31e7dd3d0280 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#125e81e3-cd78-4752-ae5d-31e7dd3d0280">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <rdfs:comment>type qualifier that specifies the value is the starting value</rdfs:comment>
+        <skos:altLabel>start</skos:altLabel>
+        <skos:prefLabel>initial</skos:prefLabel>
+		<dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-05-31</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+		<owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#201c83a1-2ca4-45b9-8f58-449abe2bf77b -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#201c83a1-2ca4-45b9-8f58-449abe2bf77b">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates that a verification is needed but not yet started</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification planned</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#23de399a-b3da-471c-a8be-cfefe7ef0a37 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#23de399a-b3da-471c-a8be-cfefe7ef0a37">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state is approved</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may be related to the state of an assigned approval.</skos:note>
+        <skos:prefLabel>approved</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2628f6ae-786a-419d-a7a8-86b828560957 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#2628f6ae-786a-419d-a7a8-86b828560957">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where member activities are ready to be started</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network directed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#28046969-cb4c-45fe-b8e5-aa3556c02aa8 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#28046969-cb4c-45fe-b8e5-aa3556c02aa8">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to a crash</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed crashed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#29e1eedf-956f-4f9b-8347-f7d8f0ca9d9b -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#29e1eedf-956f-4f9b-8347-f7d8f0ca9d9b">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates the item is verified by standard reference</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification standard reference</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3a78a005-204f-4c09-aec7-54d4431535c8 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3a78a005-204f-4c09-aec7-54d4431535c8">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where one or more member activities have failed</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network failed imported</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3a7f8ffa-1433-4df1-8597-bcacd4bc23ae -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3a7f8ffa-1433-4df1-8597-bcacd4bc23ae">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where all the member activities are in the completed state or are no longer required to be completed</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network complete</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3beaeba1-0b7c-4092-b89c-326aa3b8b1fa -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#3beaeba1-0b7c-4092-b89c-326aa3b8b1fa">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 3534-1:2006,  Statistics — Vocabulary and symbols — Part 1: General statistical terms and terms used in probability: Clause 2.40</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>moment of order 4 in the standardized probability distribution of a random variable</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>coefficient of kurtosis</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>kurtosis</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4cf5e47d-6db0-4776-85af-dad3eb1c2e1d -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4cf5e47d-6db0-4776-85af-dad3eb1c2e1d">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates that a verification has failed</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification failed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4f6a3d72-f32f-43e3-b1d5-6bb11533f77c -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4f6a3d72-f32f-43e3-b1d5-6bb11533f77c">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the all the inputs, resources and persons are available for the activity but it has not yet been opened or started</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity new</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4ff554e7-7b36-4685-a444-0a6431b8fe02 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#4ff554e7-7b36-4685-a444-0a6431b8fe02">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates the item is verified by quantitative proof</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification quantitative proof</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#42545c65-39f1-4711-ac7e-2a52839b37bb -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#42545c65-39f1-4711-ac7e-2a52839b37bb">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#64050794-2c00-482f-b17e-ae1f13df58c1"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of study where the state is unknown</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>state of study unknown</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#449dd65a-6cae-448c-bf94-12883c57e37d -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#449dd65a-6cae-448c-bf94-12883c57e37d">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 3534-1:2006,  Statistics — Vocabulary and symbols — Part 1: General statistical terms and terms used in probability: Clause 2.39</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>moment of order 3 in the standardized probability distribution of a random variable</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:altLabel>coefficient of skewness</skos:altLabel>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>skewness</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5e5d5593-c283-4e0d-8523-fdb53bfbf904 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5e5d5593-c283-4e0d-8523-fdb53bfbf904">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b636774a-e24a-444c-a45f-aa0fd1928b85"/>
+        <dc:creator>Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">instance of state observed where the observed approval state is planned</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">state observed approval planned</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5f74edb9-5459-41d0-83bd-e9129841f140 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5f74edb9-5459-41d0-83bd-e9129841f140">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to a missing input</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed input not found</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#59c35f72-4b72-477c-a46b-83dc6d9321e3 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#59c35f72-4b72-477c-a46b-83dc6d9321e3">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where the state is unknown</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network unknown</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#646572e8-2d11-4a72-92ba-ee5dbefe06c9 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#646572e8-2d11-4a72-92ba-ee5dbefe06c9">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has been temporarily stopped from happening (paused)</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity paused</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#67c351aa-ccf0-4f3f-bfcf-a81b3702b9f7 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#67c351aa-ccf0-4f3f-bfcf-a81b3702b9f7">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state is planned but not yet started</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:note>This may be related to the state of an assigned planned activity</skos:note>
+        <skos:prefLabel>planned</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#692eeff5-efff-499b-b33f-0547112275e4 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#692eeff5-efff-499b-b33f-0547112275e4">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b9130840-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>the measured difference where the unit identifies if it is a percentage or value</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:example>The amount something is to be increased by for a payload increased by 5kg.</skos:example>
+        <skos:example>The percentage something has (or is to be) reduced by for example the weight to reduce by 10%</skos:example>
+        <skos:prefLabel>delta tolerance</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7ae9d0b0-280c-478d-acb9-233c30b6c1bf -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#7ae9d0b0-280c-478d-acb9-233c30b6c1bf">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to no solution being found</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed no solution</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#72ce7344-970f-4637-af2c-8cefe0f4386c -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#72ce7344-970f-4637-af2c-8cefe0f4386c">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-01ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of planned activity where the inputs, resources and persons are identified but may not yet be available for an actual activity to start</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>planned activity planned</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#76cd68cd-cb3a-4d70-83f5-2deb92b141ad -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#76cd68cd-cb3a-4d70-83f5-2deb92b141ad">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#e94786c0-167f-4848-a218-3d88c758bb3c"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of associative model network where the member activities have not yet started</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>associative model network planned imported</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#76099607-85cf-4015-9db1-a84983034b0c -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#76099607-85cf-4015-9db1-a84983034b0c">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c80c5b11-079b-0136-768b-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of verification that indicates work has been done to assess a verification but there is insuffient evidence to change the state of a verification to a failure or success state</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>verification insufficient evidence</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#784bd14e-1594-4372-8093-4c32fbc3caa4 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#784bd14e-1594-4372-8093-4c32fbc3caa4">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#5ac94c00-f0ae-4bb7-8f15-04713ca419fb"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of a state of individual part view that indicates that the state is proposed</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>proposed</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8f8e2c43-d9ed-4a24-b246-784f4f3d50ed -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#8f8e2c43-d9ed-4a24-b246-784f4f3d50ed">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_rd_v1#c7fbaa91-079b-0136-7602-00ff90f87e13"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>instance of state of actual activity where the activity has failed to complete successfully due to failure in the network connection</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>actual activity failed network connection</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9d39c7a0-e22e-4f0c-90e6-548bb44a30ad -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9d39c7a0-e22e-4f0c-90e6-548bb44a30ad">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#a8535000-130a-0135-b552-598f1b1392ae"/>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment>a phase of the Development stage where the design of a system or product is validated to a level sufficient for certification</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel>certification phase</skos:prefLabel>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9ef488d9-a8d1-446e-a91a-5b2118e6fbe8 -->
+
+    <owl:NamedIndividual rdf:about="http://standards.iso.org/iso/10303/-243/tech/refdata/ap243_v1#9ef488d9-a8d1-446e-a91a-5b2118e6fbe8">
+        <rdf:type rdf:resource="http://standards.iso.org/iso/10303/-4000/tech/refdata/core_v1#b636774a-e24a-444c-a45f-aa0fd1928b85"/>
+        <dc:creator>Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:creator xml:lang="en">Judith Crockford, Airbus Operations Ltd</dc:creator>
+        <dc:date>2020-01-08</dc:date>
+        <dc:source>ISO 10303-243</dc:source>
+        <dc:type>InWork</dc:type>
+        <rdfs:comment xml:lang="en">instance of state observed where the observed approval state is failed</rdfs:comment>
+        <owl:versionInfo>v1</owl:versionInfo>
+        <skos:changeNote xml:lang="en">[2020-01-08] Judith Crockford, Airbus Operations Ltd: creation</skos:changeNote>
+        <skos:prefLabel xml:lang="en">state observed approval failed</skos:prefLabel>
+    </owl:NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.2.6.20160910-2108) https://github.com/owlcs/owlapi -->
+

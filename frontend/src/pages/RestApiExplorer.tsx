@@ -1,0 +1,513 @@
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Play, Copy, ChevronRight } from 'lucide-react';
+import { apiClient } from '@/services/api';
+import { toast } from 'sonner';
+
+interface Endpoint {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  path: string;
+  description: string;
+  blueprint: string;
+  params?: Array<{ name: string; type: string; required: boolean; description: string }>;
+  body?: string;
+}
+
+const API_ENDPOINTS: Endpoint[] = [
+  // Core API
+  {
+    method: 'GET',
+    path: '/health',
+    description: 'Health check endpoint',
+    blueprint: 'Core',
+  },
+  {
+    method: 'GET',
+    path: '/statistics',
+    description: 'Get database statistics',
+    blueprint: 'Core',
+  },
+  {
+    method: 'GET',
+    path: '/search',
+    description: 'Search across all node types',
+    blueprint: 'Core',
+    params: [
+      { name: 'q', type: 'string', required: true, description: 'Search query' },
+      { name: 'limit', type: 'number', required: false, description: 'Max results' },
+    ],
+  },
+  
+  // SMRL v1 API
+  {
+    method: 'GET',
+    path: '/v1/{type}',
+    description: 'List resources of a specific type',
+    blueprint: 'SMRL v1',
+    params: [
+      { name: 'type', type: 'string', required: true, description: 'Resource type (e.g., Requirement, Class)' },
+      { name: 'limit', type: 'number', required: false, description: 'Max results' },
+      { name: 'offset', type: 'number', required: false, description: 'Skip results' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/v1/{type}/{uid}',
+    description: 'Get a specific resource by UID',
+    blueprint: 'SMRL v1',
+    params: [
+      { name: 'type', type: 'string', required: true, description: 'Resource type' },
+      { name: 'uid', type: 'string', required: true, description: 'Resource UID' },
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/v1/{type}',
+    description: 'Create a new resource',
+    blueprint: 'SMRL v1',
+    params: [
+      { name: 'type', type: 'string', required: true, description: 'Resource type' },
+    ],
+    body: '{\n  "name": "New Resource",\n  "description": "Resource description"\n}',
+  },
+  {
+    method: 'PUT',
+    path: '/v1/{type}/{uid}',
+    description: 'Update a resource',
+    blueprint: 'SMRL v1',
+    params: [
+      { name: 'type', type: 'string', required: true, description: 'Resource type' },
+      { name: 'uid', type: 'string', required: true, description: 'Resource UID' },
+    ],
+    body: '{\n  "name": "Updated Name",\n  "description": "Updated description"\n}',
+  },
+  {
+    method: 'DELETE',
+    path: '/v1/{type}/{uid}',
+    description: 'Delete a resource',
+    blueprint: 'SMRL v1',
+    params: [
+      { name: 'type', type: 'string', required: true, description: 'Resource type' },
+      { name: 'uid', type: 'string', required: true, description: 'Resource UID' },
+    ],
+  },
+  
+  // Requirements
+  {
+    method: 'GET',
+    path: '/requirements/{uid}/traceability',
+    description: 'Get requirement traceability links',
+    blueprint: 'Requirements',
+    params: [
+      { name: 'uid', type: 'string', required: true, description: 'Requirement UID' },
+    ],
+  },
+  
+  // PLM Operations
+  {
+    method: 'GET',
+    path: '/plm/bom/{partId}',
+    description: 'Get Bill of Materials for a part',
+    blueprint: 'PLM',
+    params: [
+      { name: 'partId', type: 'string', required: true, description: 'Part ID' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/plm/change-impact/{partId}',
+    description: 'Analyze change impact for a part',
+    blueprint: 'PLM',
+    params: [
+      { name: 'partId', type: 'string', required: true, description: 'Part ID' },
+    ],
+  },
+  
+  // Simulation
+  {
+    method: 'GET',
+    path: '/simulation/models',
+    description: 'List simulation models',
+    blueprint: 'Simulation',
+  },
+  {
+    method: 'GET',
+    path: '/simulation/models/{id}',
+    description: 'Get simulation model details',
+    blueprint: 'Simulation',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Model ID' },
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/simulation/run',
+    description: 'Run a simulation',
+    blueprint: 'Simulation',
+    body: '{\n  "modelId": "model-123",\n  "parameters": {\n    "param1": 100,\n    "param2": 200\n  }\n}',
+  },
+  
+  // Query
+  {
+    method: 'POST',
+    path: '/cypher',
+    description: 'Execute Cypher query',
+    blueprint: 'Query',
+    body: '{\n  "query": "MATCH (n) RETURN n LIMIT 10"\n}',
+  },
+];
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: 'bg-blue-500',
+  POST: 'bg-green-500',
+  PUT: 'bg-yellow-500',
+  PATCH: 'bg-orange-500',
+  DELETE: 'bg-red-500',
+};
+
+export default function RestApiExplorer() {
+  const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
+  const [pathParams, setPathParams] = useState<Record<string, string>>({});
+  const [queryParams, setQueryParams] = useState<Record<string, string>>({});
+  const [requestBody, setRequestBody] = useState('');
+  const [response, setResponse] = useState<any>(null);
+  const [responseTime, setResponseTime] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const executeMutation = useMutation({
+    mutationFn: async ({
+      method,
+      url,
+      body,
+    }: {
+      method: string;
+      url: string;
+      body?: any;
+    }) => {
+      const startTime = Date.now();
+      let result;
+
+      switch (method) {
+        case 'GET':
+          result = await apiClient.get(url);
+          break;
+        case 'POST':
+          result = await apiClient.post(url, body);
+          break;
+        case 'PUT':
+          result = await apiClient.put(url, body);
+          break;
+        case 'PATCH':
+          result = await apiClient.patch(url, body);
+          break;
+        case 'DELETE':
+          result = await apiClient.delete(url);
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
+      }
+
+      const endTime = Date.now();
+      return { data: result.data, time: endTime - startTime };
+    },
+    onSuccess: (result) => {
+      setResponse(result.data);
+      setResponseTime(result.time);
+      setError(null);
+      toast.success(`Request completed in ${result.time}ms`);
+    },
+    onError: (err: any) => {
+      setError(err.message || 'Request failed');
+      setResponse(null);
+      setResponseTime(null);
+      toast.error('Request failed');
+    },
+  });
+
+  const handleSelectEndpoint = (endpoint: Endpoint) => {
+    setSelectedEndpoint(endpoint);
+    setPathParams({});
+    setQueryParams({});
+    setRequestBody(endpoint.body || '');
+    setResponse(null);
+    setError(null);
+    setResponseTime(null);
+  };
+
+  const handleExecute = () => {
+    if (!selectedEndpoint) return;
+
+    // Build URL with path params
+    let url = selectedEndpoint.path;
+    Object.entries(pathParams).forEach(([key, value]) => {
+      url = url.replace(`{${key}}`, encodeURIComponent(value));
+    });
+
+    // Add query params
+    const params = new URLSearchParams();
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+    if (params.toString()) {
+      url += '?' + params.toString();
+    }
+
+    // Parse body
+    let body = undefined;
+    if (requestBody && (selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH')) {
+      try {
+        body = JSON.parse(requestBody);
+      } catch (e) {
+        toast.error('Invalid JSON in request body');
+        return;
+      }
+    }
+
+    executeMutation.mutate({ method: selectedEndpoint.method, url, body });
+  };
+
+  const copyResponse = () => {
+    if (response) {
+      navigator.clipboard.writeText(JSON.stringify(response, null, 2));
+      toast.success('Response copied to clipboard');
+    }
+  };
+
+  const groupedEndpoints = API_ENDPOINTS.reduce((acc, endpoint) => {
+    if (!acc[endpoint.blueprint]) {
+      acc[endpoint.blueprint] = [];
+    }
+    acc[endpoint.blueprint].push(endpoint);
+    return acc;
+  }, {} as Record<string, Endpoint[]>);
+
+  const pathParamKeys = selectedEndpoint?.path.match(/\{([^}]+)\}/g)?.map(p => p.slice(1, -1)) || [];
+  const queryParamKeys = selectedEndpoint?.params?.filter(p => p.name !== 'type' && p.name !== 'uid' && p.name !== 'id' && p.name !== 'partId') || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">REST API Explorer</h1>
+        <p className="text-muted-foreground">
+          Interactive testing interface for all API endpoints
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Endpoints List */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Endpoints</CardTitle>
+            <CardDescription>{API_ENDPOINTS.length} endpoints available</CardDescription>
+          </CardHeader>
+          <CardContent className="max-h-[calc(100vh-200px)] overflow-auto">
+            <Accordion type="single" collapsible className="w-full">
+              {Object.entries(groupedEndpoints).map(([blueprint, endpoints]) => (
+                <AccordionItem key={blueprint} value={blueprint}>
+                  <AccordionTrigger>
+                    <div className="flex items-center gap-2">
+                      <ChevronRight className="h-4 w-4" />
+                      <span className="font-semibold">{blueprint}</span>
+                      <Badge variant="outline" className="ml-auto">
+                        {endpoints.length}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-1">
+                      {endpoints.map((endpoint, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSelectEndpoint(endpoint)}
+                          className={`w-full text-left p-2 rounded-md hover:bg-muted transition-colors ${
+                            selectedEndpoint === endpoint ? 'bg-muted' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge className={`${METHOD_COLORS[endpoint.method]} text-white text-xs`}>
+                              {endpoint.method}
+                            </Badge>
+                            <code className="text-xs truncate">{endpoint.path}</code>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {endpoint.description}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </CardContent>
+        </Card>
+
+        {/* Request/Response */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>
+              {selectedEndpoint ? (
+                <div className="flex items-center gap-2">
+                  <Badge className={`${METHOD_COLORS[selectedEndpoint.method]} text-white`}>
+                    {selectedEndpoint.method}
+                  </Badge>
+                  <code className="text-sm">{selectedEndpoint.path}</code>
+                </div>
+              ) : (
+                'Select an endpoint'
+              )}
+            </CardTitle>
+            {selectedEndpoint && (
+              <CardDescription>{selectedEndpoint.description}</CardDescription>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedEndpoint ? (
+              <>
+                {/* Path Parameters */}
+                {pathParamKeys.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Path Parameters</Label>
+                    {pathParamKeys.map((param) => (
+                      <div key={param}>
+                        <Label htmlFor={param} className="text-xs">
+                          {param} <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id={param}
+                          value={pathParams[param] || ''}
+                          onChange={(e) => setPathParams({ ...pathParams, [param]: e.target.value })}
+                          placeholder={`Enter ${param}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Query Parameters */}
+                {queryParamKeys.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Query Parameters</Label>
+                    {queryParamKeys.map((param) => (
+                      <div key={param.name}>
+                        <Label htmlFor={param.name} className="text-xs">
+                          {param.name}
+                          {param.required && <span className="text-destructive"> *</span>}
+                        </Label>
+                        <Input
+                          id={param.name}
+                          value={queryParams[param.name] || ''}
+                          onChange={(e) => setQueryParams({ ...queryParams, [param.name]: e.target.value })}
+                          placeholder={param.description}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Request Body */}
+                {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Request Body (JSON)</Label>
+                    <Textarea
+                      value={requestBody}
+                      onChange={(e) => setRequestBody(e.target.value)}
+                      placeholder="Enter JSON request body"
+                      rows={8}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                )}
+
+                {/* Execute Button */}
+                <Button
+                  onClick={handleExecute}
+                  disabled={executeMutation.isPending}
+                  className="w-full"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  {executeMutation.isPending ? 'Executing...' : 'Send Request'}
+                </Button>
+
+                {/* Response */}
+                {(response || error) && (
+                  <Tabs defaultValue="response" className="w-full">
+                    <div className="flex items-center justify-between mb-2">
+                      <TabsList>
+                        <TabsTrigger value="response">Response</TabsTrigger>
+                        <TabsTrigger value="headers">Headers</TabsTrigger>
+                      </TabsList>
+                      <div className="flex items-center gap-2">
+                        {responseTime && (
+                          <Badge variant="outline">{responseTime}ms</Badge>
+                        )}
+                        {response && (
+                          <Button variant="ghost" size="sm" onClick={copyResponse}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <TabsContent value="response" className="mt-0">
+                      {error ? (
+                        <Alert variant="destructive">
+                          <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                      ) : (
+                        <div className="rounded-md border p-4 bg-muted/50 max-h-[400px] overflow-auto">
+                          <pre className="text-xs font-mono">
+                            {JSON.stringify(response, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="headers" className="mt-0">
+                      <div className="rounded-md border p-4 bg-muted/50">
+                        <pre className="text-xs font-mono">
+                          {JSON.stringify(
+                            {
+                              'Content-Type': 'application/json',
+                              'X-Response-Time': `${responseTime}ms`,
+                            },
+                            null,
+                            2
+                          )}
+                        </pre>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                Select an endpoint from the left to test it
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

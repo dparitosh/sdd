@@ -1,0 +1,3054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBSE Knowledge Graph Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #0066cc;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .content-area {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 1em;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            color: #0066cc;
+        }
+
+        .nav-tab.active {
+            color: #0066cc;
+            border-bottom-color: #0066cc;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stat-card {
+            background: #0066cc;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .scoreboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .scoreboard-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .scoreboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .scoreboard-card h3 {
+            font-size: 2.5em;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .scoreboard-card p {
+            font-size: 0.9em;
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .dashboard-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .dashboard-details .detail-card {
+            margin: 0;
+        }
+
+        .dashboard-details h4 {
+            margin: 0 0 10px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #0066cc;
+            font-size: 1.1em;
+        }
+
+        .dashboard-details .property-table {
+            font-size: 0.9em;
+        }
+
+        .dashboard-details .property-table th {
+            background: #f8f9fa;
+            padding: 8px;
+        }
+
+        .dashboard-details .property-table td {
+            padding: 6px 8px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .item-list {
+            list-style: none;
+        }
+
+        .item-list li {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .item-list li:hover {
+            background: #e6f2ff;
+        }
+
+        .item-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #0066cc;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-left: 8px;
+        }
+
+        .detail-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+        }
+
+        /* Only add scrolling to detail cards that need it (not search criteria) */
+        .detail-card.scrollable {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .detail-card.scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .detail-card.scrollable::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .detail-card.scrollable::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .detail-card.scrollable::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .detail-card h3 {
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .property-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .property-table th,
+        .property-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .property-table th {
+            background: #e6f2ff;
+            color: #0066cc;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 25px;
+        }
+
+        .property-table th:hover {
+            background: #d0e7ff;
+        }
+
+        .property-table th .sort-arrow {
+            position: absolute;
+            right: 8px;
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        /* Zebra striping for search results */
+        #resultsTableBody tr:nth-child(odd) {
+            background-color: #f8f9fa;
+        }
+
+        #resultsTableBody tr:nth-child(even) {
+            background-color: #ffffff;
+        }
+
+        #resultsTableBody tr:hover {
+            background-color: #e6f2ff !important;
+        }
+
+        /* Compact row spacing */
+        #resultsTableBody td {
+            padding: 8px 12px !important;
+        }
+
+        /* Comment icon */
+        .comment-icon {
+            cursor: pointer;
+            color: #0066cc;
+            font-size: 1.2em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .comment-icon:hover {
+            background: #e6f2ff;
+            transform: scale(1.1);
+        }
+
+        /* Comment popup */
+        .comment-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 600px;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            z-index: 2000;
+        }
+
+        .comment-popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #0052a3;
+        }
+
+        .query-editor {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .result-box {
+            max-height: 400px;
+            overflow: auto;
+            background: #e6f2ff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .comment-text {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e6f2ff;
+            color: #0066cc;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* Help text styling for better UX */
+        .association-help {
+            background: #e6f2ff;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 3px solid #0066cc;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .association-help strong {
+            color: #0066cc;
+        }
+
+        details summary {
+            outline: none;
+            padding: 5px 0;
+        }
+
+        details summary:hover {
+            color: #0066cc;
+        }
+
+        /* Tree Layout Styles */
+        .tree-container {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .tree-node {
+            margin: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .tree-node:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 50%;
+            width: 12px;
+            border-left: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .tree-node:last-child:before {
+            border-left: 1px solid #ccc;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tree-item:hover {
+            background: #e6f2ff;
+            border-color: #0066cc;
+        }
+
+        .tree-icon {
+            margin-right: 8px;
+            color: #0066cc;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .tree-label {
+            flex: 1;
+            color: #333;
+        }
+
+        .tree-count {
+            color: #666;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
+
+        .tree-children {
+            margin-left: 0;
+            border-left: 1px solid #ccc;
+            padding-left: 15px;
+        }
+
+        .tree-expand {
+            cursor: pointer;
+            margin-right: 5px;
+            color: #0066cc;
+            user-select: none;
+        }
+
+        .artifact-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .artifact-type-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            background: white;
+            transition: all 0.3s;
+        }
+
+        .artifact-type-card:hover {
+            border-color: #0066cc;
+            background: #e6f2ff;
+        }
+
+        .artifact-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #0066cc;
+        }
+
+        .artifact-type-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .artifact-count {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #visualization {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .api-category {
+            margin-top: 20px;
+        }
+
+        .api-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0066cc;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .api-result pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .api-result.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        /* Improved scrollable sections */
+        details summary {
+            user-select: none;
+            outline: none;
+        }
+
+        details[open] summary {
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        /* Better property table overflow handling */
+        .property-table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .detail-card {
+                max-height: 400px;
+            }
+        }
+
+        .api-result.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>▼ MBSE Knowledge Graph Viewer</h1>
+            <p class="subtitle">Semantic UML/SysML Model-Based Systems Engineering</p>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="stat-card">
+                    <h3 id="nodeCount">-</h3>
+                    <p>Total Nodes</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="relCount">-</h3>
+                    <p>Relationships</p>
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0;">Quick Navigation</h3>
+                <ul class="item-list" style="font-size: 0.9em;">
+                    <li onclick="switchTab('artifacts')">▸ SysML/UML Artifacts</li>
+                    <li onclick="switchTab('api')">▸ REST API</li>
+                    <li onclick="switchTab('query')">▸ Query Editor</li>
+                </ul>
+            </aside>
+
+            <main class="content-area">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" onclick="switchTab('artifacts')">SysML/UML Artifacts</button>
+                    <button class="nav-tab" onclick="switchTab('api')">REST API</button>
+                    <button class="nav-tab" onclick="switchTab('query')">Query Editor</button>
+                </div>
+
+                <!-- SysML/UML Artifacts Tab -->
+                <div id="artifacts" class="tab-content active">
+                    <!-- Dashboard Section -->
+                    <h2>📊 Dashboard</h2>
+                    <div class="scoreboard" id="dashboardScoreboard"></div>
+                    <details style="margin-bottom: 20px;">
+                        <summary style="cursor: pointer; padding: 10px; background: #f8f9fa; border-radius: 5px; font-weight: bold; color: #0066cc;">▸ View Detailed Statistics</summary>
+                        <div class="dashboard-details" id="dashboardDetails" style="margin-top: 15px;"></div>
+                    </details>
+                    
+                    <h2>▼ Advanced Search</h2>
+                    
+                    <!-- Search Criteria Panel - Agile PLM Style -->
+                    <div class="detail-card" style="margin-bottom: 20px;">
+                        <div style="border-bottom: 2px solid #0066cc; padding-bottom: 10px; margin-bottom: 20px;">
+                            <h3 style="margin: 0;">Search Criteria</h3>
+                        </div>
+                        
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tbody>
+                                <!-- Object Type Row -->
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 12px; width: 200px; background: #f8f9fa; font-weight: bold; vertical-align: top;">
+                                        Object Type<span style="color: red;">*</span>
+                                    </td>
+                                    <td style="padding: 12px;">
+                                        <select id="objectTypeSelector" class="search-box" style="width: 100%; max-width: 400px;">
+                                            <option value="">-- Select Object Type --</option>
+                                        </select>
+                                        <div id="objectTypeCount" style="font-size: 0.85em; color: #666; margin-top: 5px;"></div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Name Row -->
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 12px; background: #f8f9fa; font-weight: bold; vertical-align: top;">
+                                        Name
+                                    </td>
+                                    <td style="padding: 12px;">
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <select id="nameOperator" class="search-box" style="width: 150px;">
+                                                <option value="contains">Contains</option>
+                                                <option value="equals">Equals</option>
+                                                <option value="starts">Starts With</option>
+                                                <option value="ends">Ends With</option>
+                                            </select>
+                                            <input type="text" id="nameFilter" class="search-box" placeholder="Enter name..." style="flex: 1; max-width: 500px;">
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Comment/Description Row -->
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 12px; background: #f8f9fa; font-weight: bold; vertical-align: top;">
+                                        Comment/Description
+                                    </td>
+                                    <td style="padding: 12px;">
+                                        <input type="text" id="commentFilter" class="search-box" placeholder="Search in comments/descriptions..." style="width: 100%; max-width: 600px;">
+                                    </td>
+                                </tr>
+                                
+                                <!-- Display Options Row -->
+                                <tr>
+                                    <td style="padding: 12px; background: #f8f9fa; font-weight: bold; vertical-align: top;">
+                                        Display Options
+                                    </td>
+                                    <td style="padding: 12px;">
+                                        <label style="margin-right: 25px; cursor: pointer;">
+                                            <input type="checkbox" id="showProperties" checked> Show All Properties
+                                        </label>
+                                        <label style="margin-right: 25px; cursor: pointer;">
+                                            <input type="checkbox" id="showRelationships" checked> Show Relationships
+                                        </label>
+                                        <label style="cursor: pointer;">
+                                            <input type="checkbox" id="showMetadata"> Show XMI Metadata
+                                        </label>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Results Limit Row -->
+                                <tr>
+                                    <td style="padding: 12px; background: #f8f9fa; font-weight: bold; vertical-align: top;">
+                                        Results Limit
+                                    </td>
+                                    <td style="padding: 12px;">
+                                        <select id="resultsLimit" class="search-box" style="width: 150px;">
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                            <option value="100" selected>100</option>
+                                            <option value="250">250</option>
+                                            <option value="500">500</option>
+                                            <option value="1000">1000</option>
+                                        </select>
+                                        <span style="margin-left: 10px; color: #666; font-size: 0.9em;">Maximum results to display</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <!-- Search and Reset buttons at bottom of criteria box -->
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; text-align: right;">
+                            <button class="btn" onclick="resetSearchForm()" style="background: #6c757d; padding: 8px 25px; margin-right: 10px;">↺ Reset</button>
+                            <button class="btn" onclick="performAdvancedSearch()" style="padding: 8px 25px;">⌕ Search</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Results Panel -->
+                    <div id="searchResultsPanel" style="display: none;">
+                        <!-- Results Header -->
+                        <div style="background: #e6f2ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 1.1em; color: #0066cc;">Search Results</strong>
+                                <span id="resultCount" style="margin-left: 15px; color: #666;"></span>
+                            </div>
+                            <div>
+                                <button class="btn" onclick="exportResults('csv')" style="padding: 6px 15px; font-size: 0.9em; margin-right: 8px;">⬇ Export CSV</button>
+                                <button class="btn" onclick="exportResults('json')" style="padding: 6px 15px; font-size: 0.9em;">⬇ Export JSON</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Results Table -->
+                        <div style="background: white; border: 1px solid #ddd; border-radius: 8px;">
+                            <table id="resultsTable" class="property-table" style="width: 100%; margin: 0;">
+                                <thead style="position: sticky; top: 0; background: #f8f9fa;">
+                                    <tr>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #0066cc; width: 50px;">#</th>
+                                        <th onclick="sortResults('name')" style="padding: 12px; text-align: left; border-bottom: 2px solid #0066cc;">
+                                            Name <span class="sort-arrow" id="sort-name">⇅</span>
+                                        </th>
+                                        <th onclick="sortResults('type')" style="padding: 12px; text-align: left; border-bottom: 2px solid #0066cc;">
+                                            Type <span class="sort-arrow" id="sort-type">⇅</span>
+                                        </th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #0066cc; width: 80px; text-align: center;">Comment</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #0066cc; width: 120px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resultsTableBody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div id="paginationControls" style="margin-top: 15px; text-align: center; padding: 15px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Details Panel (Slide-out style) -->
+                    <div id="detailsPanel" style="display: none; position: fixed; right: 0; top: 0; width: 50%; height: 100vh; background: white; box-shadow: -4px 0 12px rgba(0,0,0,0.15); z-index: 1000; overflow-y: auto;">
+                        <div style="position: sticky; top: 0; background: #0066cc; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; color: white;">Object Details</h3>
+                            <button onclick="closeDetailsPanel()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+                        </div>
+                        <div id="detailsPanelContent" style="padding: 20px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Initial Empty State -->
+                    <div id="emptyState" style="text-align: center; padding: 80px 20px; color: #999;">
+                        <div style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;">⌕</div>
+                        <h3 style="color: #666; font-weight: normal;">Enter search criteria and click Search</h3>
+                        <p style="font-size: 0.95em; color: #999; margin-top: 10px;">Select an Object Type (required field) to begin</p>
+                    </div>
+                </div>
+
+                <!-- REST API Tab -->
+                <div id="api" class="tab-content">
+                    <h2>⚡ REST API Interactive Documentation</h2>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        <strong>Swagger-style API Client</strong> - Test all endpoints interactively with live responses
+                        <br><small>Base URL: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">/api/v1/</code></small>
+                    </p>
+                    
+                    <!-- API Category Tabs -->
+                    <div style="display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button class="btn" onclick="showAPICategory('core')" id="apiCatCore" style="padding: 8px 15px; font-size: 0.9em;">📊 Core CRUD</button>
+                        <button class="btn" onclick="showAPICategory('plm')" id="apiCatPLM" style="padding: 8px 15px; font-size: 0.9em; background: #6c757d;">🏭 PLM</button>
+                        <button class="btn" onclick="showAPICategory('simulation')" id="apiCatSim" style="padding: 8px 15px; font-size: 0.9em; background: #6c757d;">🔬 Simulation</button>
+                        <button class="btn" onclick="showAPICategory('export')" id="apiCatExport" style="padding: 8px 15px; font-size: 0.9em; background: #6c757d;">💾 Export</button>
+                        <button class="btn" onclick="showAPICategory('version')" id="apiCatVersion" style="padding: 8px 15px; font-size: 0.9em; background: #6c757d;">⏱️ Version</button>
+                    </div>
+
+                    <!-- Core CRUD Operations -->
+                    <div id="apiCategoryCore" class="api-category">
+                        <h3>📊 Core CRUD Operations</h3>
+                        
+                        <!-- READ - Get All Nodes -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #61affe; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">GET</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/v1/{NodeType}</code>
+                            </div>
+                            <h4 style="color: #28a745; margin-top: 10px;">🔍 Get All Nodes by Type</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Retrieve a paginated list of nodes by type with optional filtering</p>
+                            <form onsubmit="event.preventDefault(); apiReadAllNodes();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node Type:</strong></label>
+                                    <select id="readNodeType" class="search-box" required>
+                                        <option value="Class">Class</option>
+                                        <option value="Package">Package</option>
+                                        <option value="Property">Property</option>
+                                        <option value="Port">Port</option>
+                                        <option value="Constraint">Constraint</option>
+                                        <option value="Association">Association</option>
+                                        <option value="Comment">Comment</option>
+                                        <option value="Slot">Slot</option>
+                                        <option value="InstanceSpecification">InstanceSpecification</option>
+                                    </select>
+                                    
+                                    <label><strong>Search Filter:</strong></label>
+                                    <input type="text" id="readSearchFilter" class="search-box" placeholder="Search by name (optional)">
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="readLimit" class="search-box" value="20" min="1" max="1000">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🔍 GET All Nodes</button>
+                            </form>
+                            <div id="readAllNodesResult" class="api-result"></div>
+                        </div>
+
+                        <!-- READ - Get Single Node -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #61affe; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">GET</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/artifacts/{type}/{id}</code>
+                            </div>
+                            <h4 style="color: #28a745; margin-top: 10px;">🔍 Get Single Node by ID</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Retrieve detailed information about a specific node including relationships</p>
+                            <form onsubmit="event.preventDefault(); apiReadSingleNode();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node Type:</strong></label>
+                                    <select id="readSingleNodeType" class="search-box" required>
+                                        <option value="Class">Class</option>
+                                        <option value="Package">Package</option>
+                                        <option value="Property">Property</option>
+                                        <option value="Port">Port</option>
+                                    </select>
+                                    
+                                    <label><strong>Node ID:</strong></label>
+                                    <input type="text" id="readSingleNodeId" class="search-box" placeholder="Enter node ID" required>
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🔍 GET Single Node</button>
+                            </form>
+                            <div id="readSingleNodeResult" class="api-result"></div>
+                        </div>
+
+                        <!-- CREATE - Custom Query (Cypher) -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #49cc90; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">POST</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/cypher</code>
+                            </div>
+                            <h4 style="color: #007bff; margin-top: 10px;">➕ CREATE - Execute Cypher Query</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Use Cypher CREATE statements to add new nodes/relationships</p>
+                            <form onsubmit="event.preventDefault(); apiExecuteQuery('create');">
+                                <div style="margin-bottom: 15px;">
+                                    <label><strong>Cypher Query:</strong></label>
+                                    <textarea id="createCypherQuery" class="search-box" style="min-height: 100px; font-family: monospace;" placeholder="CREATE (n:Class {id: 'new_id', name: 'NewClass', type: 'uml:Class'}) RETURN n" required></textarea>
+                                </div>
+                                <button type="submit" class="btn" style="background: #007bff;">➕ CREATE (Execute Query)</button>
+                            </form>
+                            <div id="createQueryResult" class="api-result"></div>
+                        </div>
+
+                        <!-- UPDATE - Custom Query (Cypher) -->
+                        <div class="detail-card">
+                            <h4 style="color: #ffc107;">✏️ UPDATE - Execute Cypher Query</h4>
+                            <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Use Cypher MATCH/SET statements to update existing nodes</p>
+                            <form onsubmit="event.preventDefault(); apiExecuteQuery('update');">
+                                <div style="margin-bottom: 15px;">
+                                    <label><strong>Cypher Query:</strong></label>
+                                    <textarea id="updateCypherQuery" class="search-box" style="min-height: 100px; font-family: monospace;" placeholder="MATCH (n:Class {id: 'node_id'}) SET n.name = 'UpdatedName' RETURN n" required></textarea>
+                                </div>
+                                <button type="submit" class="btn" style="background: #ffc107; color: #000;">✏️ UPDATE (Execute Query)</button>
+                            </form>
+                            <div id="updateQueryResult" class="api-result"></div>
+                        </div>
+
+                        <!-- DELETE - Custom Query (Cypher) -->
+                        <div class="detail-card">
+                            <h4 style="color: #dc3545;">🗑️ DELETE - Execute Cypher Query</h4>
+                            <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Use Cypher MATCH/DELETE statements to remove nodes/relationships</p>
+                            <form onsubmit="event.preventDefault(); apiExecuteQuery('delete');">
+                                <div style="margin-bottom: 15px;">
+                                    <label><strong>Cypher Query:</strong></label>
+                                    <textarea id="deleteCypherQuery" class="search-box" style="min-height: 100px; font-family: monospace;" placeholder="MATCH (n:Class {id: 'node_id'}) DETACH DELETE n" required></textarea>
+                                </div>
+                                <button type="submit" class="btn" style="background: #dc3545;">🗑️ DELETE (Execute Query)</button>
+                            </form>
+                            <div id="deleteQueryResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Get Relationships -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">🔗 READ - Get Relationships</h4>
+                            <form onsubmit="event.preventDefault(); apiGetRelationships();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Relationship Type:</strong></label>
+                                    <select id="relType" class="search-box" required>
+                                        <option value="HAS_COMMENT">HAS_COMMENT</option>
+                                        <option value="CONTAINS">CONTAINS</option>
+                                        <option value="HAS_ATTRIBUTE">HAS_ATTRIBUTE</option>
+                                        <option value="TYPED_BY">TYPED_BY</option>
+                                        <option value="HAS_END">HAS_END</option>
+                                        <option value="ASSOCIATES_WITH">ASSOCIATES_WITH</option>
+                                        <option value="CONNECTED_BY">CONNECTED_BY</option>
+                                        <option value="GENERALIZES">GENERALIZES</option>
+                                        <option value="HAS_RULE">HAS_RULE</option>
+                                    </select>
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="relLimit" class="search-box" value="20" min="1" max="500">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🔗 GET Relationships</button>
+                            </form>
+                            <div id="relationshipsResult" class="api-result"></div>
+                        </div>
+                    </div>
+
+                    <!-- PLM Integration Operations -->
+                    <div id="apiCategoryPLM" class="api-category" style="display: none;">
+                        <h3>🏭 PLM Integration Operations</h3>
+                        
+                        <!-- Traceability -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">🔍 Requirements Traceability</h4>
+                            <form onsubmit="event.preventDefault(); apiGetTraceability();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Source ID:</strong></label>
+                                    <input type="text" id="traceSourceId" class="search-box" placeholder="Optional: Source node ID">
+                                    
+                                    <label><strong>Target ID:</strong></label>
+                                    <input type="text" id="traceTargetId" class="search-box" placeholder="Optional: Target node ID">
+                                    
+                                    <label><strong>Depth:</strong></label>
+                                    <input type="number" id="traceDepth" class="search-box" value="3" min="1" max="10">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🔍 GET Traceability</button>
+                            </form>
+                            <div id="traceabilityResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Composition -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">🏗️ Composition Hierarchy</h4>
+                            <form onsubmit="event.preventDefault(); apiGetComposition();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node ID:</strong></label>
+                                    <input type="text" id="compositionNodeId" class="search-box" placeholder="Enter node ID" required>
+                                    
+                                    <label><strong>Depth:</strong></label>
+                                    <input type="number" id="compositionDepth" class="search-box" value="2" min="1" max="10">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🏗️ GET Composition</button>
+                            </form>
+                            <div id="compositionResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Impact Analysis -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">💥 Change Impact Analysis</h4>
+                            <form onsubmit="event.preventDefault(); apiGetImpact();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node ID:</strong></label>
+                                    <input type="text" id="impactNodeId" class="search-box" placeholder="Enter node ID" required>
+                                    
+                                    <label><strong>Depth:</strong></label>
+                                    <input type="number" id="impactDepth" class="search-box" value="3" min="1" max="10">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">💥 GET Impact Analysis</button>
+                            </form>
+                            <div id="impactResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Parameters -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">📊 Extract Parameters</h4>
+                            <form onsubmit="event.preventDefault(); apiGetParameters();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Class Name:</strong></label>
+                                    <input type="text" id="paramClassName" class="search-box" placeholder="Optional: Filter by class name">
+                                    
+                                    <label><strong>Property Name:</strong></label>
+                                    <input type="text" id="paramPropertyName" class="search-box" placeholder="Optional: Filter by property name">
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="paramLimit" class="search-box" value="50" min="1" max="500">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">📊 GET Parameters</button>
+                            </form>
+                            <div id="parametersResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Constraints -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">⚠️ Get Constraints</h4>
+                            <form onsubmit="event.preventDefault(); apiGetConstraints();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node ID:</strong></label>
+                                    <input type="text" id="constraintNodeId" class="search-box" placeholder="Optional: Filter by node ID">
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="constraintLimit" class="search-box" value="50" min="1" max="500">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">⚠️ GET Constraints</button>
+                            </form>
+                            <div id="constraintsResult" class="api-result"></div>
+                        </div>
+                    </div>
+
+                    <!-- Simulation Operations -->
+                    <div id="apiCategorySim" class="api-category" style="display: none;">
+                        <h3>🔬 Simulation Integration Operations</h3>
+                        
+                        <!-- Simulation Parameters -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">🔬 Extract Simulation Parameters</h4>
+                            <form onsubmit="event.preventDefault(); apiGetSimulationParameters();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Class Name:</strong></label>
+                                    <input type="text" id="simParamClassName" class="search-box" placeholder="Optional: Filter by class">
+                                    
+                                    <label><strong>Data Type:</strong></label>
+                                    <input type="text" id="simParamDataType" class="search-box" placeholder="Optional: Filter by data type">
+                                    
+                                    <label><strong>Include Constraints:</strong></label>
+                                    <select id="simParamConstraints" class="search-box">
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="simParamLimit" class="search-box" value="50" min="1" max="1000">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🔬 GET Simulation Parameters</button>
+                            </form>
+                            <div id="simParametersResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Validate Constraints -->
+                        <div class="detail-card">
+                            <h4 style="color: #007bff;">✅ Validate Constraints</h4>
+                            <form onsubmit="event.preventDefault(); apiValidateConstraints();">
+                                <div style="margin-bottom: 15px;">
+                                    <label><strong>Parameters JSON:</strong></label>
+                                    <textarea id="validateParamsJson" class="search-box" style="min-height: 120px; font-family: monospace;" placeholder='{"parameters": [{"id": "param_id", "name": "param_name", "value": 100, "constraint_id": "constraint_id"}]}' required></textarea>
+                                </div>
+                                <button type="submit" class="btn" style="background: #007bff;">✅ POST Validate</button>
+                            </form>
+                            <div id="validateResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Units -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">📏 Get Unit Definitions</h4>
+                            <form onsubmit="event.preventDefault(); apiGetUnits();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="unitsLimit" class="search-box" value="50" min="1" max="500">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">📏 GET Units</button>
+                            </form>
+                            <div id="unitsResult" class="api-result"></div>
+                        </div>
+                    </div>
+
+                    <!-- Export Operations -->
+                    <div id="apiCategoryExport" class="api-category" style="display: none;">
+                        <h3>💾 Export Operations</h3>
+                        
+                        <!-- GraphML Export -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #61affe; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">GET</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/v1/export/graphml</code>
+                            </div>
+                            <h4 style="color: #28a745; margin-top: 10px;">📊 Export as GraphML</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Export graph data in GraphML XML format for visualization tools</p>
+                            <form onsubmit="event.preventDefault(); apiExportGraphML();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node Types:</strong></label>
+                                    <input type="text" id="graphmlNodeTypes" class="search-box" placeholder="Optional: Class,Package (comma-separated)">
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="graphmlLimit" class="search-box" value="1000" min="1" max="10000">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">📊 GET GraphML Export</button>
+                            </form>
+                            <div id="graphmlResult" class="api-result"></div>
+                        </div>
+
+                        <!-- JSON-LD Export -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #61affe; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">GET</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/v1/export/jsonld</code>
+                            </div>
+                            <h4 style="color: #28a745; margin-top: 10px;">🌐 Export as JSON-LD</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Export semantic graph data with RDF/OWL annotations</p>
+                            <form onsubmit="event.preventDefault(); apiExportJSONLD();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node Types:</strong></label>
+                                    <input type="text" id="jsonldNodeTypes" class="search-box" placeholder="Optional: Class,Package (comma-separated)">
+                                    
+                                    <label><strong>Limit:</strong></label>
+                                    <input type="number" id="jsonldLimit" class="search-box" value="1000" min="1" max="10000">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🌐 GET JSON-LD Export</button>
+                            </form>
+                            <div id="jsonldResult" class="api-result"></div>
+                        </div>
+
+                        <!-- CSV Export -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">📄 Export as CSV</h4>
+                            <form onsubmit="event.preventDefault(); apiExportCSV();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node Type:</strong></label>
+                                    <select id="csvNodeType" class="search-box" required>
+                                        <option value="Class">Class</option>
+                                        <option value="Package">Package</option>
+                                        <option value="Property">Property</option>
+                                        <option value="Port">Port</option>
+                                        <option value="Constraint">Constraint</option>
+                                    </select>
+                                    
+                                    <label><strong>Properties:</strong></label>
+                                    <input type="text" id="csvProperties" class="search-box" placeholder="Optional: id,name,type (comma-separated)">
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">📄 GET CSV Export (ZIP)</button>
+                            </form>
+                            <div id="csvResult" class="api-result"></div>
+                        </div>
+
+                        <!-- STEP Export -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">🏗️ Export as STEP AP242</h4>
+                            <form onsubmit="event.preventDefault(); apiExportSTEP();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node Types:</strong></label>
+                                    <input type="text" id="stepNodeTypes" class="search-box" placeholder="Optional: Class,Package (comma-separated)">
+                                    
+                                    <label><strong>Include Metadata:</strong></label>
+                                    <select id="stepMetadata" class="search-box">
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">🏗️ GET STEP Export</button>
+                            </form>
+                            <div id="stepResult" class="api-result"></div>
+                        </div>
+                    </div>
+
+                    <!-- Version Control Operations -->
+                    <div id="apiCategoryVersion" class="api-category" style="display: none;">
+                        <h3>⏱️ Version Control Operations</h3>
+                        
+                        <!-- Get Version History -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #61affe; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">GET</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/v1/versions/{node_id}</code>
+                            </div>
+                            <h4 style="color: #28a745; margin-top: 10px;">📜 Get Version History</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Retrieve complete version history for a node</p>
+                            <form onsubmit="event.preventDefault(); apiGetVersionHistory();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node ID:</strong></label>
+                                    <input type="text" id="versionNodeId" class="search-box" placeholder="Enter node ID" required>
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">📜 GET Version History</button>
+                            </form>
+                            <div id="versionHistoryResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Compare Versions (Diff) -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #49cc90; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">POST</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/v1/diff</code>
+                            </div>
+                            <h4 style="color: #007bff; margin-top: 10px;">🔄 Compare Versions (Diff)</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Compare two versions and show differences</p>
+                            <form onsubmit="event.preventDefault(); apiCompareVersions();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node ID 1:</strong></label>
+                                    <input type="text" id="diffNodeId1" class="search-box" placeholder="Enter first node ID" required>
+                                    
+                                    <label><strong>Node ID 2:</strong></label>
+                                    <input type="text" id="diffNodeId2" class="search-box" placeholder="Enter second node ID" required>
+                                    
+                                    <label><strong>Version 1:</strong></label>
+                                    <input type="number" id="diffVersion1" class="search-box" value="1" min="1">
+                                    
+                                    <label><strong>Version 2:</strong></label>
+                                    <input type="number" id="diffVersion2" class="search-box" value="2" min="1">
+                                </div>
+                                <button type="submit" class="btn" style="background: #007bff;">🔄 POST Compare Versions</button>
+                            </form>
+                            <div id="diffResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Get Change History -->
+                        <div class="detail-card">
+                            <h4 style="color: #28a745;">📋 Get Change History</h4>
+                            <form onsubmit="event.preventDefault(); apiGetHistory();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Node ID:</strong></label>
+                                    <input type="text" id="historyNodeId" class="search-box" placeholder="Enter node ID" required>
+                                </div>
+                                <button type="submit" class="btn" style="background: #28a745;">📋 GET Change History</button>
+                            </form>
+                            <div id="historyResult" class="api-result"></div>
+                        </div>
+
+                        <!-- Create Checkpoint -->
+                        <div class="detail-card">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="background: #49cc90; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.85em;">POST</span>
+                                <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; flex: 1;">/api/v1/checkpoint</code>
+                            </div>
+                            <h4 style="color: #007bff; margin-top: 10px;">💾 Create Checkpoint</h4>
+                            <p style="font-size: 0.9em; color: #666; margin: 5px 0 15px 0;">Create a new version checkpoint with metadata</p>
+                            <form onsubmit="event.preventDefault(); apiCreateCheckpoint();">
+                                <div style="display: grid; grid-template-columns: 200px 1fr; gap: 15px; margin-bottom: 15px;">
+                                    <label><strong>Version:</strong></label>
+                                    <input type="text" id="checkpointVersion" class="search-box" placeholder="e.g., 2.0.0" required>
+                                    
+                                    <label><strong>Description:</strong></label>
+                                    <textarea id="checkpointDescription" class="search-box" rows="3" placeholder="Describe this checkpoint" required></textarea>
+                                    
+                                    <label><strong>Author:</strong></label>
+                                    <input type="text" id="checkpointAuthor" class="search-box" placeholder="Your name" required>
+                                </div>
+                                <button type="submit" class="btn" style="background: #007bff;">💾 POST Create Checkpoint</button>
+                            </form>
+                            <div id="checkpointResult" class="api-result"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Query Editor Tab -->
+                <div id="query" class="tab-content">
+                    <h2>Cypher Query Editor</h2>
+                    <textarea class="query-editor" id="cypherQuery" placeholder="Enter your Cypher query here...
+Example:
+MATCH (c:Class)-[:HAS_ATTRIBUTE]->(p:Property)
+RETURN c.name, p.name
+LIMIT 10"></textarea>
+                    <button class="btn" onclick="executeQuery()">▶️ Execute Query</button>
+                    <div id="queryResults"></div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        let allPackages = [];
+        let allClasses = [];
+
+        // Load initial data
+        // Helper function to build Association display name from relationships
+        function getAssociationDisplay(artifact) {
+            const hasEnds = artifact.outgoing_relationships?.filter(r => r.relationship === 'HAS_END') || [];
+            if (hasEnds.length > 0) {
+                const endNames = hasEnds.map(r => r.target_name || '[unnamed]');
+                return endNames.join(' ↔ ');
+            }
+            return '(no member ends defined)';
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                document.getElementById('nodeCount').textContent = data.nodes.total;
+                document.getElementById('relCount').textContent = data.relationships.total;
+
+                // Scoreboard summary cards
+                const nodeTypeCount = data.nodes.by_type.length;
+                const relTypeCount = data.relationships.by_type.length;
+                
+                let scoreboardHtml = `
+                    <div class="scoreboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h3>${data.nodes.total.toLocaleString()}</h3>
+                        <p>Total Nodes</p>
+                    </div>
+                    <div class="scoreboard-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h3>${data.relationships.total.toLocaleString()}</h3>
+                        <p>Total Relationships</p>
+                    </div>
+                    <div class="scoreboard-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <h3>${nodeTypeCount}</h3>
+                        <p>Node Types</p>
+                    </div>
+                    <div class="scoreboard-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                        <h3>${relTypeCount}</h3>
+                        <p>Relationship Types</p>
+                    </div>
+                `;
+                document.getElementById('dashboardScoreboard').innerHTML = scoreboardHtml;
+
+                // Detailed stats (collapsible)
+                let detailsHtml = '<div class="detail-card"><h4>Node Types</h4><table class="property-table"><tr><th>Type</th><th>Count</th></tr>';
+                data.nodes.by_type.forEach(node => {
+                    detailsHtml += `<tr><td>${node.label}</td><td>${node.count.toLocaleString()}</td></tr>`;
+                });
+                detailsHtml += '</table></div>';
+
+                detailsHtml += '<div class="detail-card"><h4>Relationship Types</h4><table class="property-table"><tr><th>Type</th><th>Count</th></tr>';
+                data.relationships.by_type.forEach(rel => {
+                    detailsHtml += `<tr><td>${rel.type}</td><td>${rel.count.toLocaleString()}</td></tr>`;
+                });
+                detailsHtml += '</table></div>';
+
+                document.getElementById('dashboardDetails').innerHTML = detailsHtml;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadPackages() {
+            try {
+                const response = await fetch('/api/packages');
+                allPackages = await response.json();
+                displayPackages(allPackages);
+            } catch (error) {
+                console.error('Error loading packages:', error);
+                document.getElementById('packageList').innerHTML = '<div class="error">Error loading packages</div>';
+            }
+        }
+
+        function displayPackages(packages) {
+            const html = `<div class="tree-container">
+                ${packages.map(pkg => `
+                    <div class="tree-item" onclick="loadPackageDetails('${pkg.id}')">
+                        <span class="tree-icon">▸</span>
+                        <span class="tree-label"><strong>${pkg.name}</strong></span>
+                        <span class="tree-count">${pkg.child_count} items</span>
+                    </div>
+                `).join('')}
+            </div>`;
+            document.getElementById('packageList').innerHTML = html || '<p class="loading">No packages found</p>';
+        }
+
+        function searchPackages() {
+            const search = document.getElementById('packageSearch').value.toLowerCase();
+            const filtered = allPackages.filter(pkg => 
+                pkg.name.toLowerCase().includes(search) || 
+                (pkg.comment && pkg.comment.toLowerCase().includes(search))
+            );
+            displayPackages(filtered);
+        }
+
+        async function loadPackageDetails(packageId) {
+            try {
+                const response = await fetch(`/api/package/${packageId}`);
+                const data = await response.json();
+                
+                let html = `<div class="detail-card">
+                    <h2>▦ ${data.package_name}</h2>
+                    <div class="comment-text">${data.package_comment || 'No description'}</div>
+                    <h3 style="margin-top: 20px;">Contents</h3>
+                    <table class="property-table">
+                        <tr><th>Type</th><th>Name</th><th>Description</th></tr>`;
+                
+                data.contents.forEach(item => {
+                    if (item.id) {
+                        html += `<tr>
+                            <td><span class="type-badge">${item.type}</span></td>
+                            <td><strong>${item.name}</strong></td>
+                            <td><div class="comment-text">${item.comment || '-'}</div></td>
+                        </tr>`;
+                    }
+                });
+                
+                html += '</table></div>';
+                html += '<button class="btn" onclick="loadPackages()">← Back to Packages</button>';
+                
+                document.getElementById('packageList').innerHTML = html;
+            } catch (error) {
+                console.error('Error loading package details:', error);
+            }
+        }
+
+        async function loadClasses() {
+            try {
+                const response = await fetch('/api/classes');
+                allClasses = await response.json();
+                displayClasses(allClasses);
+            } catch (error) {
+                console.error('Error loading classes:', error);
+                document.getElementById('classList').innerHTML = '<div class="error">Error loading classes</div>';
+            }
+        }
+
+        function displayClasses(classes) {
+            const html = `<div class="tree-container">
+                ${classes.map(cls => `
+                    <div class="tree-item" onclick="loadClassDetails('${cls.id}')">
+                        <span class="tree-icon">▸</span>
+                        <span class="tree-label"><strong>${cls.name}</strong></span>
+                        <span class="tree-count">${cls.property_count} properties</span>
+                    </div>
+                `).join('')}
+            </div>`;
+            document.getElementById('classList').innerHTML = html || '<p class="loading">No classes found</p>';
+        }
+
+        function searchClasses() {
+            const search = document.getElementById('classSearch').value.toLowerCase();
+            const filtered = allClasses.filter(cls => 
+                cls.name.toLowerCase().includes(search) || 
+                (cls.comment && cls.comment.toLowerCase().includes(search))
+            );
+            displayClasses(filtered);
+        }
+
+        async function loadClassDetails(classId) {
+            try {
+                const response = await fetch(`/api/class/${classId}`);
+                const data = await response.json();
+                
+                let html = `<div class="detail-card">
+                    <h2>▣ ${data.name}</h2>
+                    <div class="comment-text">${data.comment || 'No description'}</div>`;
+                
+                if (data.parents.length > 0) {
+                    html += '<h3 style="margin-top: 20px;">Inherits From</h3><ul>';
+                    data.parents.forEach(parent => {
+                        html += `<li><strong>${parent.name}</strong></li>`;
+                    });
+                    html += '</ul>';
+                }
+                
+                html += `<h3 style="margin-top: 20px;">Properties</h3>
+                    <table class="property-table">
+                        <tr><th>Property</th><th>Type</th></tr>`;
+                
+                data.properties.forEach(prop => {
+                    if (prop.id) {
+                        html += `<tr>
+                            <td><strong>${prop.name}</strong></td>
+                            <td>${prop.type || '-'}</td>
+                        </tr>`;
+                    }
+                });
+                
+                html += '</table></div>';
+                html += '<button class="btn" onclick="loadClasses()">← Back to Classes</button>';
+                
+                document.getElementById('classList').innerHTML = html;
+            } catch (error) {
+                console.error('Error loading class details:', error);
+            }
+        }
+
+        async function executeQuery() {
+            const query = document.getElementById('cypherQuery').value;
+            const resultsDiv = document.getElementById('queryResults');
+            
+            if (!query.trim()) {
+                resultsDiv.innerHTML = '<div class="error">Please enter a query</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loading">Executing query...</div>';
+            
+            try {
+                const response = await fetch('/api/cypher', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query})
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <p><strong>${data.count} results</strong></p>
+                            <pre>${JSON.stringify(data.results, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            
+            // Load data if needed
+            if (tabName === 'artifacts') {
+                loadArtifactTypes();
+                loadStats(); // Load dashboard stats
+            }
+        }
+
+        // SysML/UML Artifacts Functions
+        let currentArtifactType = null;
+        let allArtifacts = [];
+        let artifactTypesData = [];
+
+        async function loadArtifactTypes() {
+            try {
+                const response = await fetch('/api/artifacts');
+                const data = await response.json();
+                artifactTypesData = data.data;
+                displayArtifactTypes(artifactTypesData);
+            } catch (error) {
+                console.error('Error loading artifact types:', error);
+                document.getElementById('artifactTypes').innerHTML = '<p class="loading">Error loading artifact types</p>';
+            }
+        }
+
+        function displayArtifactTypes(types) {
+            const icons = {
+                'Class': '▣',
+                'Package': '▦',
+                'Property': '◆',
+                'Port': '◈',
+                'Constraint': '▲',
+                'Slot': '●',
+                'InstanceSpecification': '▼'
+            };
+
+            const html = types.map(t => `
+                <div class="artifact-type-card" onclick="selectArtifactType('${t.artifact_type}')">
+                    <div class="artifact-icon">${icons[t.artifact_type] || '▪'}</div>
+                    <div class="artifact-type-name">${t.artifact_type}</div>
+                    <div class="artifact-count">${t.count} items</div>
+                    <div style="margin-top: 5px; font-size: 0.8em; color: #999;">${t.xmi_type || 'N/A'}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('artifactTypes').innerHTML = html;
+        }
+
+        async function selectArtifactType(type) {
+            currentArtifactType = type;
+            document.getElementById('artifactSearchBox').style.display = 'block';
+            document.getElementById('artifactSearch').value = '';
+            document.getElementById('artifactList').innerHTML = '<p class="loading">▸ Loading artifacts...</p>';
+            
+            try {
+                const response = await fetch(`/api/artifacts/${type}?limit=100`);
+                const data = await response.json();
+                allArtifacts = data.data;
+                displayArtifacts(allArtifacts);
+            } catch (error) {
+                console.error('Error loading artifacts:', error);
+                document.getElementById('artifactList').innerHTML = '<p class="loading">Error loading artifacts</p>';
+            }
+        }
+
+        async function displayArtifacts(artifacts) {
+            if (artifacts.length === 0) {
+                document.getElementById('artifactList').innerHTML = '<p class="loading">No artifacts found</p>';
+                return;
+            }
+
+            // Tree layout for artifacts
+            const html = `
+                <div class="tree-container">
+                    ${artifacts.map(artifact => {
+                        // For Associations, format for better UX using natural language
+                        let displayName = artifact.name || '(unnamed)';
+                        let tooltip = '';
+                        
+                        if (currentArtifactType === 'Association' && artifact.all_properties && artifact.all_properties.member_ends) {
+                            const ends = artifact.all_properties.member_ends.split(', ');
+                            const types = artifact.all_properties.end_types ? artifact.all_properties.end_types.split(', ') : [];
+                            
+                            // Create natural language description
+                            if (ends.length >= 2) {
+                                const end1 = ends[0].replace(/[\[\]]/g, '');
+                                const end2 = ends[1].replace(/[\[\]]/g, '');
+                                displayName = `${end1} \u2192 ${end2}`;
+                                tooltip = `This relationship connects ${end1} to ${end2}`;
+                            }
+                        } else if (currentArtifactType !== 'Association') {
+                            displayName = artifact.name || '(unnamed)';
+                        }
+                        
+                        return `
+                        <div class="tree-item" onclick="viewArtifactDetails('${currentArtifactType}', '${artifact.id}')" ${tooltip ? `title="${tooltip}"` : ''}>
+                            <span class="tree-icon">▸</span>
+                            <span class="tree-label">
+                                <strong>${displayName}</strong>
+                                ${artifact.xmi_type && currentArtifactType !== 'Association' ? `<span style="color: #666; font-size: 0.85em; margin-left: 10px;">[${artifact.xmi_type}]</span>` : ''}
+                            </span>
+                            <span class="type-badge">${artifact.artifact_type}</span>
+                        </div>
+                    `}).join('')}
+                </div>
+            `;
+            
+            document.getElementById('artifactList').innerHTML = html;
+        }
+
+        function searchArtifacts() {
+            const search = document.getElementById('artifactSearch').value.toLowerCase();
+            const filtered = allArtifacts.filter(artifact => 
+                (artifact.name && artifact.name.toLowerCase().includes(search)) ||
+                (artifact.description && artifact.description.toLowerCase().includes(search)) ||
+                (artifact.id && artifact.id.toLowerCase().includes(search))
+            );
+            displayArtifacts(filtered);
+        }
+
+        async function viewArtifactDetails(type, id) {
+            document.getElementById('artifactList').innerHTML = '<p class="loading">▸ Loading details...</p>';
+            
+            try {
+                const response = await fetch(`/api/artifacts/${type}/${id}`);
+                const artifact = await response.json();
+                
+                // Build tooltip content with all properties
+                let tooltipLines = [
+                    `${artifact.name || artifact.id}`,
+                    `${artifact.all_properties.type || type}`,
+                    `ID: ${artifact.id}`,
+                    '',
+                    'Properties:'
+                ];
+                
+                for (const [key, value] of Object.entries(artifact.all_properties)) {
+                    if (!['outgoing_relationships', 'incoming_relationships', 'all_properties'].includes(key) && value) {
+                        const displayValue = typeof value === 'string' && value.length > 100 
+                            ? value.substring(0, 100) + '...' 
+                            : value;
+                        tooltipLines.push(`${key}: ${displayValue}`);
+                    }
+                }
+                
+                const tooltipText = tooltipLines.join('\n');
+                
+                // Create visual node representation
+                let html = `
+                    <div class="detail-card">
+                        <button class="btn" onclick="selectArtifactType('${type}')" style="margin-bottom: 20px;">← Back to ${type} list</button>
+                        
+                        <div style="text-align: center; padding: 40px 20px;">
+                            <svg width="100%" height="400" viewBox="0 0 800 400">
+                                <!-- Central node -->
+                                <g>
+                                    <circle cx="400" cy="200" r="60" fill="#0066cc" stroke="#fff" stroke-width="4" style="cursor: help;">
+                                        <title>${tooltipText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</title>
+                                    </circle>
+                                    <text x="400" y="205" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">
+                                        ${(artifact.name || artifact.id).substring(0, 15)}
+                                    </text>
+                                    <text x="400" y="280" text-anchor="middle" font-size="12" fill="#666">
+                                        ${artifact.all_properties.type || type}
+                                    </text>
+                                </g>
+                            </svg>
+                            
+                            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #0066cc;">
+                                <p style="margin: 0; color: #666; font-size: 0.95em;">
+                                    <strong>💡 Tip:</strong> Hover over the node above to see all properties in the tooltip
+                                </p>
+                            </div>
+                        </div>
+                `;
+                
+                // Add Association connection info if applicable
+                if (type === 'Association' && artifact.all_properties && artifact.all_properties.member_ends) {
+                    html += `
+                        <div style="background: linear-gradient(to right, #e6f2ff, #f0f7ff); padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #0066cc; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                                <span style="font-size: 24px; margin-right: 10px;">🔗</span>
+                                <h3 style="margin: 0; color: #0066cc; font-size: 1.2em;">This Connects:</h3>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                                <p style="margin: 0; font-size: 1.15em; line-height: 1.6;">
+                                    <strong style="color: #0066cc;">${artifact.all_properties.member_ends.split(', ')[0].replace(/[\[\]]/g, '')}</strong>
+                                    <span style="color: #666; margin: 0 10px;">→</span>
+                                    <strong style="color: #0066cc;">${artifact.all_properties.member_ends.split(', ')[1]?.replace(/[\[\]]/g, '') || 'unknown'}</strong>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Display parent-child relationships prominently
+                const containsRels = artifact.outgoing_relationships?.filter(r => r.relationship === 'CONTAINS') || [];
+                const containedByRels = artifact.incoming_relationships?.filter(r => r.relationship === 'CONTAINS') || [];
+                
+                if (containedByRels.length > 0) {
+                    html += `
+                        <h3 style="margin-top: 30px;">📦 Parent (Contained By)</h3>
+                        <table class="property-table">
+                            <tr><th>Parent Name</th><th>Type</th></tr>
+                    `;
+                    containedByRels.forEach(rel => {
+                        html += `
+                            <tr>
+                                <td><strong>${rel.source_name || '(unnamed)'}</strong></td>
+                                <td>${rel.source_type}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</table>';
+                }
+                
+                if (containsRels.length > 0) {
+                    html += `
+                        <h3 style="margin-top: 30px;">📁 Children (Contains)</h3>
+                        <table class="property-table">
+                            <tr><th>Child Name</th><th>Type</th></tr>
+                    `;
+                    containsRels.forEach(rel => {
+                        html += `
+                            <tr>
+                                <td><strong>${rel.target_name || '(unnamed)'}</strong></td>
+                                <td>${rel.target_type}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</table>';
+                }
+                
+                // Display incoming relationships FIRST (excluding CONTAINS already shown)
+                const otherIncoming = artifact.incoming_relationships?.filter(r => r.relationship !== 'CONTAINS') || [];
+                if (otherIncoming.length > 0) {
+                    html += `
+                        <details open style="margin-top: 30px; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #0066cc; font-size: 1.1em; padding: 5px;">🔙 Incoming Relationships (${otherIncoming.length})</summary>
+                            <div style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+                        <table class="property-table">
+                            <tr><th>Relationship</th><th>Source</th><th>Type</th></tr>
+                    `;
+                    
+                    otherIncoming.forEach(rel => {
+                        html += `
+                            <tr>
+                                <td><span class="type-badge">${rel.relationship}</span></td>
+                                <td><strong>${rel.source_name || '(unnamed)'}</strong></td>
+                                <td>${rel.source_type}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</table></div></details>';
+                }
+                
+                // Display outgoing relationships SECOND (excluding CONTAINS already shown)
+                const otherOutgoing = artifact.outgoing_relationships?.filter(r => r.relationship !== 'CONTAINS') || [];
+                if (otherOutgoing.length > 0) {
+                    html += `
+                        <details open style="margin-top: 20px; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px;">
+                            <summary style="cursor: pointer; font-weight: bold; color: #0066cc; font-size: 1.1em; padding: 5px;">🔗 Outgoing Relationships (${otherOutgoing.length})</summary>
+                            <div style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+                        <table class="property-table">
+                            <tr><th>Relationship</th><th>Target</th><th>Type</th></tr>
+                    `;
+                    
+                    otherOutgoing.forEach(rel => {
+                        html += `
+                            <tr>
+                                <td><span class="type-badge">${rel.relationship}</span></td>
+                                <td><strong>${rel.target_name || '(unnamed)'}</strong></td>
+                                <td>${rel.target_type}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</table></div></details>';
+                }
+                
+                html += '</div>';
+                document.getElementById('artifactList').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading artifact details:', error);
+                document.getElementById('artifactList').innerHTML = '<p class="loading">Error loading details</p>';
+            }
+        }
+
+        // API Tester Functions
+        async function testAPI() {
+            const endpoint = document.getElementById('apiEndpoint').value;
+            const resultsDiv = document.getElementById('apiTestResults');
+            
+            resultsDiv.innerHTML = '<p class="loading">▸ Testing API endpoint...</p>';
+            
+            try {
+                const response = await fetch(endpoint);
+                const data = await response.json();
+                
+                let html = `<div style="margin-top: 20px;">
+                    <h4>✓ Success (${response.status})</h4>
+                    <p><strong>Endpoint:</strong> <code>${endpoint}</code></p>
+                    <p><strong>Response Time:</strong> ${new Date().toLocaleTimeString()}</p>
+                    <h4>Response Data:</h4>
+                    <pre style="background: #f8f9ff; padding: 15px; border-radius: 8px; overflow-x: auto; max-height: 400px;">${JSON.stringify(data, null, 2)}</pre>
+                </div>`;
+                
+                resultsDiv.innerHTML = html;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="margin-top: 20px; color: #e63946;">
+                    <h4>✗ Error</h4>
+                    <p>${error.message}</p>
+                </div>`;
+            }
+        }
+
+        function copyAPIURL() {
+            const endpoint = document.getElementById('apiEndpoint').value;
+            const fullURL = `${window.location.origin}${endpoint}`;
+            
+            navigator.clipboard.writeText(fullURL).then(() => {
+                alert(`✓ Copied to clipboard:\n${fullURL}`);
+            }).catch(err => {
+                alert(`URL: ${fullURL}`);
+            });
+        }
+
+        // ============================================
+        // Advanced Search Functions (Agile PLM Style)
+        // ============================================
+        
+        let searchResults = [];
+        let currentPage = 1;
+        const pageSize = 15; // Changed to 15 rows max
+        let sortColumn = '';
+        let sortDirection = 'asc';
+        
+        // Load object types on page load
+        async function loadObjectTypes() {
+            const objectSelector = document.getElementById('objectTypeSelector');
+            const countDiv = document.getElementById('objectTypeCount');
+            
+            try {
+                const response = await fetch('/api/artifacts');
+                const data = await response.json();
+                
+                // All objects are UML types
+                const types = data.data || [];
+                
+                objectSelector.innerHTML = '<option value="">-- Select Object Type --</option>' + 
+                    types.map(t => `<option value="${t.artifact_type}" data-count="${t.count}">${t.artifact_type} (${t.count} items)</option>`).join('');
+                
+                countDiv.textContent = `${types.length} object types available`;
+                
+                // Add change listener for count display
+                objectSelector.onchange = function() {
+                    const selected = this.options[this.selectedIndex];
+                    if (selected.value) {
+                        countDiv.textContent = `${selected.getAttribute('data-count')} objects found`;
+                    } else {
+                        countDiv.textContent = `${types.length} object types available`;
+                    }
+                };
+                
+            } catch (error) {
+                console.error('Error loading object types:', error);
+                objectSelector.innerHTML = '<option value="">Error loading types</option>';
+            }
+        }
+        
+        // Perform advanced search
+        async function performAdvancedSearch() {
+            const objectType = document.getElementById('objectTypeSelector').value;
+            const nameFilter = document.getElementById('nameFilter').value.trim();
+            const nameOperator = document.getElementById('nameOperator').value;
+            const commentFilter = document.getElementById('commentFilter').value.trim();
+            const limit = document.getElementById('resultsLimit').value;
+            
+            // Validation
+            if (!objectType) {
+                alert('Please select an Object Type (required field)');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('searchResultsPanel').style.display = 'block';
+            document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px;">▸ Searching...</td></tr>';
+            
+            try {
+                // Build query URL
+                let url = `/api/artifacts/${objectType}?limit=${limit}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                searchResults = data.data || [];
+                
+                // Apply client-side filters
+                if (nameFilter) {
+                    searchResults = searchResults.filter(item => {
+                        const name = (item.name || '').toLowerCase();
+                        const searchTerm = nameFilter.toLowerCase();
+                        
+                        switch(nameOperator) {
+                            case 'equals':
+                                return name === searchTerm;
+                            case 'starts':
+                                return name.startsWith(searchTerm);
+                            case 'ends':
+                                return name.endsWith(searchTerm);
+                            case 'contains':
+                            default:
+                                return name.includes(searchTerm);
+                        }
+                    });
+                }
+                
+                if (commentFilter) {
+                    searchResults = searchResults.filter(item => {
+                        const comment = (item.all_properties?.comment || item.description || '').toLowerCase();
+                        return comment.includes(commentFilter.toLowerCase());
+                    });
+                }
+                
+                // Display results
+                displaySearchResults();
+                
+            } catch (error) {
+                console.error('Error performing search:', error);
+                document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #e63946;">✗ Error performing search</td></tr>';
+            }
+        }
+        
+        // Display search results in table
+        function displaySearchResults() {
+            const tbody = document.getElementById('resultsTableBody');
+            const resultCountEl = document.getElementById('resultCount');
+            
+            resultCountEl.textContent = `${searchResults.length} result(s) found`;
+            
+            if (searchResults.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #999;">No results found. Try adjusting your search criteria.</td></tr>';
+                return;
+            }
+            
+            // Paginate results (15 rows max)
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageResults = searchResults.slice(start, end);
+            
+            const rows = pageResults.map((item, index) => {
+                const comment = item.all_properties?.comment || item.description || '';
+                const hasComment = comment.trim().length > 0;
+                
+                return `
+                    <tr style="cursor: pointer;">
+                        <td style="color: #999;">${start + index + 1}</td>
+                        <td>
+                            <strong>${item.name || '(unnamed)'}</strong>
+                            <div style="font-size: 0.85em; color: #999; margin-top: 2px;">ID: ${item.id}</div>
+                        </td>
+                        <td>
+                            <span class="type-badge">${item.xmi_type || item.artifact_type}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            ${hasComment ? `<span class="comment-icon" onclick="showCommentPopup('${index}'); event.stopPropagation();" title="Click to view comment">💬</span>` : '<span style="color: #ccc;">-</span>'}
+                        </td>
+                        <td>
+                            <button class="btn" onclick="viewObjectDetails('${item.artifact_type}', '${item.id}'); event.stopPropagation();" style="padding: 5px 12px; font-size: 0.85em;">
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            tbody.innerHTML = rows;
+            
+            // Update pagination
+            updatePagination();
+        }
+
+        // Sort results by column
+        function sortResults(column) {
+            // Toggle sort direction if same column
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            
+            // Update sort arrows
+            document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '⇅');
+            const arrow = document.getElementById(`sort-${column}`);
+            if (arrow) {
+                arrow.textContent = sortDirection === 'asc' ? '▲' : '▼';
+            }
+            
+            // Sort the results
+            searchResults.sort((a, b) => {
+                let aVal, bVal;
+                
+                if (column === 'name') {
+                    aVal = (a.name || '').toLowerCase();
+                    bVal = (b.name || '').toLowerCase();
+                } else if (column === 'type') {
+                    aVal = (a.xmi_type || a.artifact_type || '').toLowerCase();
+                    bVal = (b.xmi_type || b.artifact_type || '').toLowerCase();
+                }
+                
+                if (sortDirection === 'asc') {
+                    return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                } else {
+                    return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                }
+            });
+            
+            // Reset to page 1 and redisplay
+            currentPage = 1;
+            displaySearchResults();
+        }
+
+        // Show comment popup
+        function showCommentPopup(index) {
+            const start = (currentPage - 1) * pageSize;
+            const item = searchResults[start + parseInt(index)];
+            const comment = item.all_properties?.comment || item.description || '';
+            
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'comment-popup-overlay';
+            overlay.onclick = closeCommentPopup;
+            
+            // Create popup
+            const popup = document.createElement('div');
+            popup.className = 'comment-popup';
+            popup.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #0066cc; padding-bottom: 10px;">
+                    <h3 style="margin: 0; color: #0066cc;">Comment</h3>
+                    <button onclick="closeCommentPopup()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+                </div>
+                <div style="white-space: pre-line; line-height: 1.6; color: #333;">
+                    ${comment || '(No comment)'}
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            document.body.appendChild(popup);
+        }
+
+        // Close comment popup
+        function closeCommentPopup() {
+            const overlay = document.querySelector('.comment-popup-overlay');
+            const popup = document.querySelector('.comment-popup');
+            if (overlay) overlay.remove();
+            if (popup) popup.remove();
+        }
+        
+        // Update pagination controls
+        function updatePagination() {
+            const totalPages = Math.ceil(searchResults.length / pageSize);
+            const paginationDiv = document.getElementById('paginationControls');
+            
+            if (totalPages <= 1) {
+                paginationDiv.innerHTML = '';
+                return;
+            }
+            
+            let html = '<div style="display: inline-flex; gap: 5px; align-items: center;">';
+            
+            // Previous button
+            html += `<button class="btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="padding: 6px 12px;">‹ Previous</button>`;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `<button class="btn" onclick="changePage(${i})" style="padding: 6px 12px; ${i === currentPage ? 'background: #0052a3;' : 'background: #6c757d;'}">${i}</button>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += '<span style="padding: 6px;">...</span>';
+                }
+            }
+            
+            // Next button
+            html += `<button class="btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} style="padding: 6px 12px;">Next ›</button>`;
+            
+            html += '</div>';
+            html += `<div style="margin-top: 10px; color: #666; font-size: 0.9em;">Page ${currentPage} of ${totalPages} (${searchResults.length} total results)</div>`;
+            
+            paginationDiv.innerHTML = html;
+        }
+        
+        // Change page
+        function changePage(page) {
+            const totalPages = Math.ceil(searchResults.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            displaySearchResults();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // View object details in slide-out panel
+        async function viewObjectDetails(artifactType, id) {
+            const panel = document.getElementById('detailsPanel');
+            const content = document.getElementById('detailsPanelContent');
+            
+            panel.style.display = 'block';
+            content.innerHTML = '<div style="text-align: center; padding: 40px;">▸ Loading details...</div>';
+            
+            try {
+                // URL encode the ID to handle special characters
+                const encodedId = encodeURIComponent(id);
+                const response = await fetch(`/api/artifacts/${artifactType}/${encodedId}`);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const artifact = await response.json();
+                
+                const showProps = document.getElementById('showProperties').checked;
+                const showRels = document.getElementById('showRelationships').checked;
+                const showMeta = document.getElementById('showMetadata').checked;
+                
+                // Get name from all_properties or direct property
+                const name = artifact.all_properties?.name || artifact.name || '(unnamed)';
+                const xmiType = artifact.all_properties?.type || artifact.xmi_type || artifactType;
+                const itemId = artifact.all_properties?.id || artifact.id || '';
+                
+                let html = `
+                    <div class="detail-card">
+                        <h2 style="color: #0066cc; margin-bottom: 10px;">${name}</h2>
+                        <div style="margin-bottom: 20px;">
+                            <span class="type-badge" style="font-size: 0.95em;">${xmiType}</span>
+                            <span style="margin-left: 10px; color: #999; font-size: 0.9em;">ID: ${itemId}</span>
+                        </div>
+                `;
+                
+                // Comment/Description
+                if (artifact.all_properties?.comment || artifact.description) {
+                    html += `
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                            <strong style="display: block; margin-bottom: 8px; color: #0066cc;">Description:</strong>
+                            <div class="comment-text">${artifact.all_properties?.comment || artifact.description}</div>
+                        </div>
+                    `;
+                }
+                
+                // Properties
+                if (showProps && artifact.all_properties) {
+                    html += '<h3 style="margin-top: 25px; border-bottom: 2px solid #0066cc; padding-bottom: 8px;">Properties</h3>';
+                    html += '<table class="property-table" style="margin-top: 15px;"><tr><th>Property</th><th>Value</th></tr>';
+                    
+                    for (const [key, value] of Object.entries(artifact.all_properties)) {
+                        if (!['outgoing_relationships', 'incoming_relationships', 'comment'].includes(key) && value !== null && value !== undefined && value !== '') {
+                            const displayValue = typeof value === 'string' && value.length > 300 ? value.substring(0, 300) + '...' : value;
+                            html += `<tr><td><strong>${key}</strong></td><td>${displayValue}</td></tr>`;
+                        }
+                    }
+                    html += '</table>';
+                }
+                
+                // Relationships - Side by Side with Graph View Toggle
+                if (showRels) {
+                    const hasOutgoing = artifact.outgoing_relationships && artifact.outgoing_relationships.length > 0;
+                    const hasIncoming = artifact.incoming_relationships && artifact.incoming_relationships.length > 0;
+                    
+                    if (hasOutgoing || hasIncoming) {
+                        html += `
+                            <div style="margin-top: 25px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0066cc; padding-bottom: 8px;">
+                                    <h3 style="margin: 0;">Relationships</h3>
+                                    <div>
+                                        <button onclick="showRelationshipsView('table', '${itemId}')" id="viewTableBtn_${itemId}" class="btn" style="padding: 5px 12px; font-size: 0.85em; margin-right: 5px; background: #0066cc;">Table View</button>
+                                        <button onclick="showRelationshipsView('graph', '${itemId}')" id="viewGraphBtn_${itemId}" class="btn" style="padding: 5px 12px; font-size: 0.85em; background: #6c757d;">Graph View</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Table View -->
+                                <div id="tableView_${itemId}" style="margin-top: 15px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <!-- Incoming relationships (left side) -->
+                                        <div>
+                                            <h4 style="color: #0066cc; margin-bottom: 10px; font-size: 1em;">← Incoming</h4>`;
+                        
+                        if (hasIncoming) {
+                            html += '<table class="property-table" style="margin: 0;"><thead><tr><th>Type</th><th>Source</th></tr></thead><tbody>';
+                            artifact.incoming_relationships.forEach(rel => {
+                                html += `<tr><td><span class="type-badge">${rel.relationship || rel.type}</span></td><td>${rel.source_name || rel.source_id}</td></tr>`;
+                            });
+                            html += '</tbody></table>';
+                        } else {
+                            html += '<p style="color: #999; font-style: italic; padding: 15px; text-align: center; background: #f8f9fa; border-radius: 4px;">No incoming relationships</p>';
+                        }
+                        
+                        html += `</div>
+                                        <!-- Outgoing relationships (right side) -->
+                                        <div>
+                                            <h4 style="color: #0066cc; margin-bottom: 10px; font-size: 1em;">→ Outgoing</h4>`;
+                        
+                        if (hasOutgoing) {
+                            html += '<table class="property-table" style="margin: 0;"><thead><tr><th>Type</th><th>Target</th></tr></thead><tbody>';
+                            artifact.outgoing_relationships.forEach(rel => {
+                                html += `<tr><td><span class="type-badge">${rel.relationship || rel.type}</span></td><td>${rel.target_name || rel.target_id}</td></tr>`;
+                            });
+                            html += '</tbody></table>';
+                        } else {
+                            html += '<p style="color: #999; font-style: italic; padding: 15px; text-align: center; background: #f8f9fa; border-radius: 4px;">No outgoing relationships</p>';
+                        }
+                        
+                        html += `</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Graph View -->
+                                <div id="graphView_${itemId}" style="display: none; margin-top: 15px; background: #f8f9fa; border-radius: 8px; padding: 20px; min-height: 400px;">
+                                    <svg id="graphSvg_${itemId}" width="100%" height="500"></svg>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Store artifact data for graph rendering
+                        window[`artifactData_${itemId}`] = {
+                            name: name,
+                            id: itemId,
+                            type: xmiType,
+                            outgoing: artifact.outgoing_relationships || [],
+                            incoming: artifact.incoming_relationships || []
+                        };
+                    }
+                }
+                
+                // XMI Metadata
+                if (showMeta) {
+                    html += '<h3 style="margin-top: 25px; border-bottom: 2px solid #0066cc; padding-bottom: 8px;">XMI Metadata</h3>';
+                    html += '<table class="property-table" style="margin-top: 15px;">';
+                    html += `<tr><td><strong>XMI Type</strong></td><td>${artifact.xmi_type}</td></tr>`;
+                    html += `<tr><td><strong>XMI ID</strong></td><td>${artifact.id}</td></tr>`;
+                    html += `<tr><td><strong>Artifact Type</strong></td><td>${artifact.artifact_type}</td></tr>`;
+                    html += '</table>';
+                }
+                
+                html += '</div>';
+                
+                content.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading details:', error);
+                content.innerHTML = '<div style="text-align: center; padding: 40px; color: #e63946;">✗ Error loading details</div>';
+            }
+        }
+        
+        // Close details panel
+        function closeDetailsPanel() {
+            document.getElementById('detailsPanel').style.display = 'none';
+        }
+        
+        // Toggle between table and graph view for relationships
+        function showRelationshipsView(view, artifactId) {
+            const tableView = document.getElementById(`tableView_${artifactId}`);
+            const graphView = document.getElementById(`graphView_${artifactId}`);
+            const tableBtn = document.getElementById(`viewTableBtn_${artifactId}`);
+            const graphBtn = document.getElementById(`viewGraphBtn_${artifactId}`);
+            
+            if (view === 'table') {
+                tableView.style.display = 'block';
+                graphView.style.display = 'none';
+                tableBtn.style.background = '#0066cc';
+                graphBtn.style.background = '#6c757d';
+            } else {
+                tableView.style.display = 'none';
+                graphView.style.display = 'block';
+                tableBtn.style.background = '#6c757d';
+                graphBtn.style.background = '#0066cc';
+                
+                // Render graph if not already rendered
+                if (!graphView.querySelector('circle')) {
+                    renderRelationshipGraph(artifactId);
+                }
+            }
+        }
+        
+        // Render interactive SVG graph for relationships
+        function renderRelationshipGraph(artifactId) {
+            const data = window[`artifactData_${artifactId}`];
+            if (!data) return;
+            
+            const svg = document.getElementById(`graphSvg_${artifactId}`);
+            const width = svg.clientWidth || 800;
+            const height = 500;
+            
+            // Clear existing content
+            svg.innerHTML = '';
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+            
+            // Create nodes array
+            const nodes = [];
+            const links = [];
+            
+            // Add padding to keep nodes within canvas
+            const padding = 100;
+            const maxRadius = Math.min(width / 2 - padding, height / 2 - padding);
+            
+            // Center node (current artifact)
+            const centerNode = {
+                id: data.id,
+                name: data.name,
+                type: data.type,
+                x: width / 2,
+                y: height / 2,
+                color: '#0066cc',
+                isCurrent: true
+            };
+            nodes.push(centerNode);
+            
+            // Calculate optimal radius based on node count to prevent overlapping
+            const totalNodes = data.outgoing.length + data.incoming.length;
+            // Use much larger radius for better spacing - scale significantly with node count
+            const baseRadius = Math.min(maxRadius, Math.max(250, 220 + totalNodes * 10));
+            
+            // Outgoing relationships - RIGHT HEMISPHERE (0 to π)
+            const outgoingCount = data.outgoing.length;
+            if (outgoingCount > 0) {
+                const outgoingAngleStep = Math.PI / (outgoingCount + 1);
+                data.outgoing.forEach((rel, i) => {
+                    // Spread from -π/2 (top) to +π/2 (bottom) on RIGHT side
+                    const angle = -Math.PI / 2 + outgoingAngleStep * (i + 1);
+                    const node = {
+                        id: rel.target_id,
+                        name: rel.target_name || rel.target_id,
+                        type: rel.target_type || 'Unknown',
+                        x: centerNode.x + Math.cos(angle) * baseRadius,
+                        y: centerNode.y + Math.sin(angle) * baseRadius,
+                        color: '#28a745',
+                        isOutgoing: true
+                    };
+                    nodes.push(node);
+                    links.push({
+                        source: centerNode,
+                        target: node,
+                        type: rel.relationship || rel.type,
+                        direction: 'outgoing'
+                    });
+                });
+            }
+            
+            // Incoming relationships - LEFT HEMISPHERE (π to 2π)
+            const incomingCount = data.incoming.length;
+            if (incomingCount > 0) {
+                const incomingAngleStep = Math.PI / (incomingCount + 1);
+                data.incoming.forEach((rel, i) => {
+                    // Spread from +π/2 (top) to +3π/2 (bottom) on LEFT side
+                    const angle = Math.PI / 2 + incomingAngleStep * (i + 1);
+                    const node = {
+                        id: rel.source_id,
+                        name: rel.source_name || rel.source_id,
+                        type: rel.source_type || 'Unknown',
+                        x: centerNode.x + Math.cos(angle) * baseRadius,
+                        y: centerNode.y + Math.sin(angle) * baseRadius,
+                        color: '#ffc107',
+                        isIncoming: true
+                    };
+                    nodes.push(node);
+                    links.push({
+                        source: node,
+                        target: centerNode,
+                        type: rel.relationship || rel.type,
+                        direction: 'incoming'
+                    });
+                });
+            }
+            
+            // Create defs for arrowheads
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            ['outgoing', 'incoming'].forEach(dir => {
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', `arrowhead-${dir}`);
+                marker.setAttribute('markerWidth', '10');
+                marker.setAttribute('markerHeight', '10');
+                marker.setAttribute('refX', '9');
+                marker.setAttribute('refY', '3');
+                marker.setAttribute('orient', 'auto');
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', '0 0, 10 3, 0 6');
+                polygon.setAttribute('fill', dir === 'outgoing' ? '#28a745' : '#ffc107');
+                marker.appendChild(polygon);
+                defs.appendChild(marker);
+            });
+            svg.appendChild(defs);
+            
+            // Draw links (edges)
+            links.forEach(link => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', link.source.x);
+                line.setAttribute('y1', link.source.y);
+                line.setAttribute('x2', link.target.x);
+                line.setAttribute('y2', link.target.y);
+                line.setAttribute('stroke', link.direction === 'outgoing' ? '#28a745' : '#ffc107');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('opacity', '0.6');
+                line.setAttribute('marker-end', `url(#arrowhead-${link.direction})`);
+                
+                // Tooltip
+                const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                title.textContent = link.type;
+                line.appendChild(title);
+                
+                svg.appendChild(line);
+                
+                // Add edge label
+                const midX = (link.source.x + link.target.x) / 2;
+                const midY = (link.source.y + link.target.y) / 2;
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', midX);
+                text.setAttribute('y', midY - 5);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('fill', '#666');
+                text.textContent = link.type;
+                svg.appendChild(text);
+            });
+            
+            // Draw nodes
+            nodes.forEach(node => {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.setAttribute('cursor', 'pointer');
+                
+                // Node circle
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', node.isCurrent ? '20' : '12');
+                circle.setAttribute('fill', node.color);
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '2');
+                
+                // Tooltip with better formatting
+                const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                const tooltipText = [
+                    `Name: ${node.name}`,
+                    `Type: ${node.type}`,
+                    `ID: ${node.id}`,
+                    node.isOutgoing ? '→ Outgoing' : node.isIncoming ? '← Incoming' : '● Current'
+                ].join('\n');
+                title.textContent = tooltipText;
+                circle.appendChild(title);
+                
+                // Hover effect with color change and relationship highlighting
+                circle.addEventListener('mouseenter', function() {
+                    this.setAttribute('r', node.isCurrent ? '24' : '15');
+                    this.setAttribute('stroke-width', '3');
+                    // Brighten the color on hover
+                    if (node.isOutgoing) {
+                        this.setAttribute('fill', '#34d058'); // Brighter green
+                    } else if (node.isIncoming) {
+                        this.setAttribute('fill', '#ffd633'); // Brighter yellow
+                    } else {
+                        this.setAttribute('fill', '#0080ff'); // Brighter blue
+                    }
+                    // Highlight connected relationships
+                    const relatedLinks = svg.querySelectorAll('line');
+                    relatedLinks.forEach(line => {
+                        const x1 = parseFloat(line.getAttribute('x1'));
+                        const y1 = parseFloat(line.getAttribute('y1'));
+                        const x2 = parseFloat(line.getAttribute('x2'));
+                        const y2 = parseFloat(line.getAttribute('y2'));
+                        if ((Math.abs(x1 - node.x) < 1 && Math.abs(y1 - node.y) < 1) ||
+                            (Math.abs(x2 - node.x) < 1 && Math.abs(y2 - node.y) < 1)) {
+                            line.setAttribute('stroke-width', '4');
+                            line.setAttribute('opacity', '1');
+                        }
+                    });
+                });
+                circle.addEventListener('mouseleave', function() {
+                    this.setAttribute('r', node.isCurrent ? '20' : '12');
+                    this.setAttribute('stroke-width', '2');
+                    // Restore original color
+                    this.setAttribute('fill', node.color);
+                    // Restore relationship thickness
+                    const relatedLinks = svg.querySelectorAll('line');
+                    relatedLinks.forEach(line => {
+                        line.setAttribute('stroke-width', '2');
+                        line.setAttribute('opacity', '0.6');
+                    });
+                });
+                
+                group.appendChild(circle);
+                
+                // Node label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', node.x);
+                text.setAttribute('y', node.y + (node.isCurrent ? 32 : 24));
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-size', node.isCurrent ? '11' : '9');
+                text.setAttribute('font-weight', node.isCurrent ? 'bold' : 'normal');
+                text.setAttribute('fill', '#333');
+                
+                // Truncate long names
+                const displayName = node.name.length > 20 ? node.name.substring(0, 17) + '...' : node.name;
+                text.textContent = displayName;
+                group.appendChild(text);
+                
+                svg.appendChild(group);
+            });
+            
+            // Add legend
+            const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            legend.setAttribute('transform', 'translate(10, 10)');
+            
+            const legendData = [
+                { color: '#0066cc', label: 'Current Object' },
+                { color: '#28a745', label: 'Outgoing →' },
+                { color: '#ffc107', label: 'Incoming ←' }
+            ];
+            
+            legendData.forEach((item, i) => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '10');
+                circle.setAttribute('cy', i * 25 + 10);
+                circle.setAttribute('r', '6');
+                circle.setAttribute('fill', item.color);
+                legend.appendChild(circle);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', '25');
+                text.setAttribute('y', i * 25 + 14);
+                text.setAttribute('font-size', '11');
+                text.setAttribute('fill', '#333');
+                text.textContent = item.label;
+                legend.appendChild(text);
+            });
+            
+            svg.appendChild(legend);
+        }
+        
+        // Reset search form
+        function resetSearchForm() {
+            document.getElementById('objectTypeSelector').value = '';
+            document.getElementById('nameFilter').value = '';
+            document.getElementById('nameOperator').value = 'contains';
+            document.getElementById('commentFilter').value = '';
+            document.getElementById('showProperties').checked = true;
+            document.getElementById('showRelationships').checked = true;
+            document.getElementById('showMetadata').checked = false;
+            document.getElementById('resultsLimit').value = '100';
+            document.getElementById('objectTypeCount').textContent = '';
+            document.getElementById('searchResultsPanel').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            searchResults = [];
+            currentPage = 1;
+            loadObjectTypes(); // Reload to show count
+        }
+        
+        // Export results
+        function exportResults(format) {
+            if (searchResults.length === 0) {
+                alert('No results to export');
+                return;
+            }
+            
+            if (format === 'csv') {
+                let csv = 'Name,Type,XMI ID,Comment\n';
+                searchResults.forEach(item => {
+                    const comment = (item.all_properties?.comment || item.description || '').replace(/"/g, '""').replace(/\n/g, ' ');
+                    csv += `"${item.name}","${item.xmi_type}","${item.id}","${comment}"\n`;
+                });
+                downloadFile(csv, 'search-results.csv', 'text/csv');
+            } else if (format === 'json') {
+                const json = JSON.stringify(searchResults, null, 2);
+                downloadFile(json, 'search-results.json', 'application/json');
+            }
+        }
+        
+        // Download file helper
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Load initial data
+        window.onload = function() {
+            loadStats();
+            loadObjectTypes(); // Load object types for advanced search
+        };
+
+        // ===================================================================
+        // API CRUD FUNCTIONS
+        // ===================================================================
+
+        // Show API Category
+        function showAPICategory(category) {
+            // Map category names to their actual div IDs
+            const categoryMap = {
+                'core': 'Core',
+                'plm': 'PLM',
+                'simulation': 'Sim',
+                'export': 'Export',
+                'version': 'Version'
+            };
+            
+            // Map category names to their button IDs
+            const buttonMap = {
+                'core': 'Core',
+                'plm': 'PLM',
+                'simulation': 'Sim',
+                'export': 'Export',
+                'version': 'Version'
+            };
+            
+            const categoryId = categoryMap[category];
+            const buttonId = buttonMap[category];
+            
+            // Hide all categories
+            document.querySelectorAll('.api-category').forEach(el => el.style.display = 'none');
+            // Show selected category
+            const targetCategory = document.getElementById('apiCategory' + categoryId);
+            if (targetCategory) {
+                targetCategory.style.display = 'block';
+            }
+            
+            // Update button styles
+            document.querySelectorAll('[id^="apiCat"]').forEach(btn => {
+                btn.style.background = '#6c757d';
+            });
+            const targetButton = document.getElementById('apiCat' + buttonId);
+            if (targetButton) {
+                targetButton.style.background = '#0066cc';
+            }
+        }
+
+        // Display API Result
+        function displayAPIResult(elementId, data, isError = false) {
+            const resultDiv = document.getElementById(elementId);
+            resultDiv.className = 'api-result ' + (isError ? 'error' : 'success');
+            resultDiv.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+
+        // CORE CRUD OPERATIONS
+        async function apiReadAllNodes() {
+            const nodeType = document.getElementById('readNodeType').value;
+            const search = document.getElementById('readSearchFilter').value;
+            const limit = document.getElementById('readLimit').value;
+            
+            let url = `/api/v1/${nodeType}?limit=${limit}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayAPIResult('readAllNodesResult', data);
+            } catch (error) {
+                displayAPIResult('readAllNodesResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiReadSingleNode() {
+            const nodeType = document.getElementById('readSingleNodeType').value;
+            const nodeId = document.getElementById('readSingleNodeId').value;
+            
+            try {
+                const response = await fetch(`/api/v1/${nodeType}/${encodeURIComponent(nodeId)}`);
+                const data = await response.json();
+                displayAPIResult('readSingleNodeResult', data);
+            } catch (error) {
+                displayAPIResult('readSingleNodeResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiExecuteQuery(operation) {
+            let query;
+            if (operation === 'create') {
+                query = document.getElementById('createCypherQuery').value;
+            } else if (operation === 'update') {
+                query = document.getElementById('updateCypherQuery').value;
+            } else if (operation === 'delete') {
+                query = document.getElementById('deleteCypherQuery').value;
+            }
+            
+            try {
+                const response = await fetch('/api/v1/query', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: query, params: {}})
+                });
+                const data = await response.json();
+                displayAPIResult(operation + 'QueryResult', data);
+            } catch (error) {
+                displayAPIResult(operation + 'QueryResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetRelationships() {
+            const relType = document.getElementById('relType').value;
+            const limit = document.getElementById('relLimit').value;
+            
+            try {
+                const response = await fetch(`/api/v1/relationship/${relType}?limit=${limit}`);
+                const data = await response.json();
+                displayAPIResult('relationshipsResult', data);
+            } catch (error) {
+                displayAPIResult('relationshipsResult', {error: error.message}, true);
+            }
+        }
+
+        // PLM OPERATIONS
+        async function apiGetTraceability() {
+            const sourceId = document.getElementById('traceSourceId').value;
+            const targetId = document.getElementById('traceTargetId').value;
+            const depth = document.getElementById('traceDepth').value;
+            
+            let url = `/api/v1/traceability?depth=${depth}`;
+            if (sourceId) url += `&source_id=${encodeURIComponent(sourceId)}`;
+            if (targetId) url += `&target_id=${encodeURIComponent(targetId)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayAPIResult('traceabilityResult', data);
+            } catch (error) {
+                displayAPIResult('traceabilityResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetComposition() {
+            const nodeId = document.getElementById('compositionNodeId').value;
+            const depth = document.getElementById('compositionDepth').value;
+            
+            try {
+                const response = await fetch(`/api/v1/composition/${encodeURIComponent(nodeId)}?depth=${depth}`);
+                const data = await response.json();
+                displayAPIResult('compositionResult', data);
+            } catch (error) {
+                displayAPIResult('compositionResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetImpact() {
+            const nodeId = document.getElementById('impactNodeId').value;
+            const depth = document.getElementById('impactDepth').value;
+            
+            try {
+                const response = await fetch(`/api/v1/impact/${encodeURIComponent(nodeId)}?depth=${depth}`);
+                const data = await response.json();
+                displayAPIResult('impactResult', data);
+            } catch (error) {
+                displayAPIResult('impactResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetParameters() {
+            const className = document.getElementById('paramClassName').value;
+            const propertyName = document.getElementById('paramPropertyName').value;
+            const limit = document.getElementById('paramLimit').value;
+            
+            let url = `/api/v1/parameters?limit=${limit}`;
+            if (className) url += `&class_name=${encodeURIComponent(className)}`;
+            if (propertyName) url += `&property_name=${encodeURIComponent(propertyName)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayAPIResult('parametersResult', data);
+            } catch (error) {
+                displayAPIResult('parametersResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetConstraints() {
+            const nodeId = document.getElementById('constraintNodeId').value;
+            const limit = document.getElementById('constraintLimit').value;
+            
+            let url = `/api/v1/constraints?limit=${limit}`;
+            if (nodeId) url += `&node_id=${encodeURIComponent(nodeId)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayAPIResult('constraintsResult', data);
+            } catch (error) {
+                displayAPIResult('constraintsResult', {error: error.message}, true);
+            }
+        }
+
+        // SIMULATION OPERATIONS
+        async function apiGetSimulationParameters() {
+            const className = document.getElementById('simParamClassName').value;
+            const dataType = document.getElementById('simParamDataType').value;
+            const constraints = document.getElementById('simParamConstraints').value;
+            const limit = document.getElementById('simParamLimit').value;
+            
+            let url = `/api/v1/simulation/parameters?limit=${limit}&include_constraints=${constraints}`;
+            if (className) url += `&class_name=${encodeURIComponent(className)}`;
+            if (dataType) url += `&data_type=${encodeURIComponent(dataType)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayAPIResult('simParametersResult', data);
+            } catch (error) {
+                displayAPIResult('simParametersResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiValidateConstraints() {
+            const paramsJson = document.getElementById('validateParamsJson').value;
+            
+            try {
+                const params = JSON.parse(paramsJson);
+                const response = await fetch('/api/v1/simulation/validate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(params)
+                });
+                const data = await response.json();
+                displayAPIResult('validateResult', data);
+            } catch (error) {
+                displayAPIResult('validateResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetUnits() {
+            const limit = document.getElementById('unitsLimit').value;
+            
+            try {
+                const response = await fetch(`/api/v1/units?limit=${limit}`);
+                const data = await response.json();
+                displayAPIResult('unitsResult', data);
+            } catch (error) {
+                displayAPIResult('unitsResult', {error: error.message}, true);
+            }
+        }
+
+        // EXPORT OPERATIONS
+        async function apiExportGraphML() {
+            const nodeTypes = document.getElementById('graphmlNodeTypes').value;
+            const limit = document.getElementById('graphmlLimit').value;
+            
+            let url = `/api/v1/export/graphml?limit=${limit}`;
+            if (nodeTypes) url += `&node_types=${encodeURIComponent(nodeTypes)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                displayAPIResult('graphmlResult', {preview: data.substring(0, 1000) + '...\n\n[Click Download to get full file]'});
+                // Auto-download
+                downloadFile(data, 'graph_export.graphml', 'application/xml');
+            } catch (error) {
+                displayAPIResult('graphmlResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiExportJSONLD() {
+            const nodeTypes = document.getElementById('jsonldNodeTypes').value;
+            const limit = document.getElementById('jsonldLimit').value;
+            
+            let url = `/api/v1/export/jsonld?limit=${limit}`;
+            if (nodeTypes) url += `&node_types=${encodeURIComponent(nodeTypes)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayAPIResult('jsonldResult', data);
+            } catch (error) {
+                displayAPIResult('jsonldResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiExportCSV() {
+            const nodeType = document.getElementById('csvNodeType').value;
+            const properties = document.getElementById('csvProperties').value;
+            
+            let url = `/api/v1/export/csv?node_type=${nodeType}`;
+            if (properties) url += `&properties=${encodeURIComponent(properties)}`;
+            
+            try {
+                window.open(url, '_blank');
+                displayAPIResult('csvResult', {status: 'Download started', message: 'CSV export ZIP file is being downloaded'});
+            } catch (error) {
+                displayAPIResult('csvResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiExportSTEP() {
+            const nodeTypes = document.getElementById('stepNodeTypes').value;
+            const metadata = document.getElementById('stepMetadata').value;
+            
+            let url = `/api/v1/export/step?include_metadata=${metadata}`;
+            if (nodeTypes) url += `&node_types=${encodeURIComponent(nodeTypes)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                displayAPIResult('stepResult', {preview: data.substring(0, 1000) + '...\n\n[Full STEP file content]'});
+                downloadFile(data, 'graph_export.step', 'text/plain');
+            } catch (error) {
+                displayAPIResult('stepResult', {error: error.message}, true);
+            }
+        }
+
+        // VERSION CONTROL OPERATIONS
+        async function apiGetVersionHistory() {
+            const nodeId = document.getElementById('versionNodeId').value;
+            
+            try {
+                const response = await fetch(`/api/v1/versions/${encodeURIComponent(nodeId)}`);
+                const data = await response.json();
+                displayAPIResult('versionHistoryResult', data);
+            } catch (error) {
+                displayAPIResult('versionHistoryResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiCompareVersions() {
+            const nodeId1 = document.getElementById('diffNodeId1').value;
+            const nodeId2 = document.getElementById('diffNodeId2').value;
+            const version1 = document.getElementById('diffVersion1').value;
+            const version2 = document.getElementById('diffVersion2').value;
+            
+            try {
+                const response = await fetch('/api/v1/diff', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        node_id_1: nodeId1,
+                        node_id_2: nodeId2,
+                        version_1: parseInt(version1),
+                        version_2: parseInt(version2)
+                    })
+                });
+                const data = await response.json();
+                displayAPIResult('diffResult', data);
+            } catch (error) {
+                displayAPIResult('diffResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiGetHistory() {
+            const nodeId = document.getElementById('historyNodeId').value;
+            
+            try {
+                const response = await fetch(`/api/v1/history/${encodeURIComponent(nodeId)}`);
+                const data = await response.json();
+                displayAPIResult('historyResult', data);
+            } catch (error) {
+                displayAPIResult('historyResult', {error: error.message}, true);
+            }
+        }
+
+        async function apiCreateCheckpoint() {
+            const version = document.getElementById('checkpointVersion').value;
+            const description = document.getElementById('checkpointDescription').value;
+            const author = document.getElementById('checkpointAuthor').value;
+            
+            try {
+                const response = await fetch('/api/v1/checkpoint', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        version: version,
+                        description: description,
+                        author: author
+                    })
+                });
+                const data = await response.json();
+                displayAPIResult('checkpointResult', data);
+            } catch (error) {
+                displayAPIResult('checkpointResult', {error: error.message}, true);
+            }
+        }
+    </script>
+</body>
+</html>
