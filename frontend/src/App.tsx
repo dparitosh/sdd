@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@ui/sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import Layout from '@/components/layout/Layout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Login from '@/pages/Login';
@@ -14,6 +15,9 @@ import RequirementsManager from '@/pages/RequirementsManager';
 import TraceabilityMatrix from '@/pages/TraceabilityMatrix';
 import PLMIntegration from '@/pages/PLMIntegration';
 import SystemMonitoring from '@/pages/SystemMonitoring';
+import RequirementsDashboard from '@/pages/RequirementsDashboard';
+import PartsExplorer from '@/pages/PartsExplorer';
+import GraphBrowser from '@/pages/GraphBrowser';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,40 +31,45 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="mbse-ui-theme">
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            
-            {/* Protected routes */}
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Routes>
-                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/search" element={<AdvancedSearch />} />
-                      <Route path="/api-explorer" element={<RestApiExplorer />} />
-                      <Route path="/query-editor" element={<QueryEditor />} />
-                      <Route path="/requirements" element={<RequirementsManager />} />
-                      <Route path="/traceability" element={<TraceabilityMatrix />} />
-                      <Route path="/plm" element={<PLMIntegration />} />
-                      <Route path="/monitoring" element={<SystemMonitoring />} />
-                    </Routes>
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="system" storageKey="mbse-ui-theme">
+        <QueryClientProvider client={queryClient}>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              {/* Protected routes */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Routes>
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+                        <Route path="/search" element={<ErrorBoundary><AdvancedSearch /></ErrorBoundary>} />
+                        <Route path="/api-explorer" element={<ErrorBoundary><RestApiExplorer /></ErrorBoundary>} />
+                        <Route path="/query-editor" element={<ErrorBoundary><QueryEditor /></ErrorBoundary>} />
+                        <Route path="/requirements" element={<ErrorBoundary><RequirementsManager /></ErrorBoundary>} />
+                        <Route path="/traceability" element={<ErrorBoundary><TraceabilityMatrix /></ErrorBoundary>} />
+                        <Route path="/plm" element={<ErrorBoundary><PLMIntegration /></ErrorBoundary>} />
+                        <Route path="/monitoring" element={<ErrorBoundary><SystemMonitoring /></ErrorBoundary>} />
+                        <Route path="/ap239/requirements" element={<ErrorBoundary><RequirementsDashboard /></ErrorBoundary>} />
+                        <Route path="/ap242/parts" element={<ErrorBoundary><PartsExplorer /></ErrorBoundary>} />
+                        <Route path="/graph" element={<ErrorBoundary><GraphBrowser /></ErrorBoundary>} />
+                      </Routes>
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -30,20 +30,32 @@ interface HistoricalData {
 }
 
 export default function SystemMonitoring() {
+  const { data: health, isLoading: healthLoading } = useQuery({
+    queryKey: ['health'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/health');
+      return response.data;
+    },
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+
   const { data: metrics, isLoading } = useQuery<SystemMetrics>({
     queryKey: ['system-metrics'],
     queryFn: async () => {
-      // Mock data - replace with actual metrics endpoint
+      // Get real metrics from backend
+      const statsResponse = await apiClient.get('/api/stats');
+      const healthResponse = await apiClient.get('/api/health');
+      
       return {
-        apiRequestRate: 1247,
-        p95Latency: 95,
-        cacheHitRate: 92.5,
-        activeConnections: 23,
-        errorRate: 0.2,
-        neo4jQueryTime: 45,
+        apiRequestRate: 1247, // Mock - would come from metrics endpoint
+        p95Latency: healthResponse.data?.database?.latency_ms || 0,
+        cacheHitRate: 92.5, // Mock - would come from cache stats
+        activeConnections: healthResponse.data?.connection_pool?.in_use || 0,
+        errorRate: 0.2, // Mock - would come from error logs
+        neo4jQueryTime: healthResponse.data?.database?.latency_ms || 0,
       };
     },
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
   });
 
   const { data: historicalData } = useQuery<HistoricalData[]>({
@@ -140,6 +152,60 @@ export default function SystemMonitoring() {
           Real-time system performance and health metrics
         </p>
       </div>
+
+      {/* Database Health Status */}
+      {health && (
+        <Card className={health.status === 'healthy' ? 'border-green-500/50 bg-green-500/5' : 'border-red-500/50 bg-red-500/5'}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className={`h-5 w-5 ${health.status === 'healthy' ? 'text-green-500' : 'text-red-500'}`} />
+              Database Connection Status
+              <Badge variant={health.status === 'healthy' ? 'default' : 'destructive'}>
+                {health.status === 'healthy' ? 'CONNECTED' : 'DISCONNECTED'}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-4 gap-4">
+              <div>
+                <div className="text-sm text-muted-foreground">Connection</div>
+                <div className="text-xl font-bold">
+                  {health.database?.connected ? (
+                    <span className="text-green-500">Active</span>
+                  ) : (
+                    <span className="text-red-500">Failed</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Latency</div>
+                <div className="text-xl font-bold">
+                  {health.database?.latency_ms ? `${health.database.latency_ms}ms` : 'N/A'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Total Nodes</div>
+                <div className="text-xl font-bold">
+                  {health.database?.node_count?.toLocaleString() || '0'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Pool Status</div>
+                <div className="text-xl font-bold">
+                  {health.connection_pool?.status || 'active'}
+                </div>
+              </div>
+            </div>
+            {health.database?.error && (
+              <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="text-sm text-red-600 dark:text-red-400 font-mono">
+                  Error: {health.database.error}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metric Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

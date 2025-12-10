@@ -6,10 +6,10 @@ import click
 from dotenv import load_dotenv
 from loguru import logger
 
-from graph.connection import Neo4jConnection
-from parsers.apoc_loader import APOCXMILoader
-from utils.config import Config
-from utils.logger import setup_logger
+from src.graph.connection import Neo4jConnection
+from src.parsers.apoc_loader import APOCXMILoader
+from src.utils.config import Config
+from src.utils.logger import setup_logger
 
 
 @click.group()

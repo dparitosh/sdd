@@ -35,35 +35,159 @@ interface Endpoint {
 }
 
 const API_ENDPOINTS: Endpoint[] = [
+  // System
+  {
+    method: 'GET',
+    path: '/api/health',
+    description: 'Health check with database connectivity',
+    blueprint: 'System',
+  },
+  {
+    method: 'GET',
+    path: '/api/stats',
+    description: 'Get graph statistics',
+    blueprint: 'System',
+  },
+  {
+    method: 'GET',
+    path: '/info',
+    description: 'API architecture and documentation',
+    blueprint: 'System',
+  },
+  
   // Core API
   {
     method: 'GET',
-    path: '/health',
-    description: 'Health check endpoint',
-    blueprint: 'Core',
-  },
-  {
-    method: 'GET',
-    path: '/statistics',
-    description: 'Get database statistics',
-    blueprint: 'Core',
-  },
-  {
-    method: 'GET',
-    path: '/search',
+    path: '/api/search',
     description: 'Search across all node types',
     blueprint: 'Core',
     params: [
       { name: 'q', type: 'string', required: true, description: 'Search query' },
+      { name: 'limit', type: 'number', required: false, description: 'Max results (default: 50)' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/api/artifacts',
+    description: 'List all artifacts',
+    blueprint: 'Core',
+    params: [
       { name: 'limit', type: 'number', required: false, description: 'Max results' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/api/artifacts/{type}',
+    description: 'List artifacts of a specific type',
+    blueprint: 'Core',
+    params: [
+      { name: 'type', type: 'string', required: true, description: 'Artifact type (e.g., Class, Package)' },
+      { name: 'limit', type: 'number', required: false, description: 'Max results' },
+    ],
+  },
+  
+  // AP239 - Product Life Cycle Support (PLCS)
+  {
+    method: 'GET',
+    path: '/api/ap239/requirements',
+    description: 'List all requirements',
+    blueprint: 'AP239',
+  },
+  {
+    method: 'GET',
+    path: '/api/ap239/requirements/{id}',
+    description: 'Get requirement details with versions and approvals',
+    blueprint: 'AP239',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Requirement ID' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/api/ap239/approvals',
+    description: 'List all approvals',
+    blueprint: 'AP239',
+  },
+  
+  // AP242 - 3D Engineering
+  {
+    method: 'GET',
+    path: '/api/ap242/parts',
+    description: 'List all parts with materials and geometry',
+    blueprint: 'AP242',
+    params: [
+      { name: 'search', type: 'string', required: false, description: 'Search by name' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/api/ap242/parts/{id}',
+    description: 'Get part details with BOM and materials',
+    blueprint: 'AP242',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Part ID' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/api/ap242/materials',
+    description: 'List all materials with properties',
+    blueprint: 'AP242',
+    params: [
+      { name: 'search', type: 'string', required: false, description: 'Search by name or specification' },
+    ],
+  },
+  
+  // AP243 - Reference Data
+  {
+    method: 'GET',
+    path: '/api/ap243/units',
+    description: 'List all measurement units',
+    blueprint: 'AP243',
+  },
+  {
+    method: 'GET',
+    path: '/api/ap243/units/{id}',
+    description: 'Get unit details',
+    blueprint: 'AP243',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Unit ID' },
+    ],
+  },
+  
+  // Hierarchy Navigation
+  {
+    method: 'GET',
+    path: '/api/hierarchy/search',
+    description: 'Cross-schema search',
+    blueprint: 'Hierarchy',
+    params: [
+      { name: 'query', type: 'string', required: true, description: 'Search query' },
+      { name: 'level', type: 'number', required: false, description: 'AP level (239/242/243)' },
+    ],
+  },
+  {
+    method: 'GET',
+    path: '/api/hierarchy/traceability-matrix',
+    description: 'Get full traceability matrix',
+    blueprint: 'Hierarchy',
+  },
+  {
+    method: 'GET',
+    path: '/api/hierarchy/trace/{source_type}/{source_id}',
+    description: 'Trace relationships from a source node',
+    blueprint: 'Hierarchy',
+    params: [
+      { name: 'source_type', type: 'string', required: true, description: 'Source node type (e.g., Requirement, Part)' },
+      { name: 'source_id', type: 'string', required: true, description: 'Source node ID' },
     ],
   },
   
   // SMRL v1 API
   {
     method: 'GET',
-    path: '/v1/{type}',
-    description: 'List resources of a specific type',
+    path: '/api/v1/{type}',
+    description: 'List SMRL resources of a specific type',
     blueprint: 'SMRL v1',
     params: [
       { name: 'type', type: 'string', required: true, description: 'Resource type (e.g., Requirement, Class)' },
@@ -73,8 +197,8 @@ const API_ENDPOINTS: Endpoint[] = [
   },
   {
     method: 'GET',
-    path: '/v1/{type}/{uid}',
-    description: 'Get a specific resource by UID',
+    path: '/api/v1/{type}/{uid}',
+    description: 'Get a specific SMRL resource by UID',
     blueprint: 'SMRL v1',
     params: [
       { name: 'type', type: 'string', required: true, description: 'Resource type' },
@@ -83,8 +207,8 @@ const API_ENDPOINTS: Endpoint[] = [
   },
   {
     method: 'POST',
-    path: '/v1/{type}',
-    description: 'Create a new resource',
+    path: '/api/v1/{type}',
+    description: 'Create a new SMRL resource',
     blueprint: 'SMRL v1',
     params: [
       { name: 'type', type: 'string', required: true, description: 'Resource type' },

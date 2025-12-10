@@ -9,7 +9,7 @@ import pandas as pd
 from loguru import logger
 from lxml import etree
 
-from graph.connection import Neo4jConnection
+from src.graph.connection import Neo4jConnection
 
 
 class APOCXMILoader:

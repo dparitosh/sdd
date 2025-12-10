@@ -140,9 +140,9 @@ def get_class_details(class_id):
 
         if result:
             data = result[0]
-            # Clean up None values
-            data["properties"] = [p for p in data["properties"] if p["id"]]
-            data["parents"] = [p for p in data["parents"] if p["id"]]
+            # Clean up None values with safe access
+            data["properties"] = [p for p in data.get("properties", []) if p and p.get("id")]
+            data["parents"] = [p for p in data.get("parents", []) if p and p.get("id")]
             return jsonify(data)
         return jsonify({"error": "Class not found"}), 404
     except Exception as e:

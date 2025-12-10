@@ -127,7 +127,9 @@ class Neo4jService:
         try:
             with self.driver.session(database=db) as session:
                 result = session.run(query, parameters)
-                return [dict(record) for record in result]
+                # Consume result within context manager to prevent resource leaks
+                records = list(result)
+                return [dict(record) for record in records]
         except Neo4jError as e:
             logger.error(f"Neo4j Error: {e.code} - {e.message}")
             logger.error(f"Query: {query}")

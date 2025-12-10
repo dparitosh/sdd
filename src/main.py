@@ -3,15 +3,16 @@ MBSE Neo4j Knowledge Graph Builder
 Main application entry point
 """
 
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 from loguru import logger
 
-from graph.connection import Neo4jConnection
-from parsers.semantic_loader import SemanticXMILoader
-from utils.config import Config
-from utils.logger import setup_logger
+from src.graph.connection import Neo4jConnection
+from src.parsers.semantic_loader import SemanticXMILoader
+from src.utils.config import Config
+from src.utils.logger import setup_logger
 
 
 def main():

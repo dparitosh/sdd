@@ -20,6 +20,10 @@ import {
   ChevronRight,
   Info,
   Settings,
+  ClipboardCheck,
+  Package,
+  Library,
+  Network,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -67,11 +71,44 @@ const navigationGroups = [
         description: 'Trace relationships'
       },
       { 
+        name: 'Graph Browser', 
+        href: '/graph', 
+        icon: Network, 
+        badge: 'NEW',
+        description: 'Visualize knowledge graph'
+      },
+      { 
         name: 'Query Editor', 
         href: '/query-editor', 
         icon: Terminal, 
         badge: 'BETA',
         description: 'Run custom Cypher queries'
+      },
+    ],
+  },
+  {
+    label: 'ISO AP239 - Requirements',
+    description: 'Product Life Cycle Support',
+    items: [
+      { 
+        name: 'Requirements', 
+        href: '/ap239/requirements', 
+        icon: ClipboardCheck, 
+        badge: 'AP239',
+        description: 'Requirements & Analysis'
+      },
+    ],
+  },
+  {
+    label: 'ISO AP242 - Engineering',
+    description: '3D Engineering & Manufacturing',
+    items: [
+      { 
+        name: 'Parts Explorer', 
+        href: '/ap242/parts', 
+        icon: Package, 
+        badge: 'AP242',
+        description: 'Parts, Materials & CAD'
       },
     ],
   },

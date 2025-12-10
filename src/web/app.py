@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, request, send_file
 from flask_cors import CORS
 from flask_socketio import SocketIO
 
@@ -93,6 +93,15 @@ try:
 except Exception as e:
     print(f"Warning: Could not register Export routes: {e}")
 
+# Register Graph Visualization routes
+try:
+    from src.web.routes.graph import graph_bp
+
+    app.register_blueprint(graph_bp)
+    print("✓ Registered Graph Visualization routes (/api/graph/)")
+except Exception as e:
+    print(f"Warning: Could not register Graph routes: {e}")
+
 # Register Version Control routes
 try:
     from src.web.routes.version import version_bp
@@ -111,6 +120,42 @@ try:
 except Exception as e:
     print(f"Warning: Could not register Auth routes: {e}")
 
+# Register AP239 routes (Requirements, Analysis, Approvals, Documents)
+try:
+    from src.web.routes.ap239 import ap239_bp
+
+    app.register_blueprint(ap239_bp)
+    print("✓ Registered AP239 routes (/api/ap239/)")
+except Exception as e:
+    print(f"Warning: Could not register AP239 routes: {e}")
+
+# Register AP242 routes (Parts, Materials, CAD Geometry, Assemblies)
+try:
+    from src.web.routes.ap242 import ap242_bp
+
+    app.register_blueprint(ap242_bp)
+    print("✓ Registered AP242 routes (/api/ap242/)")
+except Exception as e:
+    print(f"Warning: Could not register AP242 routes: {e}")
+
+# Register AP243 routes (Ontologies, Units, Value Types, Classifications)
+try:
+    from src.web.routes.ap243 import ap243_bp
+
+    app.register_blueprint(ap243_bp)
+    print("✓ Registered AP243 routes (/api/ap243/)")
+except Exception as e:
+    print(f"Warning: Could not register AP243 routes: {e}")
+
+# Register Hierarchy Navigation routes (Traceability, Cross-Level Search)
+try:
+    from src.web.routes.hierarchy import hierarchy_bp
+
+    app.register_blueprint(hierarchy_bp)
+    print("✓ Registered Hierarchy Navigation routes (/api/hierarchy/)")
+except Exception as e:
+    print(f"Warning: Could not register Hierarchy routes: {e}")
+
 
 def get_connection():
     """Get Neo4j connection"""
@@ -125,8 +170,76 @@ def get_connection():
 
 @app.route("/")
 def index():
-    """Main page"""
-    return render_template("index.html")
+    """
+    Redirect root to React frontend dashboard.
+    The modern React UI runs on port 3001 and provides a unified interface.
+    This Flask backend serves only REST APIs under /api/*
+    """
+    from flask import redirect
+    import os
+    
+    # Get frontend URL from environment or use default
+    frontend_url = os.getenv('FRONTEND_URL', 'https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev')
+    
+    # Redirect to React frontend dashboard
+    return redirect(f"{frontend_url}/dashboard", code=302)
+
+
+@app.route("/info")
+def info():
+    """
+    API information and architecture overview.
+    Provides guidance on how to use the system.
+    """
+    import os
+    frontend_url = os.getenv('FRONTEND_URL', 'https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev')
+    
+    return jsonify({
+        "name": "MBSE Knowledge Graph REST API",
+        "version": "2.0.0",
+        "architecture": {
+            "frontend": {
+                "url": frontend_url,
+                "description": "Modern React dashboard with ISO AP239/AP242/AP243 support",
+                "routes": [
+                    "/dashboard - Main system overview",
+                    "/ap239/requirements - Requirements management (AP239)",
+                    "/ap242/parts - Parts & materials explorer (AP242)",
+                    "/search - Advanced search",
+                    "/query-editor - Cypher query interface"
+                ]
+            },
+            "backend": {
+                "url": "This server (port 5000)",
+                "description": "REST API server for Neo4j knowledge graph",
+                "endpoints": [
+                    "/api/health - System health check",
+                    "/api/stats - Graph statistics",
+                    "/api/ap239/* - ISO 10303-239 PLCS endpoints",
+                    "/api/ap242/* - ISO 10303-242 CAD endpoints",
+                    "/api/ap243/* - ISO 10303-243 Reference data endpoints",
+                    "/api/hierarchy/* - Cross-schema navigation",
+                    "/api/openapi.json - OpenAPI specification"
+                ]
+            }
+        },
+        "database": {
+            "type": "Neo4j Aura",
+            "nodes": "3,275+ nodes across AP239/AP242/AP243 schemas",
+            "relationships": "Cross-level traceability with 10+ relationship types"
+        },
+        "standards": [
+            "ISO 10303-239 (Product Life Cycle Support)",
+            "ISO 10303-242 (3D Engineering)",
+            "ISO 10303-243 (Reference Data)",
+            "ISO 10303-4443 (SMRL)"
+        ],
+        "documentation": {
+            "api": "/api/openapi.json",
+            "health": "/api/health",
+            "metrics": "/metrics"
+        }
+    }), 200
 
 
 @app.route("/favicon.ico")

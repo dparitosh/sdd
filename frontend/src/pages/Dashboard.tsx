@@ -172,6 +172,79 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* ISO AP Standards - Featured Access */}
+      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            ISO 10303 Application Protocols
+          </CardTitle>
+          <CardDescription>
+            Access standardized engineering data across the product lifecycle
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* AP239 - Requirements */}
+            <Card className="cursor-pointer hover:shadow-lg transition-all hover:scale-105" onClick={() => navigate('/ap239/requirements')}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-blue-500 text-white">AP239</Badge>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <h3 className="font-semibold mb-1">Requirements</h3>
+                <p className="text-sm text-muted-foreground mb-3">Product Life Cycle Support</p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>• Requirements Management</div>
+                  <div>• Analysis & Specifications</div>
+                  <div>• Change Control & Approvals</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AP242 - Parts */}
+            <Card className="cursor-pointer hover:shadow-lg transition-all hover:scale-105" onClick={() => navigate('/ap242/parts')}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-green-500 text-white">AP242</Badge>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <h3 className="font-semibold mb-1">Parts & Engineering</h3>
+                <p className="text-sm text-muted-foreground mb-3">3D Managed Product Data</p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>• Parts Catalog</div>
+                  <div>• Materials & Properties</div>
+                  <div>• CAD Geometry</div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AP243 - Reference Data */}
+            <Card className="cursor-pointer hover:shadow-lg transition-all hover:scale-105" onClick={() => navigate('/traceability')}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-purple-500 text-white">AP243</Badge>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <h3 className="font-semibold mb-1">Reference Data</h3>
+                <p className="text-sm text-muted-foreground mb-3">Ontologies & Standards</p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>• Units & Measurements</div>
+                  <div>• Classification Systems</div>
+                  <div>• Cross-Schema Traceability</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* System Status */}
       <Card className="border-dashed">
         <CardHeader>

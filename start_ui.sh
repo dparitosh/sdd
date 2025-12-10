@@ -5,9 +5,9 @@ pkill -f "python.*web/app.py" 2>/dev/null
 
 # Set up environment
 cd /workspaces/mbse-neo4j-graph-rep
-export PYTHONPATH=src
+export PYTHONPATH=/workspaces/mbse-neo4j-graph-rep
 
-echo "=================================="
+echo "================================="=
 echo "🚀 Starting MBSE Knowledge Graph UI"
 echo "=================================="
 echo ""

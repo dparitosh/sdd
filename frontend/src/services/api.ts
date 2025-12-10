@@ -179,6 +179,62 @@ export const apiService = {
   executeCypher: (query: string) =>
     apiClient.post<{ results: any[]; summary: any }>('/cypher', { query }),
 
+  // AP239 - Product Life Cycle Support (PLCS)
+  ap239: {
+    getRequirements: (params?: { type?: string; status?: string; priority?: string; search?: string }) =>
+      apiClient.get<{ count: number; requirements: any[] }>('/ap239/requirements', { params }),
+    getRequirement: (id: string) =>
+      apiClient.get<any>(`/ap239/requirements/${encodeURIComponent(id)}`),
+    getRequirementTraceability: (id: string) =>
+      apiClient.get<any>(`/ap239/requirements/${encodeURIComponent(id)}/traceability`),
+    getApprovals: () =>
+      apiClient.get<{ count: number; approvals: any[] }>('/ap239/approvals'),
+    getAnalyses: () =>
+      apiClient.get<{ count: number; analyses: any[] }>('/ap239/analyses'),
+    getDocuments: () =>
+      apiClient.get<{ count: number; documents: any[] }>('/ap239/documents'),
+    getStatistics: () =>
+      apiClient.get<any>('/ap239/statistics'),
+  },
+
+  // AP242 - 3D Managed Product Data
+  ap242: {
+    getParts: (params?: { status?: string; search?: string }) =>
+      apiClient.get<{ count: number; parts: any[] }>('/ap242/parts', { params }),
+    getPart: (id: string) =>
+      apiClient.get<any>(`/ap242/parts/${encodeURIComponent(id)}`),
+    getPartBOM: (id: string) =>
+      apiClient.get<any>(`/ap242/parts/${encodeURIComponent(id)}/bom`),
+    getMaterials: (params?: { type?: string; search?: string }) =>
+      apiClient.get<{ count: number; materials: any[] }>('/ap242/materials', { params }),
+    getMaterial: (name: string) =>
+      apiClient.get<any>(`/ap242/materials/${encodeURIComponent(name)}`),
+    getAssemblies: () =>
+      apiClient.get<{ count: number; assemblies: any[] }>('/ap242/assemblies'),
+    getGeometry: () =>
+      apiClient.get<{ count: number; geometries: any[] }>('/ap242/geometry'),
+    getStatistics: () =>
+      apiClient.get<any>('/ap242/statistics'),
+  },
+
+  // AP243 - Reference Data
+  ap243: {
+    getUnits: () =>
+      apiClient.get<{ count: number; units: any[] }>('/ap243/units'),
+    getUnit: (id: string) =>
+      apiClient.get<any>(`/ap243/units/${encodeURIComponent(id)}`),
+  },
+
+  // Hierarchy Navigation
+  hierarchy: {
+    search: (params: { query: string; level?: number }) =>
+      apiClient.get<any[]>('/hierarchy/search', { params }),
+    getTraceabilityMatrix: () =>
+      apiClient.get<{ count: number; matrix: any[] }>('/hierarchy/traceability-matrix'),
+    trace: (sourceType: string, sourceId: string) =>
+      apiClient.get<any>(`/hierarchy/trace/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceId)}`),
+  },
+
   // PLM Operations
   plm: {
     getBOM: (partId: string) => apiClient.get<any>(`/plm/bom/${encodeURIComponent(partId)}`),

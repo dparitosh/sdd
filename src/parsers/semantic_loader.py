@@ -9,7 +9,7 @@ from typing import Dict, List, Set, Tuple
 from loguru import logger
 from lxml import etree
 
-from graph.connection import Neo4jConnection
+from src.graph.connection import Neo4jConnection
 
 
 class SemanticXMILoader:
@@ -26,9 +26,9 @@ class SemanticXMILoader:
     """
 
     # Elements that should be created as NODES (first-class elements with identity)
-    # Complete UML 2.5.1 + SysML 1.6 metamodel coverage
+    # Complete UML 2.5.1 + SysML 1.6 + AP239/AP242/AP243 coverage
     NODE_TYPES = {
-        # Core structural elements
+        # Core UML structural elements
         "uml:Model",
         "uml:Package",
         "uml:Class",
@@ -43,7 +43,7 @@ class SemanticXMILoader:
         "uml:EnumerationLiteral",
         "uml:PrimitiveType",
         "uml:Stereotype",
-        # Behavioral elements
+        # UML Behavioral elements
         "uml:Actor",
         "uml:UseCase",
         "uml:StateMachine",
@@ -54,13 +54,13 @@ class SemanticXMILoader:
         "uml:Interaction",
         "uml:Lifeline",
         "uml:Message",
-        # Instance specifications
+        # UML Instance specifications
         "uml:InstanceSpecification",
         "uml:Slot",
-        # Constraints and comments (now as nodes for traceability)
+        # UML Constraints and comments (now as nodes for traceability)
         "uml:Constraint",
         "uml:Comment",
-        # Associations as first-class elements
+        # UML Associations as first-class elements
         "uml:Association",
         "uml:AssociationClass",
         # SysML specific
@@ -69,10 +69,133 @@ class SemanticXMILoader:
         "sysml:ValueType",
         "sysml:FlowPort",
         "sysml:InterfaceBlock",
+        # AP239 - Product Life Cycle Support (Level 1: Systems Engineering Core)
+        # Requirements Management
+        "Requirement",
+        "RequirementVersion",
+        "RequirementSource",
+        "RequirementAssignment",
+        "RequirementSatisfactionAssertion",
+        "RequirementRelationship",
+        # Analysis & Simulation
+        "Analysis",
+        "AnalysisModel",
+        "AnalysisVersion",
+        "AnalysisRepresentationContext",
+        "AnalysisModelObject",
+        "AnalysisDisciplineDefinition",
+        # Approvals & Workflow
+        "Approval",
+        "ApprovalAssignment",
+        "ApprovalRelationship",
+        "Certification",
+        "CertificationAssignment",
+        # Documents & Evidence
+        "Document",
+        "DocumentDefinition",
+        "DocumentVersion",
+        "DocumentVersionRelationship",
+        "DocumentRelationship",
+        "Evidence",
+        "DigitalDocumentDefinition",
+        "DigitalFile",
+        # Lifecycle & Configuration
+        "Activity",
+        "ActivityMethod",
+        "ActivityAssignment",
+        "ActivityRelationship",
+        "Effectivity",
+        "DatedEffectivity",
+        "EffectivityAssignment",
+        "BreakdownElement",
+        "BreakdownVersion",
+        "BreakdownElementVersion",
+        "Breakdown",
+        "BreakdownRelationship",
+        # Events & Conditions
+        "Event",
+        "EventAssignment",
+        "Condition",
+        "ConditionEvaluation",
+        "ConditionParameter",
+        "ConditionAssignment",
+        # Additional AP239 types
+        "Assumption",
+        "AssumptionAssignment",
+        "Justification",
+        "AdvisoryNote",
+        "Collection",
+        "CollectionVersion",
+        "CollectionMembership",
+        "Contract",
+        "ContractAssignment",
+        # AP242 - Managed Model-Based 3D Engineering (Level 2: CAD/Manufacturing)
+        # Product Structure
+        "Part",
+        "PartVersion",
+        "PartView",
+        "Assembly",
+        "AssemblyDefinition",
+        "AssemblyViewRelationship",
+        "AssemblyOccurrenceRelationship",
+        "IndividualPart",
+        "IndividualPartVersion",
+        "IndividualPartView",
+        # Geometry & CAD
+        "GeometricModel",
+        "ShapeRepresentation",
+        "GeometricRepresentation",
+        "GeometricRepresentationContext",
+        "GeometricCoordinateSpace",
+        "ComponentPlacement",
+        "ExternalGeometricModel",
+        "ComposedGeometricModel",
+        # Materials & Properties
+        "Material",
+        "MaterialProperty",
+        "PropertyValueRepresentation",
+        "MeasureQualification",
+        # Manufacturing
+        "MakeFrom",
+        "PhysicalBreakdownElementViewAssociation",
+        "FunctionalBreakdownElementViewAssociation",
+        # AP242 Additional types
+        "AlternativeSolution",
+        "ConfiguredAssemblyEffectivity",
+        "DeltaChange",
+        "Envelope",
+        "EvaluatedCharacteristic",
+        "EvaluatedRequirement",
+        # AP243 - Reference Data & Ontologies (Level 3: Foundation)
+        # Reference Ontologies
+        "ExternalOwlClass",
+        "ExternalOwlObject",
+        "ExternalClassSystem",
+        "ExternalLibrary",
+        # Units & Measures
+        "ExternalUnit",
+        "ExternalTypeQualifier",
+        "ExternalValue",
+        # Value Types & Classifications
+        "ExternalPropertyDefinition",
+        "ExternalRefBaseObject",
+        "Class",  # AP239/AP243 classification class
+        "ClassAttribute",
+        "Classification",
+        "ClassificationRelationship",
+        # Additional AP243 types
+        "ExternalItem",
+        "ApplicationDomain",
+        "DataEnvironment",
+        "ExchangeContext",
+        "FormatProperty",
+        "File",
+        "Hardcopy",
     }
 
     # Elements that should be created as RELATIONSHIPS (connect nodes)
     RELATIONSHIP_TYPES = {
+        # UML/SysML relationships
         "uml:Generalization",  # Inheritance
         "uml:Realization",  # Interface realization
         "uml:Dependency",  # General dependency
@@ -85,6 +208,45 @@ class SemanticXMILoader:
         "sysml:Verify",  # Requirement verification
         "sysml:Refine",  # Requirement refinement
         "sysml:Trace",  # Traceability link
+        # AP239 relationships (Product Life Cycle Support)
+        "SATISFIES",  # Requirement → Design element
+        "VERIFIES",  # Test/Analysis → Requirement
+        "REFINES",  # Requirement → Sub-requirement
+        "APPROVES",  # Approval → Artifact
+        "ANALYZES",  # Analysis → Model/Part
+        "REQUIRES",  # Requirement → Requirement
+        "DOCUMENTS",  # Document → Artifact
+        "TRACES_TO",  # Traceability link
+        "DECOMPOSES_INTO",  # Breakdown hierarchy
+        "APPLIES_TO",  # Effectivity → Configuration
+        "ASSIGNED_TO",  # Assignment relationships
+        "CERTIFIES",  # Certification → Artifact
+        "RELATES_TO",  # Generic relationship
+        # AP242 relationships (CAD/Manufacturing)
+        "HAS_GEOMETRY",  # Part → GeometricModel
+        "USES_MATERIAL",  # Part → Material
+        "ASSEMBLES_WITH",  # Part → Part (assembly)
+        "PLACED_IN",  # Component → Assembly
+        "HAS_REPRESENTATION",  # Part → ShapeRepresentation
+        "MAKES_FROM",  # Manufacturing → Part
+        "HAS_VERSION",  # Part → PartVersion
+        "HAS_VIEW",  # Part → PartView
+        "ALTERNATIVE_TO",  # AlternativeSolution
+        # AP243 relationships (Reference Data & Ontologies)
+        "CLASSIFIED_AS",  # Any node → ExternalOwlClass
+        "HAS_UNIT",  # Property → ExternalUnit
+        "HAS_VALUE_TYPE",  # Property → ValueType
+        "REFERENCES",  # External reference
+        # Cross-Level Hierarchical Relationships (AP239 → AP242 → AP243)
+        "SATISFIED_BY_PART",  # AP239 Requirement → AP242 Part
+        "ANALYZED_BY_MODEL",  # AP239 Analysis → AP242 GeometricModel
+        "APPROVED_FOR_VERSION",  # AP239 Approval → AP242 PartVersion
+        "DOCUMENTED_BY",  # AP239 Document → AP242 Part
+        "MATERIAL_CLASSIFIED_AS",  # AP242 Material → AP243 ExternalOwlClass
+        "USES_UNIT",  # AP242 Property → AP243 ExternalUnit
+        "HAS_REFERENCE_TYPE",  # AP242 → AP243 ValueType
+        "REQUIREMENT_VALUE_TYPE",  # AP239 Requirement → AP243 ValueType
+        "ANALYSIS_USES_UNIT",  # AP239 Analysis → AP243 ExternalUnit
     }
 
     # Elements that are METADATA (stored as properties, not separate nodes)
