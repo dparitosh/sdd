@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import {
   useReactTable,
   getCoreRowModel,
@@ -70,6 +71,18 @@ interface Requirement {
   category?: string;
 }
 
+// Helper to extract error message from various error types
+const getErrorMessage = (error: any): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error?.response?.data?.error) {
+    const err = error.response.data.error;
+    return typeof err === 'string' ? err : err?.message || 'An error occurred';
+  }
+  if (error?.message) return error.message;
+  return 'An unknown error occurred';
+};
+
 export default function RequirementsManager() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -98,7 +111,7 @@ export default function RequirementsManager() {
       setIsCreateOpen(false);
     },
     onError: (error: any) => {
-      toast.error(`Failed to create requirement: ${error.message}`);
+      toast.error(`Failed to create requirement: ${getErrorMessage(error)}`);
     },
   });
 
@@ -112,7 +125,7 @@ export default function RequirementsManager() {
       setIsEditOpen(false);
     },
     onError: (error: any) => {
-      toast.error(`Failed to update requirement: ${error.message}`);
+      toast.error(`Failed to update requirement: ${getErrorMessage(error)}`);
     },
   });
 
@@ -124,7 +137,7 @@ export default function RequirementsManager() {
       toast.success('Requirement deleted successfully');
     },
     onError: (error: any) => {
-      toast.error(`Failed to delete requirement: ${error.message}`);
+      toast.error(`Failed to delete requirement: ${getErrorMessage(error)}`);
     },
   });
 

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 const API_BASE_URL = '/api';
 
 interface ApiErrorResponse {
-  error: string;
+  error: string | { code?: number; message?: string; details?: string };
   details?: string;
   status: number;
 }
@@ -54,7 +54,15 @@ class ApiClient {
       (response) => response,
       (error: AxiosError<ApiErrorResponse>) => {
         if (error.response) {
-          const message = error.response.data?.error || 'An error occurred';
+          // Extract error message - handle both string and object formats
+          const errorData = error.response.data?.error;
+          const message = typeof errorData === 'string' 
+            ? errorData 
+            : errorData?.message || 'An error occurred';
+          
+          const details = typeof errorData === 'object' 
+            ? errorData?.details 
+            : error.response.data?.details;
           
           // Handle 401 Unauthorized - redirect to login
           if (error.response.status === 401) {
@@ -75,8 +83,9 @@ class ApiClient {
             return Promise.reject(error);
           }
           
-          toast.error(message, {
-            description: error.response.data?.details,
+          // Show error toast with proper string values
+          toast.error(String(message), {
+            description: details ? String(details) : undefined,
           });
         } else if (error.request) {
           toast.error('Network Error', {

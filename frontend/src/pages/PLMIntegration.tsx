@@ -19,6 +19,18 @@ import {
   Activity,
 } from 'lucide-react';
 
+// Helper to extract error message
+const getErrorMessage = (error: any): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error?.response?.data?.error) {
+    const err = error.response.data.error;
+    return typeof err === 'string' ? err : err?.message || 'An error occurred';
+  }
+  if (error?.message) return error.message;
+  return 'An unknown error occurred';
+};
+
 interface SyncHistory {
   id: string;
   connector: string;
@@ -84,8 +96,8 @@ export default function PLMIntegration() {
       queryClient.invalidateQueries({ queryKey: ['plm-connectors'] });
       queryClient.invalidateQueries({ queryKey: ['plm-sync-history'] });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to start sync: ${error.message}`);
+    onError: (error: any) => {
+      toast.error(`Failed to start sync: ${getErrorMessage(error)}`);
     },
   });
 
