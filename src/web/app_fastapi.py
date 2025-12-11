@@ -261,8 +261,14 @@ try:
 except ImportError as e:
     logger.warning(f"AP239 routes not yet migrated: {e}")
 
+try:
+    from src.web.routes.ap242_fastapi import router as ap242_router
+    app.include_router(ap242_router, prefix="/api/ap242", tags=["AP242 - CAD Integration"])
+    logger.info("✓ Registered AP242 routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"AP242 routes not yet migrated: {e}")
+
 # Remaining routes to be converted:
-# - AP242 (CAD Integration)
 # - AP243 (Product Structure)
 # - SMRL v1
 # - PLM (additional endpoints)
