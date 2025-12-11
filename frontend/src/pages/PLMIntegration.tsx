@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/services/api';
+import { getConnectors, triggerSync, type PLMConnector } from '@/services/plm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ui/card';
 import { Button } from '@ui/button';
 import { Badge } from '@ui/badge';
@@ -19,16 +19,6 @@ import {
   Activity,
 } from 'lucide-react';
 
-interface PLMConnector {
-  id: string;
-  name: string;
-  type: 'teamcenter' | 'windchill' | 'sap_plm';
-  status: 'connected' | 'disconnected' | 'error';
-  lastSync: string | null;
-  itemsSynced: number;
-  health: 'healthy' | 'degraded' | 'unhealthy';
-}
-
 interface SyncHistory {
   id: string;
   connector: string;
@@ -44,43 +34,14 @@ export default function PLMIntegration() {
   const queryClient = useQueryClient();
   const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
 
-  // Fetch PLM connectors
-  const { data: connectors, isLoading } = useQuery<PLMConnector[]>({
+  // Fetch PLM connectors from real API
+  const { data: connectorsResponse, isLoading } = useQuery({
     queryKey: ['plm-connectors'],
-    queryFn: async () => {
-      // Mock data - replace with actual API call
-      return [
-        {
-          id: 'teamcenter-1',
-          name: 'Teamcenter Production',
-          type: 'teamcenter',
-          status: 'connected',
-          lastSync: '2025-12-09T10:30:00Z',
-          itemsSynced: 1247,
-          health: 'healthy',
-        },
-        {
-          id: 'windchill-1',
-          name: 'Windchill Engineering',
-          type: 'windchill',
-          status: 'connected',
-          lastSync: '2025-12-09T09:15:00Z',
-          itemsSynced: 856,
-          health: 'healthy',
-        },
-        {
-          id: 'sap-1',
-          name: 'SAP S/4HANA PLM',
-          type: 'sap_plm',
-          status: 'disconnected',
-          lastSync: null,
-          itemsSynced: 0,
-          health: 'unhealthy',
-        },
-      ];
-    },
-    staleTime: 30000,
+    queryFn: getConnectors,
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  const connectors = connectorsResponse?.connectors;
 
   // Fetch sync history
   const { data: syncHistory } = useQuery<SyncHistory[]>({
@@ -113,17 +74,18 @@ export default function PLMIntegration() {
   });
 
   // Sync mutation
+  // Trigger sync mutation
   const syncMutation = useMutation({
     mutationFn: async (connectorId: string) => {
-      return apiClient.post(`/plm/sync/${connectorId}`);
+      return triggerSync(connectorId, { scope: 'incremental' });
     },
-    onSuccess: () => {
-      toast.success('Sync started successfully');
+    onSuccess: (data) => {
+      toast.success(`Sync started: ${data.job_id}`);
       queryClient.invalidateQueries({ queryKey: ['plm-connectors'] });
       queryClient.invalidateQueries({ queryKey: ['plm-sync-history'] });
     },
-    onError: () => {
-      toast.error('Failed to start sync');
+    onError: (error: Error) => {
+      toast.error(`Failed to start sync: ${error.message}`);
     },
   });
 

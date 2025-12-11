@@ -37,6 +37,11 @@ class ApiClient {
         } catch (error) {
           console.error('Error reading auth token:', error);
         }
+        
+        // Add API key from environment variable
+        const apiKey = import.meta.env.VITE_API_KEY || 'mbse_dev_key_12345';
+        config.headers['X-API-Key'] = apiKey;
+        
         return config;
       },
       (error) => {

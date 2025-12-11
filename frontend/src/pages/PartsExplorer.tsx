@@ -14,7 +14,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Box, Boxes, Layers, Loader2, Package, Search, Wrench } from 'lucide-react';
 import { AP242Part, Material, BOMData, Assembly, AP242Statistics } from '@/types/api';
 import ExportButton from '@/components/ExportButton';
-import ExportButton from '@/components/ExportButton';
 
 const PartsExplorer: React.FC = () => {
   const [selectedPart, setSelectedPart] = useState<AP242Part | null>(null);

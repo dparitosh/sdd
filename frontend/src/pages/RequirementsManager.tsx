@@ -408,7 +408,7 @@ export default function RequirementsManager() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>
-            Failed to load requirements: {error.message}
+            Failed to load requirements: {error instanceof Error ? error.message : typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error)}
           </AlertDescription>
         </Alert>
       )}

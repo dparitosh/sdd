@@ -21,7 +21,22 @@ from src.web.services import cache_stats, get_neo4j_service, reset_neo4j_service
 # Load environment variables
 load_dotenv()
 
+
+# Custom JSON provider for Neo4j types (Flask 3.x)
+from flask.json.provider import DefaultJSONProvider
+
+class Neo4jJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        # Handle Neo4j DateTime objects
+        if hasattr(obj, 'iso_format'):
+            return obj.iso_format()
+        if hasattr(obj, 'isoformat') and not isinstance(obj, str):
+            return obj.isoformat()
+        return super().default(obj)
+
+
 app = Flask(__name__)
+app.json = Neo4jJSONProvider(app)
 CORS(app)  # Enable CORS for external integrations
 config = Config()
 
@@ -155,6 +170,24 @@ try:
     print("✓ Registered Hierarchy Navigation routes (/api/hierarchy/)")
 except Exception as e:
     print(f"Warning: Could not register Hierarchy routes: {e}")
+
+# Register PLM Connectors routes (Sprint 2)
+try:
+    from src.web.routes.plm_connectors import plm_connectors_bp
+
+    app.register_blueprint(plm_connectors_bp)
+    print("✓ Registered PLM Connectors routes (/api/v1/plm/)")
+except Exception as e:
+    print(f"Warning: Could not register PLM Connectors routes: {e}")
+
+# Register System Metrics routes (Sprint 2)
+try:
+    from src.web.routes.metrics import metrics_bp
+
+    app.register_blueprint(metrics_bp)
+    print("✓ Registered System Metrics routes (/api/metrics/)")
+except Exception as e:
+    print(f"Warning: Could not register Metrics routes: {e}")
 
 
 def get_connection():

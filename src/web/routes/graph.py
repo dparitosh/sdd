@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request
 from loguru import logger
 
 from src.web.services import get_neo4j_service
+from src.web.middleware.security_utils import require_api_key
 
 graph_bp = Blueprint('graph', __name__, url_prefix='/api/graph')
 
@@ -24,6 +25,7 @@ ALLOWED_NODE_TYPES = {
 
 
 @graph_bp.route('/data', methods=['GET'])
+@require_api_key
 def get_graph_data():
     """
     Get graph data for visualization (nodes and edges).
@@ -182,6 +184,7 @@ def get_graph_data():
 
 
 @graph_bp.route('/node-types', methods=['GET'])
+@require_api_key
 def get_node_types():
     """
     Get list of all node types (labels) in the graph.
@@ -225,6 +228,7 @@ def get_node_types():
 
 
 @graph_bp.route('/relationship-types', methods=['GET'])
+@require_api_key
 def get_relationship_types():
     """
     Get list of all relationship types in the graph.

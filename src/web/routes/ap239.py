@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, request
 from loguru import logger
 
 from src.web.services import get_neo4j_service
+from src.web.middleware.security_utils import require_api_key
 
 ap239_bp = Blueprint('ap239', __name__, url_prefix='/api/ap239')
 
@@ -20,6 +21,7 @@ ap239_bp = Blueprint('ap239', __name__, url_prefix='/api/ap239')
 # ============================================================================
 
 @ap239_bp.route('/requirements', methods=['GET'])
+@require_api_key
 def get_requirements():
     """
     Get all requirements with optional filtering.
@@ -100,6 +102,7 @@ def get_requirements():
 
 
 @ap239_bp.route('/requirements/<req_id>', methods=['GET'])
+@require_api_key
 def get_requirement_detail(req_id: str):
     """
     Get detailed information about a specific requirement.
@@ -167,6 +170,7 @@ def get_requirement_detail(req_id: str):
 
 
 @ap239_bp.route('/requirements/<req_id>/traceability', methods=['GET'])
+@require_api_key
 def get_requirement_traceability(req_id: str):
     """
     Get full traceability chain for a requirement (AP239 → AP242 → AP243).
@@ -212,6 +216,7 @@ def get_requirement_traceability(req_id: str):
 # ============================================================================
 
 @ap239_bp.route('/analyses', methods=['GET'])
+@require_api_key
 def get_analyses():
     """
     Get all engineering analyses.
@@ -282,6 +287,7 @@ def get_analyses():
 # ============================================================================
 
 @ap239_bp.route('/approvals', methods=['GET'])
+@require_api_key
 def get_approvals():
     """
     Get all design approvals.
@@ -339,6 +345,7 @@ def get_approvals():
 # ============================================================================
 
 @ap239_bp.route('/documents', methods=['GET'])
+@require_api_key
 def get_documents():
     """
     Get all engineering documents.
@@ -393,6 +400,7 @@ def get_documents():
 # ============================================================================
 
 @ap239_bp.route('/statistics', methods=['GET'])
+@require_api_key
 def get_ap239_statistics():
     """
     Get summary statistics for AP239 data.

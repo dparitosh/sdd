@@ -362,7 +362,8 @@ export default function RestApiExplorer() {
       toast.success(`Request completed in ${result.time}ms`);
     },
     onError: (err: any) => {
-      setError(err.message || 'Request failed');
+      const errorMessage = err.response?.data?.message || err.message || (typeof err === 'string' ? err : 'Request failed');
+      setError(errorMessage);
       setResponse(null);
       setResponseTime(null);
       toast.error('Request failed');

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/services/api';
+import { getMetricsSummary, getMetricsHistory, getHealthCheck } from '@/services/metrics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ui/card';
 import { Skeleton } from '@ui/skeleton';
 import { Badge } from '@ui/badge';
@@ -30,48 +30,43 @@ interface HistoricalData {
 }
 
 export default function SystemMonitoring() {
+  // Get real health check data
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['health'],
-    queryFn: async () => {
-      const response = await apiClient.get('/api/health');
-      return response.data;
-    },
+    queryFn: getHealthCheck,
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  const { data: metrics, isLoading } = useQuery<SystemMetrics>({
+  // Get real metrics summary
+  const { data: metricsSummary, isLoading } = useQuery({
     queryKey: ['system-metrics'],
-    queryFn: async () => {
-      // Get real metrics from backend
-      const statsResponse = await apiClient.get('/api/stats');
-      const healthResponse = await apiClient.get('/api/health');
-      
-      return {
-        apiRequestRate: 1247, // Mock - would come from metrics endpoint
-        p95Latency: healthResponse.data?.database?.latency_ms || 0,
-        cacheHitRate: 92.5, // Mock - would come from cache stats
-        activeConnections: healthResponse.data?.connection_pool?.in_use || 0,
-        errorRate: 0.2, // Mock - would come from error logs
-        neo4jQueryTime: healthResponse.data?.database?.latency_ms || 0,
-      };
-    },
+    queryFn: getMetricsSummary,
     refetchInterval: 5000,
   });
 
-  const { data: historicalData } = useQuery<HistoricalData[]>({
+  // Transform metrics for display
+  const metrics: SystemMetrics | undefined = metricsSummary ? {
+    apiRequestRate: Math.round(metricsSummary.api.requests_per_second * 60), // Convert to per minute
+    p95Latency: metricsSummary.api.avg_response_time_ms,
+    cacheHitRate: metricsSummary.cache.hit_rate * 100,
+    activeConnections: metricsSummary.database.active_connections || 0,
+    errorRate: (1 - metricsSummary.api.success_rate) * 100,
+    neo4jQueryTime: metricsSummary.database.avg_query_time_ms || 0,
+  } : undefined;
+
+  // Get real historical data for API requests
+  const { data: historicalMetrics } = useQuery({
     queryKey: ['historical-metrics'],
-    queryFn: async () => {
-      // Mock historical data
-      const now = Date.now();
-      return Array.from({ length: 20 }, (_, i) => ({
-        timestamp: new Date(now - (19 - i) * 60000).toLocaleTimeString(),
-        requests: Math.floor(Math.random() * 200) + 1000,
-        latency: Math.floor(Math.random() * 50) + 50,
-        errors: Math.floor(Math.random() * 5),
-      }));
-    },
+    queryFn: () => getMetricsHistory('api_requests', '1h'),
     refetchInterval: 60000,
   });
+
+  const historicalData: HistoricalData[] | undefined = historicalMetrics?.datapoints.map(dp => ({
+    timestamp: new Date(dp.timestamp).toLocaleTimeString(),
+    requests: dp.value,
+    latency: Math.random() * 50 + 50, // TODO: Add latency to history endpoint
+    errors: Math.random() * 5,
+  }));
 
   const metricCards = [
     {
