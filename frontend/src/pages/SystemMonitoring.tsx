@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMetricsSummary, getMetricsHistory, getHealthCheck } from '@/services/metrics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ui/card';
 import { Skeleton } from '@ui/skeleton';
 import { Badge } from '@ui/badge';
+import { Button } from '@ui/button';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Activity,
@@ -11,6 +12,7 @@ import {
   AlertCircle,
   TrendingUp,
   Clock,
+  RefreshCw,
 } from 'lucide-react';
 
 interface SystemMetrics {
@@ -30,6 +32,8 @@ interface HistoricalData {
 }
 
 export default function SystemMonitoring() {
+  const queryClient = useQueryClient();
+  
   // Get real health check data
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['health'],
@@ -141,11 +145,25 @@ export default function SystemMonitoring() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
-        <p className="text-muted-foreground">
-          Real-time system performance and health metrics
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
+          <p className="text-muted-foreground">
+            Real-time system performance and health metrics
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['health'] });
+            queryClient.invalidateQueries({ queryKey: ['system-metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['historical-metrics'] });
+          }}
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
       {/* Database Health Status */}
