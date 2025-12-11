@@ -9,18 +9,18 @@ from .base_connector import (
     SyncDirection,
     BOMItem,
     SyncResult,
-    PLMConnectorFactory
+    PLMConnectorFactory,
 )
 
 from .teamcenter_connector import TeamcenterConnector
 
 __all__ = [
-    'BasePLMConnector',
-    'PLMConfig',
-    'PLMSystem',
-    'SyncDirection',
-    'BOMItem',
-    'SyncResult',
-    'PLMConnectorFactory',
-    'TeamcenterConnector',
+    "BasePLMConnector",
+    "PLMConfig",
+    "PLMSystem",
+    "SyncDirection",
+    "BOMItem",
+    "SyncResult",
+    "PLMConnectorFactory",
+    "TeamcenterConnector",
 ]

@@ -47,6 +47,7 @@ class MBSETools:
 
     def __init__(self, base_url: str = None):
         import os
+
         self.base_url = base_url or os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
         self.api_v1 = f"{self.base_url}/api/v1"
         self.api_core = f"{self.base_url}/api"
@@ -137,6 +138,7 @@ class MBSEAgent:
 
     def __init__(self, api_key: str = None, base_url: str = None):
         import os
+
         base_url = base_url or os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
         self.tools_api = MBSETools(base_url)
         self.llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=api_key)
@@ -367,14 +369,12 @@ provide a clear, comprehensive answer to the user's question. Include specific d
         """Run the agent on a user message using the React agent"""
         try:
             # Use the prebuilt React agent
-            result = self.graph.invoke({
-                "messages": [HumanMessage(content=user_message)]
-            })
+            result = self.graph.invoke({"messages": [HumanMessage(content=user_message)]})
 
             # Extract the final response
             if "messages" in result and result["messages"]:
                 last_message = result["messages"][-1]
-                if hasattr(last_message, 'content'):
+                if hasattr(last_message, "content"):
                     return last_message.content
                 return str(last_message)
 

@@ -79,9 +79,7 @@ def mbse_agent_node(state: EngineeringState) -> dict:
         if "requirement" in user_query.lower():
             traceability_data = tools.get_traceability()
 
-        messages = [
-            AIMessage(content=f"MBSE Agent: Found relevant artifacts in knowledge graph")
-        ]
+        messages = [AIMessage(content=f"MBSE Agent: Found relevant artifacts in knowledge graph")]
 
         return {
             "artifact_details": {"search_results": search_results},
@@ -253,7 +251,7 @@ def should_continue(state: EngineeringState) -> Literal["continue", "end"]:
 def create_engineering_workflow() -> StateGraph:
     """
     Create the multi-agent engineering workflow graph
-    
+
     Workflow: User Query → MBSE → PLM → Simulation → Compliance → End
     """
     logger.info("🏗️ Creating multi-agent engineering workflow")
@@ -285,11 +283,11 @@ def create_engineering_workflow() -> StateGraph:
 def execute_engineering_workflow(user_query: str, task_type: str = "impact_analysis") -> dict:
     """
     Execute the engineering workflow for a given query
-    
+
     Args:
         user_query: Natural language query from user
         task_type: Type of task (traceability, impact_analysis, requirement_check, bom_sync)
-    
+
     Returns:
         Final state with all agent outputs
     """

@@ -13,49 +13,49 @@ from loguru import logger
 
 from src.web.services import get_neo4j_service
 
-ap242_bp = Blueprint('ap242', __name__, url_prefix='/api/ap242')
+ap242_bp = Blueprint("ap242", __name__, url_prefix="/api/ap242")
 
 # Valid status values to prevent invalid queries
-VALID_STATUSES = {'Released', 'Development', 'Obsolete', 'Draft', 'In Review', 'Approved'}
+VALID_STATUSES = {"Released", "Development", "Obsolete", "Draft", "In Review", "Approved"}
 
 
 # ============================================================================
 # PARTS ENDPOINTS
 # ============================================================================
 
-@ap242_bp.route('/parts', methods=['GET'])
+
+@ap242_bp.route("/parts", methods=["GET"])
 def get_parts():
     """
     Get all parts with optional filtering.
-    
+
     Query Parameters:
         status: Filter by status (Released, Development, Obsolete)
         search: Text search in name and description
-        
+
     Returns:
         JSON array of part objects
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
+
         filters = []
         params = {}
-        
-        if status := request.args.get('status'):
+
+        if status := request.args.get("status"):
             # Validate status against whitelist
             if status in VALID_STATUSES:
                 filters.append("part.status = $status")
-                params['status'] = status
-            
-        if search := request.args.get('search'):
+                params["status"] = status
+
+        if search := request.args.get("search"):
             # Escape regex metacharacters to prevent injection
             escaped_search = re.escape(search)
             filters.append("(part.name =~ $search OR part.description =~ $search)")
-            params['search'] = f"(?i).*{escaped_search}.*"
-            
+            params["search"] = f"(?i).*{escaped_search}.*"
+
         where_clause = " AND ".join(filters) if filters else "1=1"
-        
+
         query = f"""
         MATCH (part:Part)
         WHERE part.ap_level = 2 AND {where_clause}
@@ -72,42 +72,41 @@ def get_parts():
                COLLECT(DISTINCT req.name) AS satisfies_requirements
         ORDER BY part.part_number, part.name
         """
-        
+
         results = neo4j.execute_query(query, params)
-        
-        parts = [{
-            'id': r['id'],
-            'name': r['name'],
-            'description': r['description'],
-            'part_number': r['part_number'],
-            'status': r['status'],
-            'versions': [v for v in r['versions'] if v],
-            'materials': [m for m in r['materials'] if m],
-            'requirements': [req for req in r['satisfies_requirements'] if req]
-        } for r in results]
-        
-        return jsonify({
-            'count': len(parts),
-            'parts': parts
-        }), 200
-        
+
+        parts = [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "description": r["description"],
+                "part_number": r["part_number"],
+                "status": r["status"],
+                "versions": [v for v in r["versions"] if v],
+                "materials": [m for m in r["materials"] if m],
+                "requirements": [req for req in r["satisfies_requirements"] if req],
+            }
+            for r in results
+        ]
+
+        return jsonify({"count": len(parts), "parts": parts}), 200
+
     except Exception as e:
         logger.error(f"Error fetching parts: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@ap242_bp.route('/parts/<part_id>', methods=['GET'])
+@ap242_bp.route("/parts/<part_id>", methods=["GET"])
 def get_part_detail(part_id: str):
     """
     Get detailed information about a specific part.
-    
+
     Returns:
         Part with all relationships (versions, materials, geometry, assemblies, etc.)
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
+
         query = """
         MATCH (part:Part {id: $part_id})
         OPTIONAL MATCH (part)-[:HAS_VERSION]->(v:PartVersion)
@@ -124,51 +123,50 @@ def get_part_detail(part_id: str):
                COLLECT(DISTINCT req.name) AS requirements,
                COLLECT(DISTINCT appr.name) AS approvals
         """
-        
-        results = neo4j.execute_query(query, {'part_id': part_id})
-        
-        if not results or not results[0].get('part'):
-            return jsonify({'error': 'Part not found'}), 404
-        
+
+        results = neo4j.execute_query(query, {"part_id": part_id})
+
+        if not results or not results[0].get("part"):
+            return jsonify({"error": "Part not found"}), 404
+
         r = results[0]
-        part = r['part']
-        
+        part = r["part"]
+
         part_detail = {
-            'id': part['id'],
-            'name': part['name'],
-            'description': part.get('description'),
-            'part_number': part.get('part_number'),
-            'status': part.get('status'),
-            'created_at': str(part.get('created_at')) if part.get('created_at') else None,
-            'ap_level': part.get('ap_level'),
-            'ap_schema': part.get('ap_schema'),
-            'versions': [v for v in r['versions'] if v.get('version')],
-            'materials': [m for m in r['materials'] if m.get('name')],
-            'geometry': [g for g in r['geometry'] if g.get('name')],
-            'assemblies': [a for a in r['assemblies'] if a],
-            'requirements': [req for req in r['requirements'] if req],
-            'approvals': [appr for appr in r['approvals'] if appr]
+            "id": part["id"],
+            "name": part["name"],
+            "description": part.get("description"),
+            "part_number": part.get("part_number"),
+            "status": part.get("status"),
+            "created_at": str(part.get("created_at")) if part.get("created_at") else None,
+            "ap_level": part.get("ap_level"),
+            "ap_schema": part.get("ap_schema"),
+            "versions": [v for v in r["versions"] if v.get("version")],
+            "materials": [m for m in r["materials"] if m.get("name")],
+            "geometry": [g for g in r["geometry"] if g.get("name")],
+            "assemblies": [a for a in r["assemblies"] if a],
+            "requirements": [req for req in r["requirements"] if req],
+            "approvals": [appr for appr in r["approvals"] if appr],
         }
-        
+
         return jsonify(part_detail), 200
-        
+
     except Exception as e:
         logger.error(f"Error fetching part {part_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@ap242_bp.route('/parts/<part_id>/bom', methods=['GET'])
+@ap242_bp.route("/parts/<part_id>/bom", methods=["GET"])
 def get_part_bom(part_id: str):
     """
     Get Bill of Materials (BOM) for a part.
-    
+
     Returns:
         Tree structure of assembly components
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
+
         query = """
         MATCH (part:Part {id: $part_id})
         OPTIONAL MATCH (asm:Assembly)-[:ASSEMBLES_WITH]->(part)
@@ -182,46 +180,51 @@ def get_part_bom(part_id: str):
                    part_number: subpart.part_number
                }) AS components
         """
-        
-        results = neo4j.execute_query(query, {'part_id': part_id})
-        
+
+        results = neo4j.execute_query(query, {"part_id": part_id})
+
         if not results:
-            return jsonify({'error': 'Part not found'}), 404
-            
-        return jsonify({
-            'root_part': results[0]['root_part'],
-            'assembly': results[0]['assembly'],
-            'components': [c for c in results[0]['components'] if c.get('id')]
-        }), 200
-        
+            return jsonify({"error": "Part not found"}), 404
+
+        return (
+            jsonify(
+                {
+                    "root_part": results[0]["root_part"],
+                    "assembly": results[0]["assembly"],
+                    "components": [c for c in results[0]["components"] if c.get("id")],
+                }
+            ),
+            200,
+        )
+
     except Exception as e:
         logger.error(f"Error fetching BOM for {part_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
 # ASSEMBLIES ENDPOINTS
 # ============================================================================
 
-@ap242_bp.route('/assemblies', methods=['GET'])
+
+@ap242_bp.route("/assemblies", methods=["GET"])
 def get_assemblies():
     """
     Get all assemblies.
-    
+
     Query Parameters:
         type: Filter by assembly type (Mechanical, Electrical, etc.)
-        
+
     Returns:
         JSON array of assembly objects
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
-        asm_type = request.args.get('type')
+
+        asm_type = request.args.get("type")
         where_clause = "asm.assembly_type = $type" if asm_type else "1=1"
-        params = {'type': asm_type} if asm_type else {}
-        
+        params = {"type": asm_type} if asm_type else {}
+
         query = f"""
         MATCH (asm:Assembly)
         WHERE asm.ap_level = 2 AND {where_clause}
@@ -232,59 +235,59 @@ def get_assemblies():
                COLLECT(DISTINCT part.name) AS parts
         ORDER BY asm.name
         """
-        
+
         results = neo4j.execute_query(query, params)
-        
-        assemblies = [{
-            'name': r['name'],
-            'type': r['type'],
-            'component_count': r['component_count'],
-            'parts': [p for p in r['parts'] if p]
-        } for r in results]
-        
-        return jsonify({
-            'count': len(assemblies),
-            'assemblies': assemblies
-        }), 200
-        
+
+        assemblies = [
+            {
+                "name": r["name"],
+                "type": r["type"],
+                "component_count": r["component_count"],
+                "parts": [p for p in r["parts"] if p],
+            }
+            for r in results
+        ]
+
+        return jsonify({"count": len(assemblies), "assemblies": assemblies}), 200
+
     except Exception as e:
         logger.error(f"Error fetching assemblies: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
 # MATERIALS ENDPOINTS
 # ============================================================================
 
-@ap242_bp.route('/materials', methods=['GET'])
+
+@ap242_bp.route("/materials", methods=["GET"])
 def get_materials():
     """
     Get all materials with optional filtering.
-    
+
     Query Parameters:
         type: Filter by material type (Metal, Polymer, Composite, etc.)
         search: Text search in name and specification
-        
+
     Returns:
         JSON array of material objects
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
+
         filters = []
         params = {}
-        
-        if mat_type := request.args.get('type'):
+
+        if mat_type := request.args.get("type"):
             filters.append("mat.material_type = $type")
-            params['type'] = mat_type
-            
-        if search := request.args.get('search'):
+            params["type"] = mat_type
+
+        if search := request.args.get("search"):
             filters.append("(mat.name =~ $search OR mat.specification =~ $search)")
-            params['search'] = f"(?i).*{search}.*"
-            
+            params["search"] = f"(?i).*{search}.*"
+
         where_clause = " AND ".join(filters) if filters else "1=1"
-        
+
         query = f"""
         MATCH (mat:Material)
         WHERE mat.ap_level = 2 AND {where_clause}
@@ -303,41 +306,48 @@ def get_materials():
                COLLECT(DISTINCT owl.name) AS ontology_classes
         ORDER BY mat.name
         """
-        
+
         results = neo4j.execute_query(query, params)
-        
-        materials = [{
-            'name': r.get('material_name'),
-            'type': r.get('material_type'),
-            'specification': r.get('material_specification'),
-            'properties': [{'name': p.get('prop_name'), 'value': p.get('prop_value'), 'unit': p.get('prop_unit')} 
-                          for p in r.get('properties', []) if p and p.get('prop_name')],
-            'used_in_parts': [p for p in r.get('used_in_parts', []) if p],
-            'ontology_classes': [o for o in r.get('ontology_classes', []) if o]
-        } for r in results if r.get('material_name')]
-        
-        return jsonify({
-            'count': len(materials),
-            'materials': materials
-        }), 200
-        
+
+        materials = [
+            {
+                "name": r.get("material_name"),
+                "type": r.get("material_type"),
+                "specification": r.get("material_specification"),
+                "properties": [
+                    {
+                        "name": p.get("prop_name"),
+                        "value": p.get("prop_value"),
+                        "unit": p.get("prop_unit"),
+                    }
+                    for p in r.get("properties", [])
+                    if p and p.get("prop_name")
+                ],
+                "used_in_parts": [p for p in r.get("used_in_parts", []) if p],
+                "ontology_classes": [o for o in r.get("ontology_classes", []) if o],
+            }
+            for r in results
+            if r.get("material_name")
+        ]
+
+        return jsonify({"count": len(materials), "materials": materials}), 200
+
     except Exception as e:
         logger.error(f"Error fetching materials: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@ap242_bp.route('/materials/<material_name>', methods=['GET'])
+@ap242_bp.route("/materials/<material_name>", methods=["GET"])
 def get_material_detail(material_name: str):
     """
     Get detailed information about a specific material.
-    
+
     Returns:
         Material with all properties and relationships
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
+
         query = """
         MATCH (mat:Material {name: $material_name})
         OPTIONAL MATCH (mat)-[:HAS_PROPERTY]->(prop:MaterialProperty)
@@ -357,57 +367,57 @@ def get_material_detail(material_name: str):
                COLLECT(DISTINCT {name: owl.name, ontology: owl.ontology}) AS ontologies,
                COLLECT(DISTINCT req.name) AS requirements
         """
-        
-        results = neo4j.execute_query(query, {'material_name': material_name})
-        
+
+        results = neo4j.execute_query(query, {"material_name": material_name})
+
         if not results:
-            return jsonify({'error': 'Material not found'}), 404
-            
+            return jsonify({"error": "Material not found"}), 404
+
         r = results[0]
-        mat = r['mat']
-        
+        mat = r["mat"]
+
         material_detail = {
-            'name': mat['name'],
-            'material_type': mat.get('material_type'),
-            'specification': mat.get('specification'),
-            'ap_level': mat.get('ap_level'),
-            'ap_schema': mat.get('ap_schema'),
-            'properties': [p for p in r['properties'] if p.get('name')],
-            'used_in_parts': [p for p in r['parts'] if p],
-            'ontology_classes': [o for o in r['ontologies'] if o.get('name')],
-            'requirements': [req for req in r['requirements'] if req]
+            "name": mat["name"],
+            "material_type": mat.get("material_type"),
+            "specification": mat.get("specification"),
+            "ap_level": mat.get("ap_level"),
+            "ap_schema": mat.get("ap_schema"),
+            "properties": [p for p in r["properties"] if p.get("name")],
+            "used_in_parts": [p for p in r["parts"] if p],
+            "ontology_classes": [o for o in r["ontologies"] if o.get("name")],
+            "requirements": [req for req in r["requirements"] if req],
         }
-        
+
         return jsonify(material_detail), 200
-        
+
     except Exception as e:
         logger.error(f"Error fetching material {material_name}: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
 # GEOMETRY ENDPOINTS
 # ============================================================================
 
-@ap242_bp.route('/geometry', methods=['GET'])
+
+@ap242_bp.route("/geometry", methods=["GET"])
 def get_geometry_models():
     """
     Get all CAD geometry models.
-    
+
     Query Parameters:
         type: Filter by model type (Solid, Surface, Wireframe)
-        
+
     Returns:
         JSON array of geometric model objects
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
-        model_type = request.args.get('type')
+
+        model_type = request.args.get("type")
         where_clause = "geo.model_type = $type" if model_type else "1=1"
-        params = {'type': model_type} if model_type else {}
-        
+        params = {"type": model_type} if model_type else {}
+
         query = f"""
         MATCH (geo:GeometricModel)
         WHERE geo.ap_level = 2 AND {where_clause}
@@ -422,44 +432,44 @@ def get_geometry_models():
                COLLECT(DISTINCT ana.name) AS analyses
         ORDER BY geo.name
         """
-        
+
         results = neo4j.execute_query(query, params)
-        
-        geometry = [{
-            'name': r['name'],
-            'type': r['type'],
-            'units': r['units'],
-            'representations': [rep for rep in r['representations'] if rep],
-            'parts': [p for p in r['parts'] if p],
-            'analyses': [a for a in r['analyses'] if a]
-        } for r in results]
-        
-        return jsonify({
-            'count': len(geometry),
-            'geometry': geometry
-        }), 200
-        
+
+        geometry = [
+            {
+                "name": r["name"],
+                "type": r["type"],
+                "units": r["units"],
+                "representations": [rep for rep in r["representations"] if rep],
+                "parts": [p for p in r["parts"] if p],
+                "analyses": [a for a in r["analyses"] if a],
+            }
+            for r in results
+        ]
+
+        return jsonify({"count": len(geometry), "geometry": geometry}), 200
+
     except Exception as e:
         logger.error(f"Error fetching geometry models: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
 # STATISTICS ENDPOINT
 # ============================================================================
 
-@ap242_bp.route('/statistics', methods=['GET'])
+
+@ap242_bp.route("/statistics", methods=["GET"])
 def get_ap242_statistics():
     """
     Get summary statistics for AP242 data.
-    
+
     Returns:
         Counts and type breakdown for all AP242 entities
     """
     try:
         neo4j = get_neo4j_service()
-        
-        
+
         query = """
         MATCH (n)
         WHERE n.ap_level = 2 AND n.ap_schema = 'AP242'
@@ -468,39 +478,36 @@ def get_ap242_statistics():
         RETURN node_type, type_or_status, count(*) AS count
         ORDER BY node_type, type_or_status
         """
-        
+
         results = neo4j.execute_query(query)
-        
+
         # Group by node type
         stats = {}
         for r in results:
-            node_type = r['node_type']
+            node_type = r["node_type"]
             if node_type not in stats:
-                stats[node_type] = {'total': 0, 'breakdown': {}}
-            stats[node_type]['total'] += r['count']
-            if r['type_or_status']:
-                stats[node_type]['breakdown'][r['type_or_status']] = r['count']
-                
-        return jsonify({
-            'ap_level': 2,
-            'ap_schema': 'AP242',
-            'statistics': stats
-        }), 200
-        
+                stats[node_type] = {"total": 0, "breakdown": {}}
+            stats[node_type]["total"] += r["count"]
+            if r["type_or_status"]:
+                stats[node_type]["breakdown"][r["type_or_status"]] = r["count"]
+
+        return jsonify({"ap_level": 2, "ap_schema": "AP242", "statistics": stats}), 200
+
     except Exception as e:
         logger.error(f"Error fetching AP242 statistics: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 
+
 @ap242_bp.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Resource not found'}), 404
+    return jsonify({"error": "Resource not found"}), 404
 
 
 @ap242_bp.errorhandler(500)
 def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
+    return jsonify({"error": "Internal server error"}), 500

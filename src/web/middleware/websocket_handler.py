@@ -15,148 +15,146 @@ class GraphUpdateNotifier:
     """
     Manages WebSocket connections and broadcasts graph updates
     """
-    
+
     def __init__(self, socketio: SocketIO):
         self.socketio = socketio
         self._active_connections = {}  # {sid: {user_id, rooms, connected_at}}
-        
+
         # Register event handlers
         self._register_handlers()
-    
+
     def _register_handlers(self):
         """Register WebSocket event handlers"""
-        
-        @self.socketio.on('connect')
+
+        @self.socketio.on("connect")
         def handle_connect():
             """Handle client connection"""
             sid = request.sid
             self._active_connections[sid] = {
-                'user_id': None,
-                'rooms': [],
-                'connected_at': datetime.now(),
-                'last_activity': datetime.now()
+                "user_id": None,
+                "rooms": [],
+                "connected_at": datetime.now(),
+                "last_activity": datetime.now(),
             }
             logger.info(f"Client connected: {sid}")
-            emit('connection_status', {'status': 'connected', 'sid': sid})
-        
-        @self.socketio.on('disconnect')
+            emit("connection_status", {"status": "connected", "sid": sid})
+
+        @self.socketio.on("disconnect")
         def handle_disconnect():
             """Handle client disconnection"""
             sid = request.sid
             if sid in self._active_connections:
                 del self._active_connections[sid]
             logger.info(f"Client disconnected: {sid}")
-        
-        @self.socketio.on('subscribe')
+
+        @self.socketio.on("subscribe")
         def handle_subscribe(data):
             """Subscribe to specific graph updates"""
             sid = request.sid
-            room = data.get('room', 'default')
-            
+            room = data.get("room", "default")
+
             join_room(room)
-            
+
             if sid in self._active_connections:
-                self._active_connections[sid]['rooms'].append(room)
-                self._active_connections[sid]['last_activity'] = datetime.now()
-            
+                self._active_connections[sid]["rooms"].append(room)
+                self._active_connections[sid]["last_activity"] = datetime.now()
+
             logger.info(f"Client {sid} subscribed to {room}")
-            emit('subscribed', {'room': room, 'status': 'success'})
-        
-        @self.socketio.on('unsubscribe')
+            emit("subscribed", {"room": room, "status": "success"})
+
+        @self.socketio.on("unsubscribe")
         def handle_unsubscribe(data):
             """Unsubscribe from graph updates"""
             sid = request.sid
-            room = data.get('room', 'default')
-            
+            room = data.get("room", "default")
+
             leave_room(room)
-            
+
             if sid in self._active_connections:
-                if room in self._active_connections[sid]['rooms']:
-                    self._active_connections[sid]['rooms'].remove(room)
-            
+                if room in self._active_connections[sid]["rooms"]:
+                    self._active_connections[sid]["rooms"].remove(room)
+
             logger.info(f"Client {sid} unsubscribed from {room}")
-            emit('unsubscribed', {'room': room, 'status': 'success'})
-    
-    def notify_node_created(self, node_data: Dict[str, Any], room: str = 'default'):
+            emit("unsubscribed", {"room": room, "status": "success"})
+
+    def notify_node_created(self, node_data: Dict[str, Any], room: str = "default"):
         """
         Notify clients that a new node was created
-        
+
         Args:
             node_data: Node details
             room: Room to broadcast to (default: 'default')
         """
         message = {
-            'event': 'node_created',
-            'timestamp': datetime.now().isoformat(),
-            'data': node_data
+            "event": "node_created",
+            "timestamp": datetime.now().isoformat(),
+            "data": node_data,
         }
-        
-        self.socketio.emit('graph_update', message, room=room)
+
+        self.socketio.emit("graph_update", message, room=room)
         logger.debug(f"Broadcasted node_created to {room}")
-    
-    def notify_node_updated(self, node_data: Dict[str, Any], room: str = 'default'):
+
+    def notify_node_updated(self, node_data: Dict[str, Any], room: str = "default"):
         """Notify clients that a node was updated"""
         message = {
-            'event': 'node_updated',
-            'timestamp': datetime.now().isoformat(),
-            'data': node_data
+            "event": "node_updated",
+            "timestamp": datetime.now().isoformat(),
+            "data": node_data,
         }
-        
-        self.socketio.emit('graph_update', message, room=room)
+
+        self.socketio.emit("graph_update", message, room=room)
         logger.debug(f"Broadcasted node_updated to {room}")
-    
-    def notify_node_deleted(self, node_id: str, room: str = 'default'):
+
+    def notify_node_deleted(self, node_id: str, room: str = "default"):
         """Notify clients that a node was deleted"""
         message = {
-            'event': 'node_deleted',
-            'timestamp': datetime.now().isoformat(),
-            'data': {'id': node_id}
+            "event": "node_deleted",
+            "timestamp": datetime.now().isoformat(),
+            "data": {"id": node_id},
         }
-        
-        self.socketio.emit('graph_update', message, room=room)
+
+        self.socketio.emit("graph_update", message, room=room)
         logger.debug(f"Broadcasted node_deleted to {room}")
-    
-    def notify_relationship_created(self, rel_data: Dict[str, Any], room: str = 'default'):
+
+    def notify_relationship_created(self, rel_data: Dict[str, Any], room: str = "default"):
         """Notify clients that a relationship was created"""
         message = {
-            'event': 'relationship_created',
-            'timestamp': datetime.now().isoformat(),
-            'data': rel_data
+            "event": "relationship_created",
+            "timestamp": datetime.now().isoformat(),
+            "data": rel_data,
         }
-        
-        self.socketio.emit('graph_update', message, room=room)
+
+        self.socketio.emit("graph_update", message, room=room)
         logger.debug(f"Broadcasted relationship_created to {room}")
-    
-    def notify_batch_update(self, updates: List[Dict[str, Any]], room: str = 'default'):
+
+    def notify_batch_update(self, updates: List[Dict[str, Any]], room: str = "default"):
         """Notify clients of multiple updates at once"""
         message = {
-            'event': 'batch_update',
-            'timestamp': datetime.now().isoformat(),
-            'count': len(updates),
-            'data': updates
+            "event": "batch_update",
+            "timestamp": datetime.now().isoformat(),
+            "count": len(updates),
+            "data": updates,
         }
-        
-        self.socketio.emit('graph_update', message, room=room)
+
+        self.socketio.emit("graph_update", message, room=room)
         logger.debug(f"Broadcasted batch_update ({len(updates)} items) to {room}")
-    
+
     def get_connection_stats(self) -> Dict[str, Any]:
         """Get statistics about active connections"""
         return {
-            'active_connections': len(self._active_connections),
-            'total_rooms': len(set(
-                room
-                for conn in self._active_connections.values()
-                for room in conn['rooms']
-            )),
-            'connections': [
+            "active_connections": len(self._active_connections),
+            "total_rooms": len(
+                set(room for conn in self._active_connections.values() for room in conn["rooms"])
+            ),
+            "connections": [
                 {
-                    'sid': sid,
-                    'rooms': conn['rooms'],
-                    'connected_duration': (datetime.now() - conn['connected_at']).total_seconds(),
-                    'last_activity': (datetime.now() - conn['last_activity']).total_seconds()
+                    "sid": sid,
+                    "rooms": conn["rooms"],
+                    "connected_duration": (datetime.now() - conn["connected_at"]).total_seconds(),
+                    "last_activity": (datetime.now() - conn["last_activity"]).total_seconds(),
                 }
                 for sid, conn in self._active_connections.items()
-            ]
+            ],
         }
 
 

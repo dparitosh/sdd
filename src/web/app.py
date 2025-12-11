@@ -16,7 +16,12 @@ from src.utils.config import Config
 from src.web.middleware import register_error_handlers
 from src.web.middleware.security_utils import SecurityHeaders, rate_limit
 from src.web.middleware.metrics import metrics_endpoint, MetricsCollector
-from src.web.services import cache_stats, get_neo4j_service, reset_neo4j_service, invalidate_stats_cache
+from src.web.services import (
+    cache_stats,
+    get_neo4j_service,
+    reset_neo4j_service,
+    invalidate_stats_cache,
+)
 
 # Load environment variables
 load_dotenv()
@@ -25,12 +30,13 @@ load_dotenv()
 # Custom JSON provider for Neo4j types (Flask 3.x)
 from flask.json.provider import DefaultJSONProvider
 
+
 class Neo4jJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         # Handle Neo4j DateTime objects
-        if hasattr(obj, 'iso_format'):
+        if hasattr(obj, "iso_format"):
             return obj.iso_format()
-        if hasattr(obj, 'isoformat') and not isinstance(obj, str):
+        if hasattr(obj, "isoformat") and not isinstance(obj, str):
             return obj.isoformat()
         return super().default(obj)
 
@@ -43,10 +49,12 @@ config = Config()
 # Initialize SocketIO for real-time updates
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+
 # Add security headers to all responses
 @app.after_request
 def add_security_headers(response):
     return SecurityHeaders.add_security_headers(response)
+
 
 # Register cleanup handler for graceful shutdown
 @app.teardown_appcontext
@@ -57,7 +65,9 @@ def cleanup_neo4j_service(exception=None):
     """
     if exception:
         from loguru import logger
+
         logger.error(f"Application context ended with exception: {exception}")
+
 
 # Register error handlers for standardized error responses
 register_error_handlers(app)
@@ -130,7 +140,7 @@ except Exception as e:
 try:
     from src.web.routes.auth import auth_bp
 
-    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(auth_bp, url_prefix="/api")
     print("✓ Registered Authentication routes (/api/auth/)")
 except Exception as e:
     print(f"Warning: Could not register Auth routes: {e}")
@@ -210,10 +220,12 @@ def index():
     """
     from flask import redirect
     import os
-    
+
     # Get frontend URL from environment or use default
-    frontend_url = os.getenv('FRONTEND_URL', 'https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev')
-    
+    frontend_url = os.getenv(
+        "FRONTEND_URL", "https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev"
+    )
+
     # Redirect to React frontend dashboard
     return redirect(f"{frontend_url}/dashboard", code=302)
 
@@ -225,54 +237,62 @@ def info():
     Provides guidance on how to use the system.
     """
     import os
-    frontend_url = os.getenv('FRONTEND_URL', 'https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev')
-    
-    return jsonify({
-        "name": "MBSE Knowledge Graph REST API",
-        "version": "2.0.0",
-        "architecture": {
-            "frontend": {
-                "url": frontend_url,
-                "description": "Modern React dashboard with ISO AP239/AP242/AP243 support",
-                "routes": [
-                    "/dashboard - Main system overview",
-                    "/ap239/requirements - Requirements management (AP239)",
-                    "/ap242/parts - Parts & materials explorer (AP242)",
-                    "/search - Advanced search",
-                    "/query-editor - Cypher query interface"
-                ]
-            },
-            "backend": {
-                "url": "This server (port 5000)",
-                "description": "REST API server for Neo4j knowledge graph",
-                "endpoints": [
-                    "/api/health - System health check",
-                    "/api/stats - Graph statistics",
-                    "/api/ap239/* - ISO 10303-239 PLCS endpoints",
-                    "/api/ap242/* - ISO 10303-242 CAD endpoints",
-                    "/api/ap243/* - ISO 10303-243 Reference data endpoints",
-                    "/api/hierarchy/* - Cross-schema navigation",
-                    "/api/openapi.json - OpenAPI specification"
-                ]
+
+    frontend_url = os.getenv(
+        "FRONTEND_URL", "https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev"
+    )
+
+    return (
+        jsonify(
+            {
+                "name": "MBSE Knowledge Graph REST API",
+                "version": "2.0.0",
+                "architecture": {
+                    "frontend": {
+                        "url": frontend_url,
+                        "description": "Modern React dashboard with ISO AP239/AP242/AP243 support",
+                        "routes": [
+                            "/dashboard - Main system overview",
+                            "/ap239/requirements - Requirements management (AP239)",
+                            "/ap242/parts - Parts & materials explorer (AP242)",
+                            "/search - Advanced search",
+                            "/query-editor - Cypher query interface",
+                        ],
+                    },
+                    "backend": {
+                        "url": "This server (port 5000)",
+                        "description": "REST API server for Neo4j knowledge graph",
+                        "endpoints": [
+                            "/api/health - System health check",
+                            "/api/stats - Graph statistics",
+                            "/api/ap239/* - ISO 10303-239 PLCS endpoints",
+                            "/api/ap242/* - ISO 10303-242 CAD endpoints",
+                            "/api/ap243/* - ISO 10303-243 Reference data endpoints",
+                            "/api/hierarchy/* - Cross-schema navigation",
+                            "/api/openapi.json - OpenAPI specification",
+                        ],
+                    },
+                },
+                "database": {
+                    "type": "Neo4j Aura",
+                    "nodes": "3,275+ nodes across AP239/AP242/AP243 schemas",
+                    "relationships": "Cross-level traceability with 10+ relationship types",
+                },
+                "standards": [
+                    "ISO 10303-239 (Product Life Cycle Support)",
+                    "ISO 10303-242 (3D Engineering)",
+                    "ISO 10303-243 (Reference Data)",
+                    "ISO 10303-4443 (SMRL)",
+                ],
+                "documentation": {
+                    "api": "/api/openapi.json",
+                    "health": "/api/health",
+                    "metrics": "/metrics",
+                },
             }
-        },
-        "database": {
-            "type": "Neo4j Aura",
-            "nodes": "3,275+ nodes across AP239/AP242/AP243 schemas",
-            "relationships": "Cross-level traceability with 10+ relationship types"
-        },
-        "standards": [
-            "ISO 10303-239 (Product Life Cycle Support)",
-            "ISO 10303-242 (3D Engineering)",
-            "ISO 10303-243 (Reference Data)",
-            "ISO 10303-4443 (SMRL)"
-        ],
-        "documentation": {
-            "api": "/api/openapi.json",
-            "health": "/api/health",
-            "metrics": "/metrics"
-        }
-    }), 200
+        ),
+        200,
+    )
 
 
 @app.route("/favicon.ico")
@@ -285,63 +305,54 @@ def favicon():
 def health_check():
     """
     Health check endpoint with database connectivity test and connection pool stats.
-    
+
     Returns:
         JSON with status, database connection state, connection pool metrics, and basic stats
     """
     from neo4j.exceptions import ServiceUnavailable, AuthError
     import time
-    
+
     health = {
         "status": "healthy",
         "timestamp": time.time(),
         "version": "1.0.0",
-        "database": {
-            "connected": False,
-            "latency_ms": None,
-            "node_count": None,
-            "error": None
-        },
-        "connection_pool": {
-            "max_size": 50,
-            "in_use": None,
-            "idle": None
-        }
+        "database": {"connected": False, "latency_ms": None, "node_count": None, "error": None},
+        "connection_pool": {"max_size": 50, "in_use": None, "idle": None},
     }
-    
+
     try:
         neo4j_service = get_neo4j_service()
-        
+
         # Measure connection latency
         start = time.time()
         result = neo4j_service.execute_query("MATCH (n) RETURN count(n) as count LIMIT 1")
         latency = (time.time() - start) * 1000
-        
+
         health["database"]["connected"] = True
         health["database"]["latency_ms"] = round(latency, 2)
         health["database"]["node_count"] = result[0]["count"] if result else 0
-        
+
         # Get connection pool stats if available
         try:
-            if hasattr(neo4j_service._driver, 'get_server_info'):
+            if hasattr(neo4j_service._driver, "get_server_info"):
                 # Note: Neo4j driver doesn't expose pool stats directly
                 # This is a placeholder for future enhancement
                 health["connection_pool"]["status"] = "active"
         except:
             pass
-        
+
         return jsonify(health), 200
-        
+
     except AuthError as e:
         health["status"] = "unhealthy"
         health["database"]["error"] = f"Authentication failed: {str(e)}"
         return jsonify(health), 503
-        
+
     except ServiceUnavailable as e:
         health["status"] = "unhealthy"
         health["database"]["error"] = f"Database unavailable: {str(e)}"
         return jsonify(health), 503
-        
+
     except Exception as e:
         health["status"] = "unhealthy"
         health["database"]["error"] = str(e)
@@ -820,7 +831,7 @@ def get_artifacts_summary():
     name = request.args.get("name", "")
     comment = request.args.get("comment", "")
     limit = int(request.args.get("limit", 100))
-    
+
     conn = get_connection()
     try:
         # If any search parameters provided, do a search
@@ -828,26 +839,26 @@ def get_artifacts_summary():
             # Build dynamic query
             conditions = []
             params = {"limit": limit}
-            
+
             # Handle "All" as no filter
             if artifact_type and artifact_type != "All":
                 label_filter = f"n:{artifact_type}"
             else:
                 label_filter = "n"
-            
+
             query = f"MATCH ({label_filter})\nWHERE 1=1\n"
-            
+
             if name:
                 conditions.append("n.name =~ ('(?i).*' + $name + '.*')")
                 params["name"] = name
-            
+
             if comment:
                 conditions.append("n.comment =~ ('(?i).*' + $comment + '.*')")
                 params["comment"] = comment
-            
+
             if conditions:
                 query += "AND " + " AND ".join(conditions) + "\n"
-            
+
             query += """
             RETURN n.id AS id,
                    n.uid AS uid,
@@ -858,7 +869,7 @@ def get_artifacts_summary():
             ORDER BY n.name
             LIMIT $limit
             """
-            
+
             result = conn.execute_query(query, params)
             # Return array directly for frontend compatibility
             return jsonify([dict(r) for r in result])
@@ -2351,7 +2362,7 @@ def create_checkpoint():
 
 
 # Prometheus metrics endpoint
-@app.route('/metrics')
+@app.route("/metrics")
 def metrics():
     """Expose Prometheus metrics for monitoring"""
     return metrics_endpoint()
@@ -2361,14 +2372,14 @@ if __name__ == "__main__":
     import os
     from loguru import logger
     from src.web.middleware.websocket_handler import GraphUpdateNotifier
-    
+
     FLASK_PORT = int(os.getenv("FLASK_PORT", 5000))
     FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")
-    
+
     print("=" * 60)
     print("🚀 MBSE Knowledge Graph UI + REST API")
     print("=" * 60)
-    
+
     # Verify Neo4j connection before starting server
     try:
         logger.info("Verifying Neo4j database connection...")
@@ -2380,12 +2391,12 @@ if __name__ == "__main__":
         print(f"✗ Neo4j connection failed: {e}")
         print("  Please check your NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in .env")
         exit(1)
-    
+
     # Initialize WebSocket notifier
     notifier = GraphUpdateNotifier(socketio)
-    app.config['NOTIFIER'] = notifier
+    app.config["NOTIFIER"] = notifier
     print("✓ WebSocket support enabled")
-    
+
     print(f"📊 UI: http://127.0.0.1:{FLASK_PORT}")
     print(f"🔌 API: http://127.0.0.1:{FLASK_PORT}/api/v1/")
     print(f"📄 OpenAPI: http://127.0.0.1:{FLASK_PORT}/api/openapi.json")
@@ -2393,7 +2404,6 @@ if __name__ == "__main__":
     print(f"🔍 Health: http://127.0.0.1:{FLASK_PORT}/api/health")
     print("💡 Press CTRL+C to stop")
     print("=" * 60)
-    
+
     # Use socketio.run instead of app.run for WebSocket support
     socketio.run(app, debug=True, host=FLASK_HOST, port=FLASK_PORT, allow_unsafe_werkzeug=True)
-

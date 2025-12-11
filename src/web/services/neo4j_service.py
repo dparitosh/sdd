@@ -17,7 +17,9 @@ class Neo4jService:
     Provides common query patterns and error handling.
     """
 
-    def __init__(self, uri: str = None, user: str = None, password: str = None, database: str = None):
+    def __init__(
+        self, uri: str = None, user: str = None, password: str = None, database: str = None
+    ):
         """
         Initialize Neo4j service with connection pooling.
 
@@ -60,17 +62,17 @@ class Neo4jService:
         """
         Verify connection to Neo4j database.
         Should be called after initialization to ensure database is accessible.
-        
+
         Returns:
             True if connection successful
-            
+
         Raises:
             ServiceUnavailable: If connection fails
             AuthError: If authentication fails
         """
         if self._connection_verified:
             return True
-            
+
         try:
             logger.debug("Verifying Neo4j connectivity...")
             with self.driver.session(database=self.database) as session:
@@ -109,7 +111,9 @@ class Neo4jService:
             self._connection_verified = False
             logger.info("Neo4j service closed")
 
-    def execute_query(self, query: str, parameters: Dict[str, Any] = None, database: str = None) -> List[Dict[str, Any]]:
+    def execute_query(
+        self, query: str, parameters: Dict[str, Any] = None, database: str = None
+    ) -> List[Dict[str, Any]]:
         """
         Execute a Cypher query and return results as list of dictionaries.
 
@@ -141,7 +145,9 @@ class Neo4jService:
             logger.error(f"Parameters: {parameters}")
             raise
 
-    def execute_write(self, query: str, parameters: Dict[str, Any] = None, database: str = None) -> List[Dict[str, Any]]:
+    def execute_write(
+        self, query: str, parameters: Dict[str, Any] = None, database: str = None
+    ) -> List[Dict[str, Any]]:
         """
         Execute a write transaction (CREATE, UPDATE, DELETE).
 
@@ -434,7 +440,7 @@ def get_neo4j_service() -> Neo4jService:
     """
     Get singleton Neo4j service instance with thread-safe lazy initialization.
     Uses double-checked locking pattern to minimize lock contention.
-    
+
     Returns:
         Neo4jService: Singleton service instance
     """
@@ -458,7 +464,7 @@ def reset_neo4j_service():
     Thread-safe operation.
     """
     global _neo4j_service
-    
+
     with _service_lock:
         if _neo4j_service is not None:
             _neo4j_service.close()
