@@ -254,13 +254,18 @@ try:
 except ImportError as e:
     logger.warning(f"Hierarchy routes not yet migrated: {e}")
 
+try:
+    from src.web.routes.ap239_fastapi import router as ap239_router
+    app.include_router(ap239_router, prefix="/api/ap239", tags=["AP239 - Requirements Management"])
+    logger.info("✓ Registered AP239 routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"AP239 routes not yet migrated: {e}")
+
 # Remaining routes to be converted:
-# - AP239 (Requirements Management)
 # - AP242 (CAD Integration)
 # - AP243 (Product Structure)
 # - SMRL v1
-# - Graph visualization
-# - Hierarchy/Traceability
+# - PLM (additional endpoints)
 # - Export
 # - Simulation
 # - Version Control
