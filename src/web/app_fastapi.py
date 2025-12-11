@@ -233,8 +233,21 @@ try:
 except ImportError as e:
     logger.warning(f"PLM routes not yet migrated: {e}")
 
+try:
+    from src.web.routes.core_fastapi import router as core_router
+    app.include_router(core_router, prefix="/api", tags=["Core"])
+    logger.info("✓ Registered Core API routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Core routes not yet migrated: {e}")
+
+try:
+    from src.web.routes.graph_fastapi import router as graph_router
+    app.include_router(graph_router, prefix="/api/graph", tags=["Graph"])
+    logger.info("✓ Registered Graph API routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Graph routes not yet migrated: {e}")
+
 # Remaining routes to be converted:
-# - Core API routes
 # - AP239 (Requirements Management)
 # - AP242 (CAD Integration)
 # - AP243 (Product Structure)
