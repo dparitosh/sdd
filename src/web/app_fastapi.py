@@ -247,6 +247,13 @@ try:
 except ImportError as e:
     logger.warning(f"Graph routes not yet migrated: {e}")
 
+try:
+    from src.web.routes.hierarchy_fastapi import router as hierarchy_router
+    app.include_router(hierarchy_router, prefix="/api/hierarchy", tags=["Hierarchy & Traceability"])
+    logger.info("✓ Registered Hierarchy API routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Hierarchy routes not yet migrated: {e}")
+
 # Remaining routes to be converted:
 # - AP239 (Requirements Management)
 # - AP242 (CAD Integration)
