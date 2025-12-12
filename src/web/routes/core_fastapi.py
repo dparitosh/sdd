@@ -71,6 +71,13 @@ class SearchResult(BaseModel):
     comment: Optional[str] = None
 
 
+class Artifact(BaseModel):
+    id: Optional[str] = None
+    name: str
+    type: str
+    comment: Optional[str] = None
+
+
 class Statistics(BaseModel):
     node_types: dict
     relationship_types: dict
@@ -283,6 +290,62 @@ async def search(q: str = Query(..., min_length=2, description="Search query (mi
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
+
+
+@router.get("/artifacts", response_model=List[Artifact], response_class=Neo4jJSONResponse)
+async def get_artifacts(
+    type: Optional[str] = Query(None, description="Filter by artifact type (Class, Package, etc.)"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of results")
+):
+    """
+    Get all artifacts (UML/SysML elements)
+    
+    Args:
+        type: Optional filter by artifact type (Class, Package, Property, etc.)
+        limit: Maximum number of results (default: 100, max: 1000)
+        
+    Returns:
+        List of artifacts
+    """
+    try:
+        neo4j = get_neo4j_service()
+
+        if type:
+            # Filter by specific type
+            query = """
+            MATCH (n)
+            WHERE $type IN labels(n)
+            RETURN n.id AS id,
+                   n.name AS name,
+                   labels(n)[0] AS type,
+                   n.comment AS comment
+            ORDER BY n.name
+            LIMIT $limit
+            """
+            result = neo4j.execute_query(query, {"type": type, "limit": limit})
+        else:
+            # Get all artifacts
+            query = """
+            MATCH (n)
+            WHERE n.name IS NOT NULL
+            RETURN n.id AS id,
+                   n.name AS name,
+                   labels(n)[0] AS type,
+                   n.comment AS comment
+            ORDER BY labels(n)[0], n.name
+            LIMIT $limit
+            """
+            result = neo4j.execute_query(query, {"limit": limit})
+
+        artifacts = [
+            {"id": r["id"], "name": r["name"], "type": r["type"], "comment": r["comment"]}
+            for r in result
+            if r.get("name")  # Ensure name exists
+        ]
+
+        return artifacts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.get("/stats", response_model=Statistics, response_class=Neo4jJSONResponse)
