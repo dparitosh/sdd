@@ -203,7 +203,7 @@ export default function AdvancedSearch() {
                     </TableHeader>
                     <TableBody>
                       {results.map((artifact: SearchResult, index: number) => (
-                        <TableRow key={artifact.uid || index}>
+                        <TableRow key={artifact.id || artifact.uid || index}>
                           <TableCell>
                             <Badge variant="outline">{artifact.type}</Badge>
                           </TableCell>
@@ -211,7 +211,7 @@ export default function AdvancedSearch() {
                             {artifact.name || '(unnamed)'}
                           </TableCell>
                           <TableCell>
-                            <code className="text-xs">{artifact.uid}</code>
+                            <code className="text-xs">{artifact.id || artifact.uid}</code>
                           </TableCell>
                           <TableCell className="max-w-md truncate">
                             {artifact.comment || '-'}
@@ -220,14 +220,18 @@ export default function AdvancedSearch() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
-                                window.open(
-                                  `/api/${artifact.type.toLowerCase()}/${encodeURIComponent(
-                                    artifact.uid
-                                  )}`,
-                                  '_blank'
-                                )
-                              }
+                              disabled={!artifact.id && !artifact.uid}
+                              onClick={() => {
+                                const artifactId = artifact.id || artifact.uid;
+                                if (artifactId) {
+                                  window.open(
+                                    `/api/${artifact.type.toLowerCase()}/${encodeURIComponent(
+                                      artifactId
+                                    )}`,
+                                    '_blank'
+                                  );
+                                }
+                              }}
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>

@@ -145,8 +145,14 @@ export const apiService = {
     limit?: number;
   }) => apiClient.get<any[]>('/artifacts', { params }),
 
-  getArtifact: (type: string, id: string) =>
-    apiClient.get<any>(`/${type.toLowerCase()}/${encodeURIComponent(id)}`),
+  getArtifact: (type: string, id: string) => {
+    // Validate parameters to prevent undefined URLs
+    if (!type || !id) {
+      console.error(`Invalid parameters: type=${type}, id=${id}`);
+      return Promise.reject(new Error('Type and ID are required'));
+    }
+    return apiClient.get<any>(`/${type.toLowerCase()}/${encodeURIComponent(id)}`);
+  },
 
   // SMRL v1 API
   smrl: {
