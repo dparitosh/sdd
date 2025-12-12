@@ -314,8 +314,8 @@ async def get_artifacts(
             # Filter by specific type
             query = """
             MATCH (n)
-            WHERE $type IN labels(n)
-            RETURN n.id AS id,
+            WHERE $type IN labels(n) AND n.name IS NOT NULL
+            RETURN coalesce(n.id, toString(id(n))) AS id,
                    n.name AS name,
                    labels(n)[0] AS type,
                    n.comment AS comment
@@ -328,7 +328,7 @@ async def get_artifacts(
             query = """
             MATCH (n)
             WHERE n.name IS NOT NULL
-            RETURN n.id AS id,
+            RETURN coalesce(n.id, toString(id(n))) AS id,
                    n.name AS name,
                    labels(n)[0] AS type,
                    n.comment AS comment

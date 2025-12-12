@@ -223,13 +223,19 @@ export default function AdvancedSearch() {
                               disabled={!artifact.id && !artifact.uid}
                               onClick={() => {
                                 const artifactId = artifact.id || artifact.uid;
+                                const artifactType = artifact.type.toLowerCase();
                                 if (artifactId) {
-                                  window.open(
-                                    `/api/${artifact.type.toLowerCase()}/${encodeURIComponent(
-                                      artifactId
-                                    )}`,
-                                    '_blank'
-                                  );
+                                  // Only open link for types that have detail endpoints
+                                  // Class and Package have /api/{type}/{id} endpoints
+                                  if (['class', 'package'].includes(artifactType)) {
+                                    window.open(
+                                      `/api/${artifactType}/${encodeURIComponent(artifactId)}`,
+                                      '_blank'
+                                    );
+                                  } else {
+                                    // For other types, show in REST API Explorer or show message
+                                    window.alert(`View ${artifact.type} "${artifact.name}" in Graph Browser or use the REST API Explorer to query by ID: ${artifactId}`);
+                                  }
                                 }
                               }}
                             >
