@@ -1,6 +1,6 @@
 #!/bin/bash
-# Start Flask backend with correct Python path
+# Start FastAPI backend with correct Python path
 
 cd "$(dirname "$0")"
 export PYTHONPATH="$(pwd):$PYTHONPATH"
-python src/web/app.py
+python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
