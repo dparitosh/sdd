@@ -9,9 +9,10 @@
 6. [Step-by-Step Usage Guide](#step-by-step-usage-guide)
 7. [Common Business Use Cases](#common-business-use-cases)
 8. [Understanding the Data](#understanding-the-data)
-9. [Tips for Effective Use](#tips-for-effective-use)
-10. [Troubleshooting](#troubleshooting)
-11. [Support & Resources](#support--resources)
+9. [API Integration & Advanced Features](#api-integration--advanced-features)
+10. [Tips for Effective Use](#tips-for-effective-use)
+11. [Troubleshooting](#troubleshooting)
+12. [Support & Resources](#support--resources)
 
 ---
 
@@ -510,6 +511,141 @@ Based on the loaded domain model (`Domain_model.xmi`):
 - **[CYPHER_QUERIES.md](CYPHER_QUERIES.md)**: Advanced query examples
 - **[ARTIFACTS_BROWSER.md](ARTIFACTS_BROWSER.md)**: Detailed artifact browsing guide
 
+---
+
+## API Integration & Advanced Features
+
+### 🔌 REST API Access
+
+The MBSE Knowledge Graph provides a comprehensive REST API for integration with external tools and automation. The API is built with **FastAPI** and provides interactive documentation.
+
+#### Access the API Documentation
+**OpenAPI/Swagger UI**: `http://[server-url]:5000/api/docs`
+
+This interactive documentation allows you to:
+- Browse all available endpoints
+- See request/response schemas
+- Test endpoints directly in your browser
+- Download the OpenAPI specification
+
+### Available API Endpoints
+
+#### 🔐 Authentication (`/api/auth`)
+Secure access to the API with JWT tokens:
+- `POST /auth/login` - Authenticate and get access token
+- `POST /auth/refresh` - Refresh expired token
+- `POST /auth/logout` - Revoke token
+- `GET /auth/verify` - Verify token validity
+- `POST /auth/change-password` - Update password
+
+#### 🏭 PLM Integration (`/api/plm`)
+Product Lifecycle Management integration:
+- `GET /plm/traceability` - Requirements traceability matrix
+- `GET /plm/composition/{node_id}` - Bill of Materials hierarchy
+- `GET /plm/impact/{node_id}` - Change impact analysis (upstream/downstream)
+- `GET /plm/parameters` - Extract simulation parameters
+- `GET /plm/constraints` - Get validation constraints
+
+**Business Use Case**: Integrate with Windchill, Teamcenter, or other PLM systems to sync engineering data.
+
+#### 🔬 Simulation Integration (`/api/simulation`)
+Connect to simulation tools (Simulink, ANSYS, etc.):
+- `GET /simulation/parameters` - Extract parameters with types and constraints
+- `POST /simulation/validate` - Validate parameter values against constraints
+- `GET /simulation/units` - Get unit definitions and conversions
+
+**Business Use Case**: Automate parameter extraction for simulation runs, validate inputs before execution.
+
+#### 📤 Data Export (`/api/export`)
+Export graph data in multiple formats:
+- `GET /export/graphml` - GraphML XML for Gephi, yEd, Cytoscape
+- `GET /export/jsonld` - JSON-LD for semantic web applications
+- `GET /export/csv` - CSV tables in ZIP archive
+- `GET /export/step` - ISO STEP AP242 format for CAD systems
+
+**Business Use Case**: Generate reports, import into analysis tools, create documentation.
+
+#### 📜 Version Control (`/api/version`)
+Track changes and manage versions:
+- `GET /version/versions/{node_id}` - Get version history for a node
+- `POST /version/diff` - Compare two versions or nodes
+- `GET /version/history/{node_id}` - Full audit trail
+- `POST /version/checkpoint` - Create graph snapshot
+
+**Business Use Case**: Track model evolution, perform change audits, rollback to previous versions.
+
+#### 📊 Core Operations (`/api`)
+Basic CRUD and search:
+- `GET /packages` - List all packages
+- `GET /classes` - List classes with filtering
+- `GET /search` - Full-text search across all nodes
+- `GET /stats` - Database statistics
+- `GET /health` - System health check
+
+#### 🔗 Graph Queries (`/api/graph`)
+Advanced graph operations:
+- `GET /graph/traverse` - Graph traversal with depth control
+- `GET /graph/neighbors` - Get connected nodes
+- `POST /graph/path` - Find paths between nodes
+
+#### 🌳 Hierarchy & Traceability (`/api/hierarchy`)
+Navigate model structure:
+- `GET /hierarchy/tree` - Full tree structure
+- `GET /hierarchy/trace` - Bidirectional traceability
+
+#### 📐 ISO Standard Compliance
+- `GET /api/ap239` - ISO 10303-239 (Requirements Management)
+- `GET /api/ap242` - ISO 10303-242 (CAD Integration)
+- `GET /api/ap243` - ISO 10303-243 (Product Structures)
+- `GET /api/v1` - SMRL v1 (ISO 10303-4443)
+
+### API Usage Examples
+
+#### Example 1: Search for Components
+```bash
+curl http://localhost:5000/api/search?q=motor
+```
+
+#### Example 2: Get Traceability Matrix
+```bash
+curl http://localhost:5000/api/plm/traceability?source_type=Requirement&depth=3
+```
+
+#### Example 3: Export to GraphML
+```bash
+curl -o graph.graphml "http://localhost:5000/api/export/graphml?limit=1000"
+```
+
+#### Example 4: Check System Health
+```bash
+curl http://localhost:5000/api/health
+```
+
+### Integration Scenarios
+
+#### Scenario 1: Automated Testing Pipeline
+Use `/api/simulation/validate` to validate parameter sets before running expensive simulations.
+
+#### Scenario 2: PLM Synchronization
+Query `/api/plm/composition/{id}` to sync BOM data with external PLM systems.
+
+#### Scenario 3: Documentation Generation
+Export via `/api/export/csv` to generate Excel reports for stakeholders.
+
+#### Scenario 4: Change Management
+Use `/api/plm/impact/{id}` to assess affected components before implementing changes.
+
+#### Scenario 5: Compliance Audits
+Query `/api/version/history/{id}` to generate change audit trails for certification.
+
+### API Performance Notes
+- **Pagination**: Most endpoints support `limit` and `offset` parameters
+- **Caching**: Responses are cached for frequently accessed data
+- **Rate Limiting**: 100 requests per minute per IP (configurable)
+- **Timeouts**: 30-second timeout for complex queries
+
+
+
 ### 🔧 Technical Support
 - **Server Issues**: Contact your IT administrator
 - **Data Updates**: Contact the model manager to reload from updated XMI files
@@ -553,6 +689,7 @@ Based on the loaded domain model (`Domain_model.xmi`):
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0 | Dec 2025 | FastAPI migration complete - Added comprehensive REST API documentation with 15 endpoint groups |
 | 1.0 | Dec 2025 | Initial release with Association display enhancement |
 
 ---
