@@ -186,9 +186,9 @@ async def get_traceability(
 
         # Relationship filter with depth
         if relationship_type:
-            query_parts.append(f"-[r:{relationship_type}*1..{depth}]->")
+            query_parts.append(f"-[rels:{relationship_type}*1..{depth}]->")
         else:
-            query_parts.append(f"-[r*1..{depth}]->")
+            query_parts.append(f"-[rels*1..{depth}]->")
 
         # Target node filter
         if target_type:
@@ -202,11 +202,11 @@ async def get_traceability(
         RETURN source.id as source_id,
                source.name as source_name,
                labels(source)[0] as source_type,
-               [rel in r | type(rel)] as relationship_chain,
+               [rel in rels | type(rel)] as relationship_chain,
                target.id as target_id,
                target.name as target_name,
                labels(target)[0] as target_type,
-               length(r) as path_length
+               size(rels) as path_length
         ORDER BY path_length, source_name, target_name
         LIMIT 1000
         """

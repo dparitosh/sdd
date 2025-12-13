@@ -204,6 +204,24 @@ async def export_jsonld(
 
         result = neo4j.execute_query(query, {"limit": limit})
 
+        # Build JSON-LD with proper serialization
+        graph_data = []
+        for r in result:
+            # Convert datetime objects to ISO format strings
+            props = {}
+            for key, value in r["props"].items():
+                if hasattr(value, 'isoformat'):
+                    props[key] = value.isoformat()
+                else:
+                    props[key] = value
+            
+            graph_data.append({
+                "@id": f"urn:uuid:{r['id']}",
+                "@type": r["labels"],
+                "properties": props,
+                "relationships": [rel for rel in r["relationships"] if rel.get("target")],
+            })
+
         jsonld = {
             "@context": {
                 "@vocab": "http://www.omg.org/spec/UML/20131001/",
@@ -211,15 +229,7 @@ async def export_jsonld(
                 "id": "@id",
                 "type": "@type",
             },
-            "@graph": [
-                {
-                    "@id": f"urn:uuid:{r['id']}",
-                    "@type": r["labels"],
-                    "properties": r["props"],
-                    "relationships": [rel for rel in r["relationships"] if rel.get("target")],
-                }
-                for r in result
-            ],
+            "@graph": graph_data,
         }
 
         return Response(
@@ -243,7 +253,7 @@ async def export_jsonld(
 
 @router.get("/csv")
 async def export_csv(
-    node_type: str = Query(..., description="Node type to export (required)"),
+    node_type: Optional[str] = Query(None, description="Node type to export (optional, exports all if not specified)"),
     properties: Optional[str] = Query(None, description="Comma-separated list of properties to include"),
     limit: int = Query(10000, ge=1, le=50000, description="Maximum number of nodes")
 ):
@@ -266,13 +276,17 @@ async def export_csv(
     try:
         neo4j = get_neo4j_service()
 
-        query = f"MATCH (n:{node_type}) RETURN properties(n) as props LIMIT $limit"
+        if node_type:
+            query = f"MATCH (n:{node_type}) RETURN properties(n) as props, labels(n)[0] as label LIMIT $limit"
+        else:
+            query = "MATCH (n) RETURN properties(n) as props, labels(n)[0] as label LIMIT $limit"
+        
         result = neo4j.execute_query(query, {"limit": limit})
 
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No {node_type} nodes found"
+                detail=f"No nodes found"
             )
 
         # Determine columns
@@ -295,15 +309,16 @@ async def export_csv(
             writer.writerow(row)
 
         # Create ZIP file
+        filename_base = node_type if node_type else "all_nodes"
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            zip_file.writestr(f"{node_type}_export.csv", output.getvalue())
+            zip_file.writestr(f"{filename_base}_export.csv", output.getvalue())
         zip_buffer.seek(0)
 
         return Response(
             content=zip_buffer.getvalue(),
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={node_type}_export.zip"},
+            headers={"Content-Disposition": f"attachment; filename={filename_base}_export.zip"},
         )
 
     except HTTPException:
