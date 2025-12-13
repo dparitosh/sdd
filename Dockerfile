@@ -33,6 +33,6 @@ ENV PYTHONPATH=/app/src:$PYTHONPATH
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:5000/health || exit 1
+  CMD curl -f http://localhost:5000/api/health || exit 1
 
-CMD ["python", "src/web/app.py"]
+CMD ["python", "-m", "uvicorn", "src.web.app_fastapi:app", "--host", "0.0.0.0", "--port", "5000"]

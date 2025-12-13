@@ -54,20 +54,27 @@ A distributed collaboration platform for Model-Based Systems Engineering (MBSE) 
 
 ## Quick Start
 
-### 1. Start the Web UI + REST API Server
+### 1. Start the FastAPI Backend Server
 
 ```bash
 cd /workspaces/mbse-neo4j-graph-rep
-PYTHONPATH=src python3 src/web/app.py
+
+# Using uvicorn directly (recommended for development)
+python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
+
+# Or using the startup script
+./start_backend.sh
 ```
 
 ### 2. Access the Application
 
-- **Web UI:** http://127.0.0.1:5000
-- **REST API (Legacy):** http://127.0.0.1:5000/api/
-- **SMRL v1 API:** http://127.0.0.1:5000/api/v1/ ✨ NEW
-- **Health Check:** http://127.0.0.1:5000/api/v1/health
-- **OpenAPI Spec:** http://127.0.0.1:5000/api/openapi.json
+- **Web UI (React):** http://localhost:3001 (start with `cd frontend && npm run dev`)
+- **REST API:** http://localhost:5000/api/
+- **SMRL v1 API:** http://localhost:5000/api/v1/ ✨
+- **Health Check:** http://localhost:5000/api/health
+- **OpenAPI Docs:** http://localhost:5000/api/docs 🎯 **Interactive API Documentation**
+- **ReDoc:** http://localhost:5000/api/redoc
+- **OpenAPI JSON:** http://localhost:5000/api/openapi.json
 - **MCP Server:** See [mcp-server/README.md](mcp-server/README.md) for AI assistant integration
 
 ### 3. Test the APIs

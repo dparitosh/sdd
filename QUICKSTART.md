@@ -1,6 +1,6 @@
-# Quick Start Guide - Authentication & AI Agent
+# Quick Start Guide - FastAPI Backend with Authentication
 
-This guide gets you started with the **JWT Authentication** and **AI Agent Framework** features added in Phase 1.
+This guide gets you started with the **FastAPI backend** featuring JWT Authentication and comprehensive REST APIs.
 
 ---
 
@@ -16,8 +16,10 @@ JWT_SECRET_KEY=your-secret-key-change-in-production
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
 
-# AI Agent (optional - only if using agent)
-OPENAI_API_KEY=sk-your-openai-api-key
+# Neo4j Connection (already configured for Aura)
+NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
 ```
 
 **Generate secure JWT_SECRET_KEY** (recommended for production):
@@ -26,34 +28,49 @@ import secrets
 print(secrets.token_urlsafe(32))
 ```
 
-### 2. Install New Dependencies
+### 2. Install Dependencies
 
-Dependencies already installed:
+All dependencies already installed:
+- ✅ FastAPI 0.124.2
+- ✅ Uvicorn 0.30.6
+- ✅ Pydantic 2.10.6
 - ✅ PyJWT 2.10.1
-- ✅ langgraph 1.0.4
-- ✅ langchain 1.1.2
-- ✅ langchain-openai 1.1.0
 
 To verify:
 ```bash
-pip list | grep -E "(PyJWT|langgraph|langchain)"
+pip list | grep -E "(fastapi|uvicorn|pydantic|PyJWT)"
 ```
 
-### 3. Restart Flask Server
+### 3. Start FastAPI Server
 
-The auth blueprint is already registered in `app.py`:
 ```bash
-python src/web/app.py
+# Using uvicorn directly (recommended for development)
+python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
+
+# Or using the startup script
+./start_backend.sh
 ```
 
 Look for:
 ```
-✓ Registered Authentication routes (/api/auth/)
+✓ Registered Authentication routes (FastAPI)
+✓ Registered PLM Integration routes (FastAPI)
+🎉 100% FastAPI Migration Complete - All 15 Routes Converted!
 ```
 
 ---
 
 ## 🔐 Using Authentication
+
+### Access Interactive API Docs
+
+**Best way to test:** Visit http://localhost:5000/api/docs
+
+The OpenAPI/Swagger UI provides:
+- Interactive API testing
+- Automatic request/response validation
+- Built-in authentication handling
+- Real-time API exploration
 
 ### Test Login (curl)
 

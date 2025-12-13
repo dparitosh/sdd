@@ -36,7 +36,9 @@ services:
       - ./logs:/app/logs
     networks:
       - mbse-network
-    command: python src/main.py
+    ports:
+      - "5000:5000"
+    command: python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000
 
 volumes:
   neo4j_data:
