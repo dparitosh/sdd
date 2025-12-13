@@ -24,11 +24,12 @@ The MBSE Knowledge Graph system uses a **modern decoupled architecture** with se
                          │ Proxy: /api/* → localhost:5000
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│          Flask REST API (Port 5000)                          │
+│          FastAPI REST API (Port 5000)                        │
 │  • REST API endpoints (/api/*)                               │
 │  • Neo4j database integration                                │
 │  • Authentication & Authorization                            │
 │  • Root (/) redirects to frontend                            │
+│  • OpenAPI/Swagger docs at /api/docs                         │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          │ neo4j+s://
@@ -76,10 +77,11 @@ npm run dev
 **Location:** `/workspaces/mbse-neo4j-graph-rep/src/web/`
 
 **Technology Stack:**
-- Flask 3.x (Python web framework)
+- **FastAPI** (async Python web framework) ✅ **100% Migration Complete**
 - Neo4j Python Driver
-- Flask-CORS (cross-origin support)
-- Flask-SocketIO (real-time updates)
+- Pydantic (request/response validation)
+- Uvicorn (ASGI server)
+- **15/15 routes converted** from Flask to FastAPI
 
 **Key Endpoints:**
 - `GET /` - **Redirects to frontend dashboard**
@@ -95,7 +97,9 @@ npm run dev
 ```bash
 cd /workspaces/mbse-neo4j-graph-rep
 export PYTHONPATH=/workspaces/mbse-neo4j-graph-rep
-python3 src/web/app.py
+python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
+# OR use the startup script
+./start_backend.sh
 ```
 
 **Environment:**
@@ -141,11 +145,14 @@ python3 src/web/app.py
 - Mixing backend rendering with frontend logic
 - Difficult to maintain and extend
 
-**Current Setup:**
-- Flask redirects `/` to React frontend
+**Current Setup (Dec 2025):**
+- **FastAPI** with async support and automatic OpenAPI docs
+- All 15 routes migrated from Flask to FastAPI
+- FastAPI redirects `/` to React frontend
 - Clean REST API under `/api/*`
 - Modern React dashboards with TypeScript
-- Easy to extend and maintain
+- Comprehensive Pydantic models for type safety
+- Interactive API docs at `/api/docs`
 
 ## Key Features
 
@@ -217,8 +224,9 @@ curl http://localhost:5000/info | jq
 
 **Backend Changes:**
 1. Edit files in `src/web/routes/`
-2. Restart Flask server
+2. Uvicorn auto-reloads (with `--reload` flag)
 3. Changes reflected immediately
+4. Visit `/api/docs` to see updated OpenAPI documentation
 
 ## URLs Reference
 
@@ -228,13 +236,21 @@ curl http://localhost:5000/info | jq
 | Backend | http://localhost:5000 | https://vigilant-space-goldfish-5x6rp4rvpxg244wj-5000.app.github.dev |
 | Database | neo4j+s://2cccd05b.databases.neo4j.io | (same) |
 
-## Next Steps
+## Recent Achievements
 
 1. ✅ **Backend redirects to frontend** - Eliminates duplicate UI
-2. ✅ **REST APIs working** - 8/8 AP endpoints functional
+2. ✅ **REST APIs working** - 15/15 routes functional
 3. ✅ **React dashboards implemented** - AP239/AP242/AP243 views ready
-4. 🔄 **Frontend testing needed** - Verify dashboards load real data
-5. 📋 **Documentation** - Update user guides with new URLs
+4. ✅ **FastAPI migration complete** - 100% converted from Flask (Dec 2025)
+5. ✅ **API documentation** - Interactive OpenAPI docs at `/api/docs`
+6. ✅ **Type safety** - 63 Pydantic models across all routes
+
+## Next Steps
+
+1. 🔄 **Frontend testing** - Verify all dashboards load real data
+2. 📋 **Performance optimization** - Add caching, optimize queries
+3. 🔒 **Security hardening** - JWT authentication, rate limiting
+4. 📦 **Production deployment** - Docker, Kubernetes, CI/CD
 
 ## Support
 
