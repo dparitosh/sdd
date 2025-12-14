@@ -1,8 +1,9 @@
 """
-Web Routes - Blueprint-based route modules
+Web Routes - FastAPI route modules
+All routes have been migrated to FastAPI routers (*_fastapi.py files)
 """
 
-from .core import core_bp
-from .smrl_v1 import smrl_bp
+# FastAPI routers are imported directly in app_fastapi.py
+# This file is kept for compatibility but no longer exports Flask blueprints
 
-__all__ = ["smrl_bp", "core_bp"]
+__all__ = []

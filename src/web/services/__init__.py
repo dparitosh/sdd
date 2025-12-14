@@ -15,6 +15,12 @@ from .cache_service import (
 )
 from .neo4j_service import Neo4jService, get_neo4j_service, reset_neo4j_service
 from .smrl_adapter import SMRLAdapter
+from .smrl_validator import (
+    SMRLSchemaValidator,
+    get_smrl_validator,
+    validate_smrl_resource,
+    validate_smrl_collection,
+)
 
 __all__ = [
     "Neo4jService",
@@ -30,4 +36,8 @@ __all__ = [
     "invalidate_stats_cache",
     "get_cache_stats",
     "SMRLAdapter",
+    "SMRLSchemaValidator",
+    "get_smrl_validator",
+    "validate_smrl_resource",
+    "validate_smrl_collection",
 ]

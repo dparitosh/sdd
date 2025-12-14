@@ -434,7 +434,7 @@ async def create_checkpoint(checkpoint_request: CheckpointRequest):
         stats_query = """
         MATCH (n)
         WITH COUNT(n) as node_count, COLLECT(DISTINCT labels(n)) as all_labels
-        MATCH ()-[r]->()
+        OPTIONAL MATCH ()-[r]->()
         RETURN node_count,
                COUNT(r) as relationship_count,
                all_labels

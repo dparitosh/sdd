@@ -1,6 +1,7 @@
 """
 Authentication Routes (FastAPI)
 Provides JWT-based login, token refresh, logout, and password management endpoints
+With Redis-based session management support
 """
 
 import os
@@ -8,17 +9,32 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
+from src.web.middleware.session_manager import SessionManager
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+# Session manager instance (will be injected)
+_session_manager: Optional[SessionManager] = None
+
+
+def set_session_manager(session_manager: SessionManager):
+    """Set global session manager instance"""
+    global _session_manager
+    _session_manager = session_manager
+
+
+def get_session_manager() -> Optional[SessionManager]:
+    """Get global session manager instance"""
+    return _session_manager
 
 
 class AuthConfig:
@@ -85,8 +101,13 @@ class VerifyResponse(BaseModel):
 # ============================================================================
 
 
-def create_access_token(username: str, role: str = "user") -> str:
-    """Create JWT access token"""
+def create_access_token(
+    username: str,
+    role: str = "user",
+    session_id: Optional[str] = None,
+    permissions: Optional[list] = None
+) -> str:
+    """Create JWT access token with session support"""
     expires_at = datetime.utcnow() + timedelta(minutes=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     payload = {
@@ -96,9 +117,15 @@ def create_access_token(username: str, role: str = "user") -> str:
         "exp": expires_at,
         "iat": datetime.utcnow(),
     }
+    
+    if session_id:
+        payload["session_id"] = session_id
+    
+    if permissions:
+        payload["permissions"] = permissions
 
     token = jwt.encode(payload, AuthConfig.SECRET_KEY, algorithm=AuthConfig.ALGORITHM)
-    logger.info(f"Created access token for user: {username}")
+    logger.info(f"Created access token for user: {username} (session: {session_id})")
     return token
 
 
@@ -235,14 +262,16 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
 
 
 @router.post("/login", response_model=LoginResponse, response_class=Neo4jJSONResponse)
-async def login(credentials: LoginRequest):
+async def login(credentials: LoginRequest, request: Request):
     """
     User login endpoint
     
     Authenticate with username and password to receive JWT tokens.
+    Creates a managed session with activity tracking.
     
     Args:
         credentials: Login credentials (username and password)
+        request: FastAPI request object
         
     Returns:
         Access token, refresh token, and user information
@@ -267,11 +296,34 @@ async def login(credentials: LoginRequest):
                 detail="Invalid username or password"
             )
 
-        # Generate tokens
-        access_token = create_access_token(user["username"], user["role"])
+        # Create session if session manager available
+        session_id = None
+        session_manager = get_session_manager()
+        
+        if session_manager:
+            client_ip = request.client.host if request.client else "unknown"
+            user_agent = request.headers.get("User-Agent", "unknown")
+            
+            session_id = await session_manager.create_session(
+                username=user["username"],
+                role=user["role"],
+                ip_address=client_ip,
+                user_agent=user_agent,
+                expires_in=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            )
+            
+            # Enforce session limits
+            await session_manager.enforce_session_limit(user["username"], max_sessions=5)
+
+        # Generate tokens with session
+        access_token = create_access_token(
+            username=user["username"],
+            role=user["role"],
+            session_id=session_id
+        )
         refresh_token = create_refresh_token(user["username"])
 
-        logger.info(f"User logged in: {credentials.username}")
+        logger.info(f"User logged in: {credentials.username} (session: {session_id})")
 
         return {
             "access_token": access_token,
@@ -346,9 +398,9 @@ async def refresh_token_endpoint(refresh_request: RefreshRequest):
 @router.post("/logout", response_model=MessageResponse, response_class=Neo4jJSONResponse)
 async def logout(current_user: dict = Depends(get_current_user), authorization: str = Header(...)):
     """
-    Logout endpoint (revokes current access token)
+    Logout endpoint (revokes current access token and session)
     
-    Invalidate the current access token by adding it to the blacklist.
+    Invalidate the current access token and revoke the session.
     
     Args:
         current_user: Current authenticated user (from dependency)
@@ -361,10 +413,20 @@ async def logout(current_user: dict = Depends(get_current_user), authorization: 
         # Extract token from header
         _, token = authorization.split()
         
-        # Revoke token
+        # Decode token to get session_id
+        payload = jwt.decode(token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM], options={"verify_signature": False})
+        session_id = payload.get("session_id")
+        
+        # Revoke token in blacklist
         revoke_token(token)
+        
+        # Revoke session if session manager available
+        session_manager = get_session_manager()
+        if session_manager and session_id:
+            await session_manager.revoke_session(session_id)
+            await session_manager.blacklist_token(token, AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
-        logger.info(f"User logged out: {current_user['username']}")
+        logger.info(f"User logged out: {current_user['username']} (session: {session_id})")
 
         return {"message": "Successfully logged out"}
 

@@ -1,6 +1,8 @@
 """
 Multi-Agent Orchestration Workflow using LangGraph
 Coordinates specialized agents (MBSE, PLM, Simulation, Compliance) for complex engineering tasks
+
+Now also supports Azure AI Baseline Orchestrator pattern (vendor-neutral).
 """
 
 import operator
@@ -10,6 +12,13 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph import END, StateGraph
 from loguru import logger
 
+from ..agentic import (
+    BaselineOrchestrator,
+    KeywordPlanner,
+    SimpleReflector,
+    SingleToolAgent,
+)
+from ..agentic.adapters import MBSEToolsAdapter
 from .langgraph_agent import MBSETools
 
 
@@ -335,31 +344,113 @@ def execute_engineering_workflow(user_query: str, task_type: str = "impact_analy
 
 
 # ============================================================================
+# BASELINE ORCHESTRATOR (AZURE AI PATTERN)
+# ============================================================================
+
+
+def create_baseline_orchestrator() -> BaselineOrchestrator:
+    """
+    Create a baseline orchestrator aligned with Azure AI agentic patterns.
+
+    Demonstrates:
+    - Tool Use (via MBSEToolsAdapter + ToolRegistry)
+    - Planning (via KeywordPlanner)
+    - Reflection (via SimpleReflector)
+    - Multi-Agent (via SingleToolAgent workers)
+    - Orchestrator-Agent (via BaselineOrchestrator)
+
+    No hard Azure dependencies; runs locally.
+    """
+    tools = MBSETools()
+    tool_registry = MBSEToolsAdapter(tools_api=tools)
+    planner = KeywordPlanner()
+    reflector = SimpleReflector()
+
+    # Multi-agent: one worker per domain (MBSE, PLM, Simulation, Compliance)
+    # For now we use a single agent; full multi-agent routing is a straightforward extension.
+    mbse_agent = SingleToolAgent(name="mbse_worker", planner=planner)
+
+    orchestrator = BaselineOrchestrator(
+        tool_registry=tool_registry,
+        planner=planner,
+        reflector=reflector,
+        agents=[mbse_agent],
+        retriever=None,  # Optional: add AzureAISearchRetriever or StaticRetriever
+        max_retries=1,
+    )
+
+    logger.info("✓ Baseline orchestrator created (Azure AI pattern, vendor-neutral)")
+    return orchestrator
+
+
+def execute_baseline_workflow(user_query: str) -> str:
+    """
+    Execute a goal using the baseline orchestrator.
+
+    This is a simpler, vendor-neutral alternative to the full LangGraph workflow.
+    It explicitly demonstrates Tool Use / Planning / Reflection / Orchestrator patterns.
+
+    Args:
+        user_query: Natural language goal
+
+    Returns:
+        Response string
+    """
+    logger.info(f"🚀 Executing baseline orchestrator workflow for: {user_query}")
+    orchestrator = create_baseline_orchestrator()
+
+    try:
+        response = orchestrator.run(user_query)
+        logger.info("✓ Baseline workflow completed successfully")
+        return response
+    except Exception as e:
+        logger.error(f"Baseline workflow failed: {e}")
+        return f"Error: {e}"
+
+
+# ============================================================================
 # EXAMPLE USAGE
 # ============================================================================
 
 
 if __name__ == "__main__":
-    # Example: Change impact analysis
-    result = execute_engineering_workflow(
-        user_query="What happens if I change the brake caliper material to titanium?",
-        task_type="impact_analysis",
-    )
+    import sys
 
-    print("\n" + "=" * 80)
-    print("WORKFLOW EXECUTION RESULTS")
-    print("=" * 80)
-    print(f"\nQuery: {result['user_query']}")
-    print(f"Task Type: {result['task_type']}")
-    print(f"\n--- MBSE Agent Results ---")
-    print(f"Artifacts Found: {result.get('artifact_details', 'None')}")
-    print(f"\n--- PLM Agent Results ---")
-    print(f"Affected Parts: {len(result.get('affected_parts', []))}")
-    print(f"Change Impact: {result.get('change_impact', 'None')}")
-    print(f"\n--- Simulation Agent Results ---")
-    print(f"Validation: {result.get('validation_results', 'None')}")
-    print(f"\n--- Compliance Agent Results ---")
-    print(f"Compliance Status: {result.get('compliance_status', 'None')}")
-    print(f"Recommendations: {result.get('recommendations', [])}")
-    print(f"\nError: {result.get('error', 'None')}")
-    print("=" * 80)
+    mode = sys.argv[1] if len(sys.argv) > 1 else "baseline"
+
+    if mode == "langgraph":
+        # Original LangGraph multi-agent workflow
+        result = execute_engineering_workflow(
+            user_query="What happens if I change the brake caliper material to titanium?",
+            task_type="impact_analysis",
+        )
+
+        print("\n" + "=" * 80)
+        print("LANGGRAPH WORKFLOW EXECUTION RESULTS")
+        print("=" * 80)
+        print(f"\nQuery: {result['user_query']}")
+        print(f"Task Type: {result['task_type']}")
+        print(f"\n--- MBSE Agent Results ---")
+        print(f"Artifacts Found: {result.get('artifact_details', 'None')}")
+        print(f"\n--- PLM Agent Results ---")
+        print(f"Affected Parts: {len(result.get('affected_parts', []))}")
+        print(f"Change Impact: {result.get('change_impact', 'None')}")
+        print(f"\n--- Simulation Agent Results ---")
+        print(f"Validation: {result.get('validation_results', 'None')}")
+        print(f"\n--- Compliance Agent Results ---")
+        print(f"Compliance Status: {result.get('compliance_status', 'None')}")
+        print(f"Recommendations: {result.get('recommendations', [])}")
+        print(f"\nError: {result.get('error', 'None')}")
+        print("=" * 80)
+
+    else:
+        # Baseline orchestrator (Azure AI pattern, vendor-neutral)
+        query = "Show me traceability from requirements to design elements"
+        response = execute_baseline_workflow(query)
+
+        print("\n" + "=" * 80)
+        print("BASELINE ORCHESTRATOR RESULTS (Azure AI Pattern)")
+        print("=" * 80)
+        print(f"\nQuery: {query}")
+        print(f"\nResponse:\n{response}")
+        print("\n" + "=" * 80)

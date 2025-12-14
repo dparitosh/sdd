@@ -1,18 +1,23 @@
 #!/bin/bash
 
-# Kill any existing Flask processes
-pkill -f "python.*web/app.py" 2>/dev/null
+# Kill any existing frontend processes
+pkill -f "vite" 2>/dev/null
 
 # Set up environment
 cd /workspaces/mbse-neo4j-graph-rep
-export PYTHONPATH=/workspaces/mbse-neo4j-graph-rep
 
-echo "================================="=
+echo "=================================="
 echo "🚀 Starting MBSE Knowledge Graph UI"
 echo "=================================="
 echo ""
-echo "Starting Flask server..."
+echo "Starting React frontend with Vite..."
 
-# Start Flask server
-python src/web/app.py
+# Install dependencies if needed
+if [ ! -d "node_modules" ]; then
+  echo "Installing dependencies..."
+  npm install --legacy-peer-deps
+fi
+
+# Start Vite dev server
+npm run dev
 

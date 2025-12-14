@@ -3,21 +3,25 @@ Web API for MBSE Neo4j Knowledge Graph with REST API
 ISO 10303-4443 SMRL Compliant - FastAPI Implementation
 """
 
-import json
 from contextlib import asynccontextmanager
-from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from loguru import logger
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from src.web.services import get_neo4j_service, reset_neo4j_service
+from src.web.services.redis_service import get_redis_service, close_redis_service
+from src.web.middleware.jwt_middleware import create_jwt_middleware
+from src.web.middleware.session_manager import SessionManager
+from src.web.routes.auth_fastapi import set_session_manager
+from src.web.utils.responses import Neo4jJSONResponse
 
 # Load environment variables
 load_dotenv()
@@ -26,35 +30,12 @@ load_dotenv()
 limiter = Limiter(key_func=get_remote_address)
 
 
-# Custom JSON encoder for Neo4j types
-class Neo4jJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if hasattr(obj, "iso_format"):
-            return obj.iso_format()
-        if hasattr(obj, "isoformat") and not isinstance(obj, str):
-            return obj.isoformat()
-        return super().default(obj)
-
-
-# Custom JSON response class for Neo4j types
-class Neo4jJSONResponse(JSONResponse):
-    def render(self, content: Any) -> bytes:
-        return json.dumps(
-            content,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=None,
-            separators=(",", ":"),
-            cls=Neo4jJSONEncoder,
-        ).encode("utf-8")
-
-
 # Lifespan context manager for Neo4j connections
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for FastAPI app.
-    Handles startup and shutdown events.
+    Handles startup and shutdown events including Redis and session management.
     """
     # Startup
     logger.info("Starting up FastAPI application...")
@@ -68,10 +49,52 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to connect to Neo4j: {e}")
         raise
     
+    # Initialize Redis service (optional, graceful degradation)
+    logger.info("Connecting to Redis...")
+    try:
+        from src.web.services.redis_service import get_redis_service
+        from src.web.middleware.session_manager import SessionManager
+        from src.web.routes.auth_fastapi import set_session_manager
+        
+        redis_service = await get_redis_service()
+        
+        # Initialize session manager with Redis
+        if redis_service and await redis_service.is_connected():
+            session_manager = SessionManager(redis_service.client)
+            set_session_manager(session_manager)
+            logger.info("✓ Session management enabled with Redis")
+
+            # Attach query cache to Neo4j service (async-safe)
+            try:
+                from src.web.services.query_cache import get_query_cache
+
+                cache = await get_query_cache()
+                if cache and getattr(cache, "enabled", False):
+                    neo4j_service.set_cache(cache)
+                    logger.info("✓ Neo4j query caching enabled")
+                else:
+                    logger.info("ℹ️  Neo4j query caching disabled - Redis unavailable")
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to initialize query cache: {e}")
+        else:
+            logger.warning("⚠️  Session management disabled - Redis not available")
+    except Exception as e:
+        logger.warning(f"⚠️  Redis connection failed: {e} - Continuing without session management")
+    
     yield
     
     # Shutdown
     logger.info("Shutting down FastAPI application...")
+    
+    # Close Redis
+    try:
+        from src.web.services.redis_service import close_redis_service
+        await close_redis_service()
+        logger.info("✓ Redis service closed")
+    except Exception as e:
+        logger.error(f"Error closing Redis: {e}")
+    
+    # Close Neo4j
     try:
         reset_neo4j_service()
         logger.info("✓ Neo4j connections closed")
@@ -94,17 +117,113 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configure CORS
+
+# Custom exception handler for RequestValidationError (Pydantic validation)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle Pydantic validation errors.
+    For auth endpoints, return 400 with 'error' key for test compatibility.
+    """
+    if "/api/auth/" in str(request.url.path):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Validation error"}
+        )
+    
+    # For other endpoints, use standard FastAPI format
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
+
+# Custom exception handler for HTTPException to use 'error' key instead of 'detail'
+# for auth endpoints (test compatibility)
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """
+    Transform HTTPException responses for auth endpoints.
+    Maps 'detail' -> 'error' and 422 -> 400 for test compatibility.
+    """
+    # For auth endpoints, transform response format
+    if "/api/auth/" in str(request.url.path):
+        # Map 422 validation errors to 400 bad request for auth
+        status_code = exc.status_code
+        if status_code == 422:
+            status_code = 400
+        
+        # Handle both string and list detail formats
+        error_message = exc.detail
+        if isinstance(error_message, list):
+            # For validation errors, create a simplified message
+            error_message = "Validation error"
+        
+        return JSONResponse(
+            status_code=status_code,
+            content={"error": error_message}
+        )
+    
+    # For other endpoints, use standard FastAPI format
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+
+# Configure CORS - Restrict to specific origins in production
+import os
+allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3001,http://localhost:3000').split(',')
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=allowed_origins,  # Restricted to frontend origins only
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicit methods only
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],  # Explicit headers only
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Add GZip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# Request logging middleware for audit trail
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all API requests for audit trail"""
+    import time
+    import uuid
+    
+    # Generate request ID
+    request_id = str(uuid.uuid4())[:8]
+    request.state.request_id = request_id
+    
+    # Log request
+    start_time = time.time()
+    logger.info(f"[{request_id}] {request.method} {request.url.path} - Started")
+    
+    # Process request
+    try:
+        response = await call_next(request)
+        duration = time.time() - start_time
+        
+        # Log response
+        logger.info(
+            f"[{request_id}] {request.method} {request.url.path} - "
+            f"Status: {response.status_code}, Duration: {duration:.3f}s"
+        )
+        
+        # Add request ID to response headers
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error(
+            f"[{request_id}] {request.method} {request.url.path} - "
+            f"Error: {str(e)}, Duration: {duration:.3f}s"
+        )
+        raise
 
 
 # Security headers middleware
@@ -290,6 +409,13 @@ except ImportError as e:
     logger.warning(f"Authentication routes not yet migrated: {e}")
 
 try:
+    from src.web.routes.sessions_fastapi import router as sessions_router
+    app.include_router(sessions_router, prefix="/api", tags=["Session Management"])
+    logger.info("✓ Registered Session Management routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Session Management routes not available: {e}")
+
+try:
     from src.web.routes.plm_fastapi import router as plm_integration_router
     app.include_router(plm_integration_router, prefix="/api", tags=["PLM Integration"])
     logger.info("✓ Registered PLM Integration routes (FastAPI)")
@@ -317,8 +443,29 @@ try:
 except ImportError as e:
     logger.warning(f"Version routes not yet migrated: {e}")
 
+try:
+    from src.web.routes.cache_fastapi import router as cache_router
+    app.include_router(cache_router, prefix="/api", tags=["Cache Management"])
+    logger.info("✓ Registered Cache Management routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Cache routes not available: {e}")
+
+try:
+    from src.web.routes.upload_fastapi import router as upload_router
+    app.include_router(upload_router, tags=["File Upload"])
+    logger.info("✓ Registered File Upload routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Upload routes not available: {e}")
+
+try:
+    from src.web.routes.graphql_fastapi import graphql_router
+    app.include_router(graphql_router, prefix="/api/graphql", tags=["GraphQL"])
+    logger.info("✓ Registered GraphQL routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"GraphQL routes not available: {e}")
+
 logger.info("=" * 60)
-logger.info("🎉 100% FastAPI Migration Complete - All 15 Routes Converted!")
+logger.info("🎉 100% FastAPI Migration Complete - All Routes Converted!")
 logger.info("=" * 60)
 
 # Entry point for uvicorn

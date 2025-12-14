@@ -238,12 +238,32 @@ curl http://localhost:5000/info | jq
 
 ## Recent Achievements
 
+## Azure AI Baseline Alignment
+
+For a standardized component model and an Azure-aligned “agentic system” decomposition (tool-use, RAG, planning, reflection, multi-agent, orchestrator), see:
+- [docs/azure-ai-baseline/README.md](docs/azure-ai-baseline/README.md) - Overview and pattern catalog
+- [docs/azure-ai-baseline/ALIGNMENT.md](docs/azure-ai-baseline/ALIGNMENT.md) - Design pattern alignment
+- [docs/azure-ai-baseline/COMPONENT_MODEL.md](docs/azure-ai-baseline/COMPONENT_MODEL.md) - Component boundaries and Azure mapping
+- [docs/azure-ai-baseline/OBSERVABILITY.md](docs/azure-ai-baseline/OBSERVABILITY.md) - Instrumentation guidance
+- [docs/azure-ai-baseline/DEPLOYMENT_REFERENCE.md](docs/azure-ai-baseline/DEPLOYMENT_REFERENCE.md) - Deployment checklist
+
+**Implemented Agentic Patterns** (vendor-neutral, Azure-compatible):
+- ✅ **Tool Use**: `src/agentic/tool_registry.py`, `src/agentic/adapters.py` (exposes MBSETools + MCP tools)
+- ✅ **Planning**: `src/agentic/planning.py` (KeywordPlanner, extensible to LLM planner)
+- ✅ **Reflection**: `src/agentic/reflection.py` (SimpleReflector for post-tool outcome review)
+- ✅ **Orchestrator-Agent**: `src/agentic/orchestrator.py` (BaselineOrchestrator coordinates plan → tools → reflect)
+- ✅ **Multi-Agent Collaboration**: `src/agents/orchestrator_workflow.py` (LangGraph workflow + baseline orchestrator integration)
+- ✅ **RAG Boundary**: `src/agentic/retrieval.py` (StaticRetriever + AzureAISearchRetriever placeholder)
+
+**Verification**: Integration tests in `tests/test_baseline_orchestrator.py` (6/6 passing).
+
 1. ✅ **Backend redirects to frontend** - Eliminates duplicate UI
 2. ✅ **REST APIs working** - 15/15 routes functional
 3. ✅ **React dashboards implemented** - AP239/AP242/AP243 views ready
 4. ✅ **FastAPI migration complete** - 100% converted from Flask (Dec 2025)
 5. ✅ **API documentation** - Interactive OpenAPI docs at `/api/docs`
 6. ✅ **Type safety** - 63 Pydantic models across all routes
+7. ✅ **Azure AI baseline alignment** - Standardized agentic runtime (Dec 14, 2025)
 
 ## Next Steps
 

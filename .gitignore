@@ -86,6 +86,14 @@ Thumbs.db
 
 # Old frontend files (to be removed)
 node_modules/
-package-lock.json
 dist/
 *.local
+
+# Monorepo / subprojects
+**/node_modules/
+**/dist/
+frontend/package-lock.json
+
+# Upload staging
+data/uploads/
+!data/uploads/.gitkeep

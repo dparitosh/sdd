@@ -166,19 +166,23 @@ async def get_requirements(
     priority: Optional[str] = Query(None, description="Filter by priority (High, Medium, Low)"),
     status: Optional[str] = Query(None, description="Filter by status (Draft, Approved, Obsolete)"),
     search: Optional[str] = Query(None, description="Search in name and description"),
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of results"),
+    offset: int = Query(0, ge=0, description="Number of results to skip"),
     api_key: str = Depends(get_api_key)
 ):
     """
-    Get all requirements with optional filtering
+    Get all requirements with optional filtering and pagination
     
     Args:
         type: Filter by requirement type (Performance, Functional, etc.)
         priority: Filter by priority (High, Medium, Low)
         status: Filter by status (Draft, Approved, Obsolete)
         search: Text search in name and description
+        limit: Maximum number of results (default: 100, max: 500)
+        offset: Number of results to skip for pagination
         
     Returns:
-        Array of requirement objects
+        Array of requirement objects with pagination
     """
     try:
         neo4j = get_neo4j_service()
@@ -204,6 +208,10 @@ async def get_requirements(
             params["search"] = f"(?i).*{search}.*"
 
         where_clause = " AND ".join(filters) if filters else "1=1"
+        
+        # Add pagination parameters
+        params["limit"] = limit
+        params["offset"] = offset
 
         query = f"""
         MATCH (req:Requirement)
@@ -220,6 +228,8 @@ async def get_requirements(
                COLLECT(DISTINCT v.version) AS versions,
                COLLECT(DISTINCT part.name) AS satisfied_by_parts
         ORDER BY req.priority DESC, req.created_at DESC
+        SKIP $offset
+        LIMIT $limit
         """
 
         results = neo4j.execute_query(query, params)
@@ -373,6 +383,88 @@ async def get_requirement_traceability(
         raise
     except Exception as e:
         logger.error(f"Error fetching traceability for {req_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BulkTraceabilityRequest(BaseModel):
+    requirement_ids: List[str] = Field(..., min_items=1, max_items=100)
+
+
+class BulkTraceabilityItem(BaseModel):
+    requirement_id: str
+    requirement_name: Optional[str] = None
+    traceability: List[TraceabilityLink]
+
+
+class BulkTraceabilityResponse(BaseModel):
+    count: int
+    results: List[BulkTraceabilityItem]
+
+
+@router.post("/requirements/traceability/bulk", response_model=BulkTraceabilityResponse, response_class=Neo4jJSONResponse)
+async def get_bulk_requirement_traceability(
+    request: BulkTraceabilityRequest,
+    api_key: str = Depends(get_api_key)
+):
+    """
+    Get traceability chains for multiple requirements in a single query (fixes N+1 problem)
+    
+    Args:
+        request: Object with requirement_ids array (max 100 IDs)
+        api_key: API key for authentication
+        
+    Returns:
+        Array of traceability results for each requirement
+    
+    Performance:
+        This endpoint resolves the N+1 query problem by fetching all traceability
+        data in a single database query instead of one query per requirement.
+    """
+    try:
+        neo4j = get_neo4j_service()
+
+        # Bulk query fetches all requirements and their traceability in one go
+        query = """
+        UNWIND $req_ids AS req_id
+        MATCH (req:Requirement {id: req_id})
+        OPTIONAL MATCH (req)-[:SATISFIED_BY_PART]->(part:Part)
+        OPTIONAL MATCH (part)-[:USES_MATERIAL]->(mat:Material)
+        OPTIONAL MATCH (mat)-[:MATERIAL_CLASSIFIED_AS]->(owl:ExternalOwlClass)
+        WITH req, part, 
+             COLLECT(DISTINCT mat.name) AS materials,
+             COLLECT(DISTINCT owl.name) AS ontologies
+        RETURN req.id AS requirement_id,
+               req.name AS requirement_name,
+               COLLECT({
+                   part_id: part.id,
+                   part_name: part.name,
+                   materials: materials,
+                   ontologies: ontologies
+               }) AS traceability_chain
+        """
+
+        results = neo4j.execute_query(query, {"req_ids": request.requirement_ids})
+
+        # Format response
+        bulk_results = [
+            {
+                "requirement_id": r["requirement_id"],
+                "requirement_name": r["requirement_name"],
+                "traceability": [
+                    link for link in r["traceability_chain"]
+                    if link.get("part_id")  # Filter out empty links
+                ]
+            }
+            for r in results
+        ]
+
+        return {
+            "count": len(bulk_results),
+            "results": bulk_results
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching bulk traceability: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

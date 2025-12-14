@@ -5,6 +5,7 @@
 
 import { io, Socket } from 'socket.io-client';
 import { QueryClient } from '@tanstack/react-query';
+import logger from '../utils/logger';
 
 interface GraphUpdate {
   type: 'node_created' | 'node_updated' | 'node_deleted' | 'relationship_created' | 'relationship_deleted';
@@ -35,7 +36,7 @@ class WebSocketService {
    */
   connect(queryClient: QueryClient, url?: string) {
     if (this.socket?.connected) {
-      console.log('[WebSocket] Already connected');
+      logger.log('[WebSocket] Already connected');
       return;
     }
 
@@ -43,14 +44,14 @@ class WebSocketService {
 
     // WebSocket through Codespaces doesn't work well - disable for now
     // In production, API calls will handle updates
-    console.warn('[WebSocket] Skipping connection - not supported in Codespaces environment');
+    logger.warn('[WebSocket] Skipping connection - not supported in Codespaces environment');
     this.status.error = 'WebSocket disabled in Codespaces environment';
     return;
 
     // Auto-detect WebSocket URL based on environment
     const wsUrl = url || window.location.origin;
 
-    console.log('[WebSocket] Connecting to', wsUrl);
+    logger.log('[WebSocket] Connecting to', wsUrl);
     this.socket = io(wsUrl, {
       path: '/socket.io',
       transports: ['polling', 'websocket'], // Try polling first, then websocket
@@ -62,7 +63,7 @@ class WebSocketService {
 
     // Connection event handlers
     this.socket.on('connect', () => {
-      console.log('[WebSocket] ✓ Connected to backend');
+      logger.log('[WebSocket] ✓ Connected to backend');
       this.status.connected = true;
       this.status.error = null;
       
@@ -74,70 +75,70 @@ class WebSocketService {
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('[WebSocket] ✗ Disconnected:', reason);
+      logger.log('[WebSocket] ✗ Disconnected:', reason);
       this.status.connected = false;
       this.notifyListeners('connection', { connected: false, reason });
     });
 
     this.socket.on('connect_error', (error) => {
-      console.warn('[WebSocket] Connection error (graceful degradation):', error.message);
+      logger.warn('[WebSocket] Connection error (graceful degradation):', error.message);
       this.status.error = error.message;
       this.status.connected = false;
       // Don't notify listeners on every retry to reduce noise
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log('[WebSocket] ✓ Reconnected after', attemptNumber, 'attempts');
+      logger.log('[WebSocket] ✓ Reconnected after', attemptNumber, 'attempts');
       this.status.connected = true;
       this.status.error = null;
     });
 
     // Graph update event handlers
     this.socket.on('graph_update', (data: GraphUpdate) => {
-      console.log('[WebSocket] Graph update received:', data.type);
+      logger.log('[WebSocket] Graph update received:', data.type);
       this.handleGraphUpdate(data);
     });
 
     this.socket.on('node_created', (data) => {
-      console.log('[WebSocket] Node created:', data);
+      logger.log('[WebSocket] Node created:', data);
       this.invalidateQueries(['nodes', 'graph', 'stats']);
       this.notifyListeners('node_created', data);
     });
 
     this.socket.on('node_updated', (data) => {
-      console.log('[WebSocket] Node updated:', data);
+      logger.log('[WebSocket] Node updated:', data);
       this.invalidateQueries(['nodes', 'graph']);
       this.notifyListeners('node_updated', data);
     });
 
     this.socket.on('node_deleted', (data) => {
-      console.log('[WebSocket] Node deleted:', data);
+      logger.log('[WebSocket] Node deleted:', data);
       this.invalidateQueries(['nodes', 'graph', 'stats']);
       this.notifyListeners('node_deleted', data);
     });
 
     this.socket.on('relationship_created', (data) => {
-      console.log('[WebSocket] Relationship created:', data);
+      logger.log('[WebSocket] Relationship created:', data);
       this.invalidateQueries(['relationships', 'graph', 'traceability']);
       this.notifyListeners('relationship_created', data);
     });
 
     this.socket.on('relationship_deleted', (data) => {
-      console.log('[WebSocket] Relationship deleted:', data);
+      logger.log('[WebSocket] Relationship deleted:', data);
       this.invalidateQueries(['relationships', 'graph', 'traceability']);
       this.notifyListeners('relationship_deleted', data);
     });
 
     // Requirements-specific updates
     this.socket.on('requirement_updated', (data) => {
-      console.log('[WebSocket] Requirement updated:', data);
+      logger.log('[WebSocket] Requirement updated:', data);
       this.invalidateQueries(['requirements', 'ap239-requirements', 'traceability']);
       this.notifyListeners('requirement_updated', data);
     });
 
     // Parts-specific updates
     this.socket.on('part_updated', (data) => {
-      console.log('[WebSocket] Part updated:', data);
+      logger.log('[WebSocket] Part updated:', data);
       this.invalidateQueries(['parts', 'ap242-parts', 'traceability']);
       this.notifyListeners('part_updated', data);
     });
@@ -148,7 +149,7 @@ class WebSocketService {
    */
   disconnect() {
     if (this.socket) {
-      console.log('[WebSocket] Disconnecting...');
+      logger.log('[WebSocket] Disconnecting...');
       this.socket.disconnect();
       this.socket = null;
       this.status.connected = false;
@@ -183,7 +184,7 @@ class WebSocketService {
    */
   private invalidateQueries(queryKeys: string[]) {
     if (!this.queryClient) {
-      console.warn('[WebSocket] QueryClient not initialized');
+      logger.warn('[WebSocket] QueryClient not initialized');
       return;
     }
 
@@ -200,11 +201,11 @@ class WebSocketService {
    */
   subscribe(room: string) {
     if (!this.socket?.connected) {
-      console.warn('[WebSocket] Not connected, cannot subscribe to room:', room);
+      logger.warn('[WebSocket] Not connected, cannot subscribe to room:', room);
       return;
     }
 
-    console.log('[WebSocket] Subscribing to room:', room);
+    logger.log('[WebSocket] Subscribing to room:', room);
     this.socket.emit('subscribe', { room });
   }
 
@@ -216,7 +217,7 @@ class WebSocketService {
       return;
     }
 
-    console.log('[WebSocket] Unsubscribing from room:', room);
+    logger.log('[WebSocket] Unsubscribing from room:', room);
     this.socket.emit('unsubscribe', { room });
   }
 
@@ -269,7 +270,7 @@ class WebSocketService {
    */
   emit(event: string, data: any) {
     if (!this.socket?.connected) {
-      console.warn('[WebSocket] Not connected, cannot emit event:', event);
+      logger.warn('[WebSocket] Not connected, cannot emit event:', event);
       return;
     }
 

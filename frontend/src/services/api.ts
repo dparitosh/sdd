@@ -1,8 +1,11 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
+import logger from '../utils/logger';
+import i18n from '../i18n';
+import { API_CONFIG, STORAGE_KEYS } from '../constants';
 
 // Use /api prefix for Vite proxy (vite.config.ts proxies /api to Flask)
-const API_BASE_URL = '/api';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 interface ApiErrorResponse {
   error: string | { code?: number; message?: string; details?: string };
@@ -16,7 +19,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 5000, // Reduced to 5 seconds to fail fast
+      timeout: API_CONFIG.TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -27,7 +30,7 @@ class ApiClient {
       (config) => {
         // Add auth token if available from zustand store
         try {
-          const authStorage = localStorage.getItem('mbse-auth-storage');
+          const authStorage = localStorage.getItem(STORAGE_KEYS.AUTH);
           if (authStorage) {
             const { state } = JSON.parse(authStorage);
             if (state?.token) {
@@ -35,11 +38,16 @@ class ApiClient {
             }
           }
         } catch (error) {
-          console.error('Error reading auth token:', error);
+          logger.error('Error reading auth token:', error);
         }
         
-        // Add API key from environment variable
-        const apiKey = import.meta.env.VITE_API_KEY || 'mbse_dev_key_12345';
+        // Add API key from environment variable (REQUIRED)
+        const apiKey = import.meta.env.VITE_API_KEY;
+        if (!apiKey) {
+          logger.error('VITE_API_KEY environment variable is not set');
+          toast.error(i18n.t('errors.apiKeyNotConfigured'));
+          throw new Error('API key is not configured');
+        }
         config.headers['X-API-Key'] = apiKey;
         
         return config;
@@ -52,22 +60,40 @@ class ApiClient {
     // Response interceptor
     this.client.interceptors.response.use(
       (response) => response,
-      (error: AxiosError<ApiErrorResponse>) => {
+      (error: AxiosError<any>) => {
         if (error.response) {
-          // Extract error message - handle both string and object formats
-          const errorData = error.response.data?.error;
-          const message = typeof errorData === 'string' 
-            ? errorData 
-            : errorData?.message || 'An error occurred';
-          
-          const details = typeof errorData === 'object' 
-            ? errorData?.details 
-            : error.response.data?.details;
+          let message = 'An error occurred';
+          let details: string | undefined;
+
+          // Handle FastAPI 422 validation errors
+          if (error.response.status === 422 && error.response.data?.detail) {
+            const validationErrors = error.response.data.detail;
+            if (Array.isArray(validationErrors)) {
+              message = 'Validation Error';
+              details = validationErrors.map((err: any) => 
+                `${err.loc?.join('.') || 'field'}: ${err.msg}`
+              ).join(', ');
+            } else if (typeof validationErrors === 'string') {
+              message = validationErrors;
+            } else {
+              message = 'Validation failed';
+            }
+          } else {
+            // Extract error message - handle both string and object formats
+            const errorData = error.response.data?.error;
+            message = typeof errorData === 'string' 
+              ? errorData 
+              : errorData?.message || message;
+            
+            details = typeof errorData === 'object' 
+              ? errorData?.details 
+              : error.response.data?.details;
+          }
           
           // Handle 401 Unauthorized - redirect to login
           if (error.response.status === 401) {
-            toast.error('Session expired', {
-              description: 'Please log in again',
+            toast.error(i18n.t('errors.sessionExpired'), {
+              description: i18n.t('auth.loginFailed'),
             });
             // Clear auth and redirect to login
             localStorage.removeItem('mbse-auth-storage');
@@ -125,10 +151,23 @@ class ApiClient {
 
 export const apiClient = new ApiClient();
 
-// API Service Methods
+/**
+ * API Service Methods
+ * Provides typed methods for all backend API endpoints
+ */
 export const apiService = {
   // Health & Statistics
+  
+  /**
+   * Get API health status
+   * @returns Health status and version information
+   */
   getHealth: () => apiClient.get<{ status: string; version: string }>('/health'),
+  
+  /**
+   * Get system statistics including node and relationship counts
+   * @returns Statistics object with counts by type
+   */
   getStatistics: () =>
     apiClient.get<{
       node_types: Record<string, number>;
@@ -138,6 +177,12 @@ export const apiService = {
     }>('/stats'),
 
   // Artifacts
+  
+  /**
+   * Search for artifacts in the knowledge graph
+   * @param params - Search parameters (type, name, comment, limit)
+   * @returns Array of matching artifacts
+   */
   searchArtifacts: (params: {
     type?: string;
     name?: string;
@@ -145,32 +190,81 @@ export const apiService = {
     limit?: number;
   }) => apiClient.get<any[]>('/artifacts', { params }),
 
+  /**
+   * Get a specific artifact by type and ID
+   * @param type - Artifact type (e.g., 'package', 'class')
+   * @param id - Artifact identifier
+   * @returns Artifact details
+   * @throws Error if type or id is missing
+   */
   getArtifact: (type: string, id: string) => {
     // Validate parameters to prevent undefined URLs
     if (!type || !id) {
-      console.error(`Invalid parameters: type=${type}, id=${id}`);
+      logger.error(`Invalid parameters: type=${type}, id=${id}`);
       return Promise.reject(new Error('Type and ID are required'));
     }
     return apiClient.get<any>(`/${type.toLowerCase()}/${encodeURIComponent(id)}`);
   },
 
   // SMRL v1 API
+  
+  /**
+   * SMRL (ISO 10303-4443) compliant API methods
+   */
   smrl: {
+    /**
+     * Get a specific SMRL resource
+     * @param type - Resource type (e.g., 'Requirement', 'Part')
+     * @param uid - Unique identifier
+     * @returns Resource data
+     */
     getResource: (type: string, uid: string) =>
       apiClient.get<any>(`/v1/${type}/${encodeURIComponent(uid)}`),
     
+    /**
+     * List SMRL resources with pagination
+     * @param type - Resource type
+     * @param params - Optional pagination parameters
+     * @returns Array of resources
+     */
     listResources: (type: string, params?: { limit?: number; offset?: number }) =>
       apiClient.get<any>(`/v1/${type}`, { params }),
     
+    /**
+     * Create a new SMRL resource
+     * @param type - Resource type
+     * @param data - Resource data
+     * @returns Created resource
+     */
     createResource: (type: string, data: any) =>
       apiClient.post<any>(`/v1/${type}`, data),
     
+    /**
+     * Update an existing SMRL resource (full replacement)
+     * @param type - Resource type
+     * @param uid - Unique identifier
+     * @param data - Complete resource data
+     * @returns Updated resource
+     */
     updateResource: (type: string, uid: string, data: any) =>
       apiClient.put<any>(`/v1/${type}/${encodeURIComponent(uid)}`, data),
     
+    /**
+     * Partially update an SMRL resource
+     * @param type - Resource type
+     * @param uid - Unique identifier
+     * @param data - Partial resource data
+     * @returns Updated resource
+     */
     patchResource: (type: string, uid: string, data: any) =>
       apiClient.patch<any>(`/v1/${type}/${encodeURIComponent(uid)}`, data),
     
+    /**
+     * Delete an SMRL resource
+     * @param type - Resource type
+     * @param uid - Unique identifier
+     * @returns Deletion confirmation
+     */
     deleteResource: (type: string, uid: string) =>
       apiClient.delete<any>(`/v1/${type}/${encodeURIComponent(uid)}`),
   },
@@ -191,8 +285,9 @@ export const apiService = {
     delete: (uid: string) =>
       apiClient.delete<any>(`/v1/Requirement/${encodeURIComponent(uid)}`),
     
+    // Fixed: Use correct AP239 path for traceability
     getTraceability: (uid: string) =>
-      apiClient.get<any>(`/requirements/${encodeURIComponent(uid)}/traceability`),
+      apiClient.get<any>(`/ap239/requirements/${encodeURIComponent(uid)}/traceability`),
   },
 
   // Query Editor
@@ -207,6 +302,9 @@ export const apiService = {
       apiClient.get<any>(`/ap239/requirements/${encodeURIComponent(id)}`),
     getRequirementTraceability: (id: string) =>
       apiClient.get<any>(`/ap239/requirements/${encodeURIComponent(id)}/traceability`),
+    // Bulk traceability endpoint - fixes N+1 query problem
+    getBulkRequirementTraceability: (requirementIds: string[]) =>
+      apiClient.post<{ count: number; results: any[] }>('/ap239/requirements/traceability/bulk', { requirement_ids: requirementIds }),
     getApprovals: () =>
       apiClient.get<{ count: number; approvals: any[] }>('/ap239/approvals'),
     getAnalyses: () =>
@@ -255,18 +353,22 @@ export const apiService = {
       apiClient.get<any>(`/hierarchy/trace/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceId)}`),
   },
 
-  // PLM Operations
+  // PLM Operations - Fixed paths to match backend implementation
   plm: {
-    getBOM: (partId: string) => apiClient.get<any>(`/plm/bom/${encodeURIComponent(partId)}`),
+    getBOM: (partId: string) => apiClient.get<any>(`/plm/composition/${encodeURIComponent(partId)}`),
     getChangeImpact: (partId: string) =>
-      apiClient.get<any>(`/plm/change-impact/${encodeURIComponent(partId)}`),
+      apiClient.get<any>(`/plm/impact/${encodeURIComponent(partId)}`),
+    getTraceability: (params?: { source_type?: string; target_type?: string }) =>
+      apiClient.get<any>('/plm/traceability', { params }),
   },
 
-  // Simulation Operations
+  // Simulation Operations - Updated to match actual backend implementation
   simulation: {
-    listModels: () => apiClient.get<any[]>('/simulation/models'),
-    getModel: (id: string) =>
-      apiClient.get<any>(`/simulation/models/${encodeURIComponent(id)}`),
-    runSimulation: (data: any) => apiClient.post<any>('/simulation/run', data),
+    getParameters: (params?: { owner_type?: string; data_type?: string }) =>
+      apiClient.get<any>('/simulation/parameters', { params }),
+    validateParameters: (parameters: Array<{ id: string; value: any }>) =>
+      apiClient.post<any>('/simulation/validate', { parameters }),
+    getUnits: () =>
+      apiClient.get<any>('/simulation/units'),
   },
 };

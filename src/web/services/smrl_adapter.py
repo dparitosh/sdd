@@ -34,13 +34,15 @@ class SMRLAdapter:
     }
 
     @classmethod
-    def to_smrl_resource(cls, node_data: Dict[str, Any], node_labels: List[str]) -> Dict[str, Any]:
+    def to_smrl_resource(cls, node_data: Dict[str, Any], node_labels: List[str], 
+                        strict_schema: bool = False) -> Dict[str, Any]:
         """
         Convert Neo4j node to SMRL resource format.
 
         Args:
             node_data: Dictionary of node properties from Neo4j
             node_labels: List of node labels (e.g., ['Class'])
+            strict_schema: If True, use strict ISO SMRL field names (camelCase)
 
         Returns:
             SMRL-compliant resource dictionary
@@ -53,33 +55,98 @@ class SMRLAdapter:
             primary_label, primary_label
         )
 
-        # Build SMRL resource
-        resource = {
-            "uid": node_data.get("uid", node_data.get("id", node_data.get("xmi_id"))),
-            "href": node_data.get("href", f"/api/v1/{smrl_type}/{node_data.get('uid')}"),
-            "smrl_type": smrl_type,
-            "name": node_data.get("name", ""),
-        }
+        # Get UID
+        uid = node_data.get("uid", node_data.get("id", node_data.get("xmi_id")))
+        
+        # Build SMRL resource with official schema field names
+        if strict_schema:
+            resource = {
+                "$href": node_data.get("href", f"/api/v1/{smrl_type}/{uid}"),
+                "Identifiers": cls._build_identifiers(node_data, uid),
+                "CreatedOn": cls._format_datetime(node_data.get("created_on", "")),
+                "LastModified": cls._format_datetime(node_data.get("last_modified", "")),
+                "CreatedBy": cls._build_person_reference(node_data.get("created_by", "unknown")),
+                "ModifiedBy": cls._build_person_reference(node_data.get("modified_by", "unknown")),
+                "VersionIdentifiers": cls._build_version_identifiers(node_data),
+            }
+            
+            # Add Names (optional but recommended)
+            if "name" in node_data and node_data["name"]:
+                resource["Names"] = [{
+                    "String": node_data["name"],
+                    "Context": "default"
+                }]
+            
+            # Add Descriptions (optional)
+            descriptions = cls._build_descriptions(node_data)
+            if descriptions:
+                resource["Descriptions"] = descriptions
+        else:
+            # Simplified format for backward compatibility
+            resource = {
+                "uid": uid,
+                "href": node_data.get("href", f"/api/v1/{smrl_type}/{uid}"),
+                "smrl_type": smrl_type,
+                "name": node_data.get("name", ""),
+            }
 
-        # Add descriptions (SMRL uses LocalizedString array)
-        descriptions = cls._build_descriptions(node_data)
-        if descriptions:
-            resource["descriptions"] = descriptions
+            # Add descriptions (SMRL uses LocalizedString array)
+            descriptions = cls._build_descriptions(node_data)
+            if descriptions:
+                resource["descriptions"] = descriptions
 
-        # Add metadata
-        if "created_on" in node_data:
-            resource["created_on"] = cls._format_datetime(node_data["created_on"])
-        if "last_modified" in node_data:
-            resource["last_modified"] = cls._format_datetime(node_data["last_modified"])
-        if "created_by" in node_data:
-            resource["created_by"] = node_data["created_by"]
-        if "modified_by" in node_data:
-            resource["modified_by"] = node_data["modified_by"]
+            # Add metadata
+            if "created_on" in node_data:
+                resource["created_on"] = cls._format_datetime(node_data["created_on"])
+            if "last_modified" in node_data:
+                resource["last_modified"] = cls._format_datetime(node_data["last_modified"])
+            if "created_by" in node_data:
+                resource["created_by"] = node_data["created_by"]
+            if "modified_by" in node_data:
+                resource["modified_by"] = node_data["modified_by"]
 
         # Add type-specific fields
         resource.update(cls._get_type_specific_fields(primary_label, node_data))
 
         return resource
+
+    @classmethod
+    def _build_identifiers(cls, node_data: Dict[str, Any], uid: str) -> List[Dict[str, str]]:
+        """Build SMRL Identifiers array (required field)."""
+        identifiers = []
+        
+        # Primary UID
+        identifiers.append({
+            "String": uid,
+            "Context": "uid"
+        })
+        
+        # Add XMI ID if available
+        if "xmi_id" in node_data and node_data["xmi_id"]:
+            identifiers.append({
+                "String": node_data["xmi_id"],
+                "Context": "xmi"
+            })
+        
+        return identifiers
+    
+    @classmethod
+    def _build_person_reference(cls, person_id: str) -> Dict[str, str]:
+        """Build SMRL PersonOrOrganizationItemReference."""
+        return {
+            "$ref": f"/api/v1/Person/{person_id}"
+        }
+    
+    @classmethod
+    def _build_version_identifiers(cls, node_data: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Build SMRL VersionIdentifiers array (required field)."""
+        # For now, use a simple version identifier
+        # In a full implementation, this would link to VersionChain/VersionPoint
+        version = node_data.get("version", "1.0")
+        return [{
+            "String": str(version),
+            "Context": "version"
+        }]
 
     @classmethod
     def _build_descriptions(cls, node_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:

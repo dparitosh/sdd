@@ -84,7 +84,7 @@ class RelationshipTypesResponse(BaseModel):
 @router.get("/data", response_model=GraphData, response_class=Neo4jJSONResponse)
 async def get_graph_data(
     node_types: Optional[str] = Query(None, description="Comma-separated node types"),
-    limit: int = Query(500, ge=1, le=2000, description="Maximum nodes to return"),
+    limit: int = Query(500, ge=1, le=1000, description="Maximum nodes to return"),
     depth: int = Query(1, ge=1, le=3, description="Relationship traversal depth"),
     ap_level: Optional[int] = Query(None, description="Filter by AP level (1=AP239, 2=AP242, 3=AP243)"),
     api_key: str = Depends(get_api_key)
@@ -94,12 +94,15 @@ async def get_graph_data(
     
     Args:
         node_types: Comma-separated list of node types (e.g., 'Requirement,Part,Class')
-        limit: Maximum number of nodes (default: 500, max: 2000)
+        limit: Maximum number of nodes (default: 500, max: 1000)
         depth: Relationship traversal depth (default: 1, max: 3)
         ap_level: Filter by AP level (1, 2, or 3)
         
     Returns:
         Graph data with nodes and links arrays for force-graph visualization
+    
+    Performance:
+        Reduced max limit from 2000 to 1000 to prevent browser performance issues
     """
     try:
         neo4j = get_neo4j_service()
@@ -130,7 +133,7 @@ async def get_graph_data(
         node_query = f"""
         MATCH (n)
         WHERE {where_clause}
-        RETURN n.id AS id,
+         RETURN coalesce(n.id, toString(id(n))) AS id,
                labels(n) AS labels,
                n.name AS name,
                n.description AS description,
@@ -177,9 +180,10 @@ async def get_graph_data(
         if node_ids:
             rel_query = """
             MATCH (source)-[r]->(target)
-            WHERE source.id IN $node_ids AND target.id IN $node_ids
-            RETURN source.id AS source,
-                   target.id AS target,
+             WHERE coalesce(source.id, toString(id(source))) IN $node_ids
+            AND coalesce(target.id, toString(id(target))) IN $node_ids
+             RETURN coalesce(source.id, toString(id(source))) AS source,
+                 coalesce(target.id, toString(id(target))) AS target,
                    type(r) AS type,
                    id(r) AS rel_id
             """

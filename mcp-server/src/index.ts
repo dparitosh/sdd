@@ -449,8 +449,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!args?.query) {
           throw new Error('Cypher query is required');
         }
+
+        const query = String(args.query);
+        const allowWrite = String(process.env.MCP_ALLOW_WRITE_CYPHER || '').toLowerCase() === 'true';
+
+        // Default-safe posture: block write / privileged operations.
+        // MCP servers are commonly used from desktop assistants; treat them as high-trust but not unlimited.
+        const upper = query.toUpperCase();
+        const blockedPatterns: RegExp[] = [
+          /\bCREATE\b/, /\bMERGE\b/, /\bSET\b/, /\bDELETE\b/, /\bDETACH\b/, /\bREMOVE\b/, /\bDROP\b/, /\bFOREACH\b/,
+          /\bLOAD\s+CSV\b/, /\bCALL\s+DBMS\b/, /\bCALL\s+APOC\b/, /\bAPOC\b/, /\bDBMS\b/
+        ];
+
+        if (!allowWrite && blockedPatterns.some((re) => re.test(upper))) {
+          throw new Error(
+            'Refusing to execute potentially mutating/privileged Cypher. Set MCP_ALLOW_WRITE_CYPHER=true to override.'
+          );
+        }
+
         const results = await neo4jClient.executeCypher(
-          args.query as string,
+          query,
           (args?.params as Record<string, any>) || {}
         );
         return {

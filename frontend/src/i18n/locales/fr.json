@@ -1,0 +1,60 @@
+{
+  "app": {
+    "title": "Graphe de Connaissances MBSE",
+    "subtitle": "Plateforme d'Ingénierie Système Basée sur les Modèles"
+  },
+  "nav": {
+    "dashboard": "Tableau de Bord",
+    "requirements": "Exigences",
+    "parts": "Pièces",
+    "graph": "Navigateur de Graphe",
+    "query": "Éditeur de Requêtes",
+    "dataImport": "Importer des Données",
+    "plm": "Intégration PLM",
+    "monitoring": "Surveillance du Système",
+    "aiInsights": "Insights IA",
+    "logout": "Déconnexion"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "import": "Importer",
+    "refresh": "Actualiser",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "noData": "Aucune donnée disponible",
+    "selectFile": "Sélectionner un fichier"
+  },
+  "errors": {
+    "sessionExpired": "Session expirée. Veuillez vous reconnecter.",
+    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "apiError": "Erreur API: {{message}}",
+    "validationError": "Erreur de validation: {{message}}",
+    "unauthorized": "Non autorisé. Veuillez vous connecter.",
+    "forbidden": "Vous n'avez pas la permission d'accéder à cette ressource.",
+    "notFound": "Ressource introuvable.",
+    "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
+    "unexpectedError": "Une erreur inattendue s'est produite.",
+    "apiKeyNotConfigured": "La clé API n'est pas configurée. Veuillez contacter l'administrateur.",
+    "invalidParameters": "Paramètres invalides: type={{type}}, id={{id}}"
+  },
+  "dashboard": {
+    "title": "Tableau de Bord Système",
+    "totalNodes": "Nœuds Totaux",
+    "totalRelationships": "Relations Totales",
+    "requirements": "Exigences",
+    "parts": "Pièces et Assemblages",
+    "stats": "Statistiques",
+    "recentActivity": "Activité Récente"
+  }
+}

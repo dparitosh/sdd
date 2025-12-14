@@ -45,17 +45,24 @@ class AgentState(TypedDict):
 class MBSETools:
     """Tools for interacting with MBSE Knowledge Graph API"""
 
-    def __init__(self, base_url: str = None):
+    def __init__(self, base_url: str = None, api_key: str | None = None):
         import os
 
         self.base_url = base_url or os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
         self.api_v1 = f"{self.base_url}/api/v1"
         self.api_core = f"{self.base_url}/api"
 
+        # FastAPI protects most endpoints via X-API-Key when API_KEY is configured.
+        # Default to env API_KEY so agents work in secured deployments.
+        resolved_api_key = api_key or os.getenv("API_KEY")
+        self.session = requests.Session()
+        if resolved_api_key:
+            self.session.headers.update({"X-API-Key": resolved_api_key})
+
     def search_artifacts(self, query: str, limit: int = 10) -> str:
         """Search for artifacts by name or description"""
         try:
-            response = requests.post(
+            response = self.session.post(
                 f"{self.api_core}/search", json={"name": query, "limit": limit}
             )
             response.raise_for_status()
@@ -66,7 +73,9 @@ class MBSETools:
     def get_artifact_details(self, artifact_type: str, artifact_id: str) -> str:
         """Get detailed information about a specific artifact"""
         try:
-            response = requests.get(f"{self.api_core}/artifacts/{artifact_type}/{artifact_id}")
+            response = self.session.get(
+                f"{self.api_core}/artifacts/{artifact_type}/{artifact_id}"
+            )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
         except Exception as e:
@@ -82,7 +91,7 @@ class MBSETools:
                 params["source_type"] = source_type
             if target_type:
                 params["target_type"] = target_type
-            response = requests.get(f"{self.api_v1}/traceability", params=params)
+            response = self.session.get(f"{self.api_v1}/traceability", params=params)
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
         except Exception as e:
@@ -91,7 +100,9 @@ class MBSETools:
     def get_impact_analysis(self, node_id: str, depth: int = 3) -> str:
         """Analyze change impact for a node"""
         try:
-            response = requests.get(f"{self.api_v1}/impact/{node_id}", params={"depth": depth})
+            response = self.session.get(
+                f"{self.api_v1}/impact/{node_id}", params={"depth": depth}
+            )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
         except Exception as e:
@@ -103,7 +114,7 @@ class MBSETools:
             params = {"limit": limit}
             if class_name:
                 params["class"] = class_name
-            response = requests.get(f"{self.api_v1}/parameters", params=params)
+            response = self.session.get(f"{self.api_v1}/parameters", params=params)
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
         except Exception as e:
@@ -112,7 +123,9 @@ class MBSETools:
     def execute_cypher(self, query: str) -> str:
         """Execute custom Cypher query"""
         try:
-            response = requests.post(f"{self.api_core}/cypher", json={"query": query})
+            response = self.session.post(
+                f"{self.api_core}/cypher", json={"query": query}
+            )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
         except Exception as e:
@@ -121,7 +134,7 @@ class MBSETools:
     def get_statistics(self) -> str:
         """Get database statistics"""
         try:
-            response = requests.get(f"{self.api_core}/stats")
+            response = self.session.get(f"{self.api_core}/stats")
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
         except Exception as e:

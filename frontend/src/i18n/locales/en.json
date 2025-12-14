@@ -1,0 +1,128 @@
+{
+  "app": {
+    "title": "MBSE Knowledge Graph",
+    "subtitle": "Model-Based Systems Engineering Platform"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "requirements": "Requirements",
+    "parts": "Parts",
+    "graph": "Graph Browser",
+    "query": "Query Editor",
+    "dataImport": "Data Import",
+    "plm": "PLM Integration",
+    "monitoring": "System Monitoring",
+    "aiInsights": "AI Insights",
+    "logout": "Logout"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "noData": "No data available",
+    "selectFile": "Select file"
+  },
+  "errors": {
+    "sessionExpired": "Session expired. Please log in again.",
+    "networkError": "Network error. Please check your connection.",
+    "apiError": "API error: {{message}}",
+    "validationError": "Validation error: {{message}}",
+    "unauthorized": "Unauthorized. Please log in.",
+    "forbidden": "You don't have permission to access this resource.",
+    "notFound": "Resource not found.",
+    "serverError": "Server error. Please try again later.",
+    "unexpectedError": "An unexpected error occurred.",
+    "apiKeyNotConfigured": "API key is not configured. Please contact administrator.",
+    "invalidParameters": "Invalid parameters: type={{type}}, id={{id}}"
+  },
+  "dashboard": {
+    "title": "System Dashboard",
+    "totalNodes": "Total Nodes",
+    "totalRelationships": "Total Relationships",
+    "requirements": "Requirements",
+    "parts": "Parts & Assemblies",
+    "stats": "Statistics",
+    "recentActivity": "Recent Activity"
+  },
+  "requirements": {
+    "title": "Requirements Management",
+    "uid": "UID",
+    "name": "Name",
+    "text": "Text",
+    "category": "Category",
+    "status": "Status",
+    "priority": "Priority",
+    "traceability": "Traceability",
+    "satisfiedBy": "Satisfied By",
+    "derivedFrom": "Derived From",
+    "noRequirements": "No requirements found"
+  },
+  "parts": {
+    "title": "Parts Explorer",
+    "partId": "Part ID",
+    "partName": "Part Name",
+    "description": "Description",
+    "category": "Category",
+    "material": "Material",
+    "mass": "Mass",
+    "volume": "Volume",
+    "noParts": "No parts found"
+  },
+  "upload": {
+    "title": "Data Import",
+    "selectFile": "Select File",
+    "uploadFile": "Upload File",
+    "fileTypes": "Supported file types: XMI, XML, CSV",
+    "uploading": "Uploading...",
+    "processing": "Processing...",
+    "completed": "Completed",
+    "failed": "Failed",
+    "progress": "Progress",
+    "jobStatus": "Job Status",
+    "recentJobs": "Recent Jobs"
+  },
+  "query": {
+    "title": "Query Editor",
+    "executeCypher": "Execute Cypher",
+    "runQuery": "Run Query",
+    "results": "Results",
+    "noResults": "No results found",
+    "queryPlaceholder": "Enter your Cypher query here...",
+    "readOnlyMode": "Read-only mode (CREATE, DELETE operations disabled)"
+  },
+  "export": {
+    "title": "Export Data",
+    "format": "Format",
+    "selectFormat": "Select export format",
+    "rdf": "RDF/Turtle",
+    "owl": "OWL/XML",
+    "json": "JSON-LD",
+    "csv": "CSV",
+    "graphml": "GraphML",
+    "exporting": "Exporting...",
+    "exportSuccess": "Export completed successfully",
+    "exportError": "Export failed"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "apiKey": "API Key",
+    "loginFailed": "Login failed",
+    "sessionExpired": "Session expired. Please log in again."
+  }
+}

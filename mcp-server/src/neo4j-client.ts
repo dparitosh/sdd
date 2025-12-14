@@ -3,7 +3,7 @@
  * Provides typed query methods for accessing UML/SysML model data
  */
 
-import neo4j, { Driver, Session, Result } from 'neo4j-driver';
+import neo4j, { Driver, Session, Result, SessionMode } from 'neo4j-driver';
 
 export interface Neo4jConfig {
   uri: string;
@@ -74,8 +74,12 @@ export class Neo4jClient {
     await this.driver.close();
   }
 
-  private async executeQuery<T = any>(query: string, params: Record<string, any> = {}): Promise<T[]> {
-    const session: Session = this.driver.session();
+  private async executeQuery<T = any>(
+    query: string,
+    params: Record<string, any> = {},
+    accessMode: SessionMode = neo4j.session.READ
+  ): Promise<T[]> {
+    const session: Session = this.driver.session({ defaultAccessMode: accessMode });
     try {
       const result = await session.run(query, params);
       return result.records.map((record: any) => record.toObject() as T);
@@ -105,8 +109,8 @@ export class Neo4jClient {
     `;
 
     const [nodes, rels] = await Promise.all([
-      this.executeQuery(nodeQuery),
-      this.executeQuery(relQuery)
+      this.executeQuery(nodeQuery, {}, neo4j.session.READ),
+      this.executeQuery(relQuery, {}, neo4j.session.READ)
     ]);
 
     return {
@@ -131,7 +135,7 @@ export class Neo4jClient {
       ORDER BY p.name
       LIMIT $limit
     `;
-    return this.executeQuery<Package>(query, { search, limit });
+    return this.executeQuery<Package>(query, { search, limit }, neo4j.session.READ);
   }
 
   async getPackageById(id: string): Promise<any> {
@@ -145,7 +149,7 @@ export class Neo4jClient {
                type: labels(child)[0]
              }) AS contents
     `;
-    const result = await this.executeQuery(query, { id });
+    const result = await this.executeQuery(query, { id }, neo4j.session.READ);
     return result[0] || null;
   }
 
@@ -158,7 +162,7 @@ export class Neo4jClient {
              child.comment AS comment
       ORDER BY type, child.name
     `;
-    return this.executeQuery(query, { id });
+    return this.executeQuery(query, { id }, neo4j.session.READ);
   }
 
   // ==================== Classes ====================
@@ -184,7 +188,7 @@ export class Neo4jClient {
       LIMIT $limit
     `;
     
-    return this.executeQuery<Class>(query, { search, packageId, limit });
+    return this.executeQuery<Class>(query, { search, packageId, limit }, neo4j.session.READ);
   }
 
   async getClassById(id: string): Promise<any> {
@@ -204,7 +208,7 @@ export class Neo4jClient {
                targetId: other.id
              }) AS associations
     `;
-    const result = await this.executeQuery(query, { id });
+    const result = await this.executeQuery(query, { id }, neo4j.session.READ);
     return result[0] || null;
   }
 
@@ -216,7 +220,7 @@ export class Neo4jClient {
              length(path) AS depth
       ORDER BY depth
     `;
-    return this.executeQuery(query, { id });
+    return this.executeQuery(query, { id }, neo4j.session.READ);
   }
 
   // ==================== Properties ====================
@@ -242,7 +246,7 @@ export class Neo4jClient {
       LIMIT $limit
     `;
     
-    return this.executeQuery<Property>(query, { ownerId, search, limit });
+    return this.executeQuery<Property>(query, { ownerId, search, limit }, neo4j.session.READ);
   }
 
   // ==================== Associations ====================

@@ -1,0 +1,128 @@
+{
+  "app": {
+    "title": "Grafo de Conocimiento MBSE",
+    "subtitle": "Plataforma de Ingeniería de Sistemas Basada en Modelos"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "requirements": "Requisitos",
+    "parts": "Partes",
+    "graph": "Navegador de Grafos",
+    "query": "Editor de Consultas",
+    "dataImport": "Importar Datos",
+    "plm": "Integración PLM",
+    "monitoring": "Monitoreo del Sistema",
+    "aiInsights": "Insights de IA",
+    "logout": "Cerrar Sesión"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "import": "Importar",
+    "refresh": "Actualizar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "noData": "No hay datos disponibles",
+    "selectFile": "Seleccionar archivo"
+  },
+  "errors": {
+    "sessionExpired": "Sesión expirada. Por favor, inicie sesión nuevamente.",
+    "networkError": "Error de red. Por favor, verifique su conexión.",
+    "apiError": "Error de API: {{message}}",
+    "validationError": "Error de validación: {{message}}",
+    "unauthorized": "No autorizado. Por favor, inicie sesión.",
+    "forbidden": "No tiene permiso para acceder a este recurso.",
+    "notFound": "Recurso no encontrado.",
+    "serverError": "Error del servidor. Por favor, inténtelo de nuevo más tarde.",
+    "unexpectedError": "Ocurrió un error inesperado.",
+    "apiKeyNotConfigured": "La clave API no está configurada. Por favor, contacte al administrador.",
+    "invalidParameters": "Parámetros inválidos: tipo={{type}}, id={{id}}"
+  },
+  "dashboard": {
+    "title": "Panel del Sistema",
+    "totalNodes": "Nodos Totales",
+    "totalRelationships": "Relaciones Totales",
+    "requirements": "Requisitos",
+    "parts": "Partes y Ensamblajes",
+    "stats": "Estadísticas",
+    "recentActivity": "Actividad Reciente"
+  },
+  "requirements": {
+    "title": "Gestión de Requisitos",
+    "uid": "UID",
+    "name": "Nombre",
+    "text": "Texto",
+    "category": "Categoría",
+    "status": "Estado",
+    "priority": "Prioridad",
+    "traceability": "Trazabilidad",
+    "satisfiedBy": "Satisfecho Por",
+    "derivedFrom": "Derivado De",
+    "noRequirements": "No se encontraron requisitos"
+  },
+  "parts": {
+    "title": "Explorador de Partes",
+    "partId": "ID de Parte",
+    "partName": "Nombre de Parte",
+    "description": "Descripción",
+    "category": "Categoría",
+    "material": "Material",
+    "mass": "Masa",
+    "volume": "Volumen",
+    "noParts": "No se encontraron partes"
+  },
+  "upload": {
+    "title": "Importar Datos",
+    "selectFile": "Seleccionar Archivo",
+    "uploadFile": "Subir Archivo",
+    "fileTypes": "Tipos de archivo compatibles: XMI, XML, CSV",
+    "uploading": "Subiendo...",
+    "processing": "Procesando...",
+    "completed": "Completado",
+    "failed": "Fallido",
+    "progress": "Progreso",
+    "jobStatus": "Estado del Trabajo",
+    "recentJobs": "Trabajos Recientes"
+  },
+  "query": {
+    "title": "Editor de Consultas",
+    "executeCypher": "Ejecutar Cypher",
+    "runQuery": "Ejecutar Consulta",
+    "results": "Resultados",
+    "noResults": "No se encontraron resultados",
+    "queryPlaceholder": "Ingrese su consulta Cypher aquí...",
+    "readOnlyMode": "Modo de solo lectura (operaciones CREATE, DELETE deshabilitadas)"
+  },
+  "export": {
+    "title": "Exportar Datos",
+    "format": "Formato",
+    "selectFormat": "Seleccionar formato de exportación",
+    "rdf": "RDF/Turtle",
+    "owl": "OWL/XML",
+    "json": "JSON-LD",
+    "csv": "CSV",
+    "graphml": "GraphML",
+    "exporting": "Exportando...",
+    "exportSuccess": "Exportación completada con éxito",
+    "exportError": "Error en la exportación"
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "logout": "Cerrar Sesión",
+    "username": "Nombre de Usuario",
+    "password": "Contraseña",
+    "apiKey": "Clave API",
+    "loginFailed": "Error al iniciar sesión",
+    "sessionExpired": "Sesión expirada. Por favor, inicie sesión nuevamente."
+  }
+}
