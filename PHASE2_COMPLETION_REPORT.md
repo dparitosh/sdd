@@ -230,7 +230,7 @@ cytoscape = service.export_cytoscape()
 **Services:**
 ```yaml
 services:
-  neo4j:       # Neo4j 5.15 Enterprise
+    neo4j:       # Neo4j 5.15 Community (default)
   backend:     # Flask Python 3.12
   frontend:    # React + nginx alpine
 ```
@@ -238,13 +238,13 @@ services:
 **Deployment:**
 ```bash
 # Build all containers
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 # Start services
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Check health
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 ```
 
 ---
@@ -537,7 +537,7 @@ MetricsCollector.record_plm_sync('teamcenter', 'push', True, 2.5)
 ### Environment Variables
 ```bash
 # Neo4j (existing)
-NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=<password>
 

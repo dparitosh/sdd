@@ -7,6 +7,7 @@ With Redis-based session management support
 import os
 from datetime import datetime, timedelta
 from typing import Optional
+from uuid import uuid4
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
@@ -116,6 +117,7 @@ def create_access_token(
         "type": "access",
         "exp": expires_at,
         "iat": datetime.utcnow(),
+        "jti": uuid4().hex,
     }
     
     if session_id:
@@ -133,7 +135,13 @@ def create_refresh_token(username: str) -> str:
     """Create JWT refresh token"""
     expires_at = datetime.utcnow() + timedelta(days=AuthConfig.REFRESH_TOKEN_EXPIRE_DAYS)
 
-    payload = {"sub": username, "type": "refresh", "exp": expires_at, "iat": datetime.utcnow()}
+    payload = {
+        "sub": username,
+        "type": "refresh",
+        "exp": expires_at,
+        "iat": datetime.utcnow(),
+        "jti": uuid4().hex,
+    }
 
     token = jwt.encode(payload, AuthConfig.SECRET_KEY, algorithm=AuthConfig.ALGORITHM)
     logger.info(f"Created refresh token for user: {username}")
@@ -293,7 +301,7 @@ async def login(credentials: LoginRequest, request: Request):
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username or password"
+                detail="Authentication failed"
             )
 
         # Create session if session manager available

@@ -10,9 +10,14 @@ from loguru import logger
 from graph.connection import Neo4jConnection
 
 # Use the Neo4j Aura connection (same as used in web app)
-NEO4J_URI = "neo4j+s://2cccd05b.databases.neo4j.io"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "tcs12345"
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USER = os.getenv("NEO4J_USER")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+
+if not NEO4J_URI or not NEO4J_USER or not NEO4J_PASSWORD:
+    raise RuntimeError(
+        "Missing Neo4j configuration. Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in your .env or environment."
+    )
 
 
 def fix_comment_newlines():

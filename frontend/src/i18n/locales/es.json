@@ -33,7 +33,8 @@
     "next": "Siguiente",
     "previous": "Anterior",
     "noData": "No hay datos disponibles",
-    "selectFile": "Seleccionar archivo"
+    "selectFile": "Seleccionar archivo",
+    "selectLanguage": "Seleccionar idioma"
   },
   "errors": {
     "sessionExpired": "Sesión expirada. Por favor, inicie sesión nuevamente.",

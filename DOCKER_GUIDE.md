@@ -4,14 +4,10 @@
 
 ### Prerequisites
 ```bash
-# Install Docker & Docker Compose
+# Install Docker (includes the `docker compose` subcommand)
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 sudo usermod -aG docker $USER
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
 ```
 
 ### Build and Run
@@ -19,29 +15,29 @@ sudo chmod +x /usr/local/bin/docker-compose
 #### Development Mode
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 #### Production Mode
 ```bash
 # Build containers
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 # Start services
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Monitor
-docker-compose -f docker-compose.prod.yml ps
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs -f backend
 
 # Stop
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 ```
 
 ### Individual Container Management
@@ -85,7 +81,7 @@ docker logs -f mbse-frontend
 ### Health Checks
 ```bash
 # Check backend health
-curl http://localhost:5000/health
+curl http://localhost:5000/api/health
 
 # Check frontend health
 curl http://localhost:3001/health
@@ -171,7 +167,7 @@ Available at: http://localhost:5000/metrics
 Import dashboard from `monitoring/grafana-dashboard.json`
 
 ### Health Endpoints
-- Backend: http://localhost:5000/health
+- Backend: http://localhost:5000/api/health
 - Frontend: http://localhost:3001/health
 - Neo4j: http://localhost:7474
 

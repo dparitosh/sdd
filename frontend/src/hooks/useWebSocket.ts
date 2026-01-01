@@ -23,7 +23,7 @@ export function useWebSocket(autoConnect: boolean = true, url?: string) {
     websocketService.connect(queryClient, url);
 
     // Listen for connection status changes
-    const handleConnection = (data: any) => {
+    const handleConnection = (_data: any) => {
       setStatus(websocketService.getStatus());
     };
 

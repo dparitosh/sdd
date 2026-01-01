@@ -1,14 +1,4 @@
-import { Helmet } from 'react-helmet-async';import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-
-
-
-
-
-
-
-
-
-
+import { Helmet } from 'react-helmet-async';
 const defaultProps = {
   title: 'MBSE Knowledge Graph | Model-Based Systems Engineering Platform',
   description: 'Advanced knowledge graph platform for Model-Based Systems Engineering. Manage requirements, parts, traceability, and PLM integration with Neo4j graph database.',
@@ -17,7 +7,6 @@ const defaultProps = {
   ogImage: '/og-image.png',
   ogType: 'website'
 };
-
 export function SEO({
   title,
   description,
@@ -31,33 +20,6 @@ export function SEO({
   const finalKeywords = keywords || defaultProps.keywords;
   const finalCanonicalUrl = canonicalUrl || defaultProps.canonicalUrl;
   const finalOgImage = ogImage || defaultProps.ogImage;
-
-  return (/*#__PURE__*/
-    _jsxs(Helmet, { children: [/*#__PURE__*/
-
-      _jsx("title", { children: finalTitle }), /*#__PURE__*/
-      _jsx("meta", { name: "title", content: finalTitle }), /*#__PURE__*/
-      _jsx("meta", { name: "description", content: finalDescription }), /*#__PURE__*/
-      _jsx("meta", { name: "keywords", content: finalKeywords }), /*#__PURE__*/
-
-
-      _jsx("meta", { property: "og:type", content: ogType }), /*#__PURE__*/
-      _jsx("meta", { property: "og:url", content: finalCanonicalUrl }), /*#__PURE__*/
-      _jsx("meta", { property: "og:title", content: finalTitle }), /*#__PURE__*/
-      _jsx("meta", { property: "og:description", content: finalDescription }), /*#__PURE__*/
-      _jsx("meta", { property: "og:image", content: finalOgImage }), /*#__PURE__*/
-
-
-      _jsx("meta", { property: "twitter:card", content: "summary_large_image" }), /*#__PURE__*/
-      _jsx("meta", { property: "twitter:url", content: finalCanonicalUrl }), /*#__PURE__*/
-      _jsx("meta", { property: "twitter:title", content: finalTitle }), /*#__PURE__*/
-      _jsx("meta", { property: "twitter:description", content: finalDescription }), /*#__PURE__*/
-      _jsx("meta", { property: "twitter:image", content: finalOgImage }), /*#__PURE__*/
-
-
-      _jsx("link", { rel: "canonical", href: finalCanonicalUrl })] }
-    ));
-
+  return <Helmet><title>{finalTitle}</title><meta name="title" content={finalTitle} /><meta name="description" content={finalDescription} /><meta name="keywords" content={finalKeywords} /><meta property="og:type" content={ogType} /><meta property="og:url" content={finalCanonicalUrl} /><meta property="og:title" content={finalTitle} /><meta property="og:description" content={finalDescription} /><meta property="og:image" content={finalOgImage} /><meta property="twitter:card" content="summary_large_image" /><meta property="twitter:url" content={finalCanonicalUrl} /><meta property="twitter:title" content={finalTitle} /><meta property="twitter:description" content={finalDescription} /><meta property="twitter:image" content={finalOgImage} /><link rel="canonical" href={finalCanonicalUrl} /></Helmet>;
 }
-
 export default SEO;

@@ -33,7 +33,8 @@
     "next": "Weiter",
     "previous": "Zurück",
     "noData": "Keine Daten verfügbar",
-    "selectFile": "Datei auswählen"
+    "selectFile": "Datei auswählen",
+    "selectLanguage": "Sprache auswählen"
   },
   "errors": {
     "sessionExpired": "Sitzung abgelaufen. Bitte melden Sie sich erneut an.",

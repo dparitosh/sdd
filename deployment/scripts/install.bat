@@ -167,11 +167,9 @@ if not exist "%INSTALL_DIR%\.env" (
         echo NEO4J_PASSWORD=your-password
         echo NEO4J_DATABASE=neo4j
         echo.
-        echo # Flask Configuration
-        echo FLASK_HOST=0.0.0.0
-        echo FLASK_PORT=5000
-        echo FLASK_ENV=production
-        echo FLASK_DEBUG=False
+        echo # API Configuration
+        echo API_HOST=0.0.0.0
+        echo API_PORT=5000
         echo.
         echo # Frontend Configuration
         echo VITE_PORT=3001
@@ -194,7 +192,7 @@ REM Create start_all.bat
     echo @echo off
     echo echo Starting MBSE Knowledge Graph services...
     echo cd /d "%INSTALL_DIR%"
-    echo start "MBSE Backend" cmd /k "set PYTHONPATH=%INSTALL_DIR% && python -m src.web.app"
+    echo start "MBSE Backend" cmd /k "set PYTHONPATH=%INSTALL_DIR% && python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000"
     echo timeout /t 3 /nobreak ^>nul
     echo start "MBSE Frontend" cmd /k "npm run preview -- --host 0.0.0.0 --port 3001"
     echo echo Services started!
@@ -210,8 +208,7 @@ REM Create stop_all.bat
     echo echo Stopping MBSE Knowledge Graph services...
     echo taskkill /F /FI "WINDOWTITLE eq MBSE Backend*" /T ^>nul 2^>^&1
     echo taskkill /F /FI "WINDOWTITLE eq MBSE Frontend*" /T ^>nul 2^>^&1
-    echo taskkill /F /IM python.exe /FI "WINDOWTITLE eq *src.web.app*" ^>nul 2^>^&1
-    echo taskkill /F /IM node.exe ^>nul 2^>^&1
+    echo REM Avoid killing arbitrary python.exe; stop by PID when possible.
     echo echo Services stopped!
     echo pause
 ) > "%INSTALL_DIR%\stop_all.bat"

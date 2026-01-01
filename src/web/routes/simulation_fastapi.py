@@ -185,23 +185,23 @@ async def get_simulation_parameters(
             query += " WHERE " + " AND ".join(where_clauses)
 
         query += """
-        RETURN p.id as id,
+        RETURN coalesce(p.id, p.uid, toString(id(p))) as id,
                p.name as name,
                p.type as property_type,
                type.name as data_type,
-               type.id as type_id,
+               coalesce(type.id, type.uid, (CASE WHEN type IS NULL THEN NULL ELSE toString(id(type)) END)) as type_id,
                p.visibility as visibility,
-               p.lower as multiplicity_lower,
-               p.upper as multiplicity_upper,
+               toString(p.lower) as multiplicity_lower,
+               toString(p.upper) as multiplicity_upper,
                p.default as default_value,
                p.defaultValue as default_value_alt,
                p.aggregation as aggregation,
                p.isDerived as is_derived,
                p.isReadOnly as is_read_only,
                owner.name as owner_class,
-               owner.id as owner_id,
+               coalesce(owner.id, owner.uid, (CASE WHEN owner IS NULL THEN NULL ELSE toString(id(owner)) END)) as owner_id,
                COLLECT(DISTINCT {
-                   id: constraint.id,
+                   id: coalesce(constraint.id, constraint.uid, (CASE WHEN constraint IS NULL THEN NULL ELSE toString(id(constraint)) END)),
                    name: constraint.name,
                    body: constraint.body,
                    type: constraint.type

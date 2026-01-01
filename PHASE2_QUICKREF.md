@@ -296,31 +296,31 @@ assert len(result) > 0
 ### Build Containers
 ```bash
 # Build all services
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 # Build specific service
-docker-compose -f docker-compose.prod.yml build backend
+docker compose -f docker-compose.prod.yml build backend
 ```
 
 ### Run Services
 ```bash
 # Start all services
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Check status
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # View logs
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
 ### Stop Services
 ```bash
 # Stop all
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 
 # Stop and remove volumes
-docker-compose -f docker-compose.prod.yml down -v
+docker compose -f docker-compose.prod.yml down -v
 ```
 
 ---

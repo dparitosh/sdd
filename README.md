@@ -400,16 +400,16 @@ mypy src/
 The `.env` file contains your Neo4j connection details:
 
 ```env
-NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=tcs12345
+NEO4J_PASSWORD=your-neo4j-password
 LOG_LEVEL=INFO
 ```
 
 ## Neo4j Aura Access
 
 Access your Neo4j database:
-- **URI**: neo4j+s://2cccd05b.databases.neo4j.io
+- **URI**: neo4j+s://your-neo4j-uri.databases.neo4j.io
 - **Browser**: https://console.neo4j.io/
 
 ## Troubleshooting

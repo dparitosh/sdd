@@ -1,8 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import { defineConfig, PluginOption } from "vite";
+import { defineConfig } from "vite";
 import { config } from 'dotenv';
-import createIconImportProxy from "@github/spark/vitePhosphorIconProxyPlugin";
 import { resolve } from 'path'
 
 // Load environment variables
@@ -17,10 +16,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // DO NOT REMOVE
-    createIconImportProxy() as PluginOption,
-    // Temporarily disabled to test port issue
-    // sparkPlugin() as PluginOption,
   ],
   resolve: {
     alias: {

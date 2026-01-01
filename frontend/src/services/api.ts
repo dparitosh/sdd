@@ -7,12 +7,6 @@ import { API_CONFIG, STORAGE_KEYS } from '../constants';
 // Use /api prefix for Vite proxy (vite.config.ts proxies /api to Flask)
 const API_BASE_URL = API_CONFIG.BASE_URL;
 
-interface ApiErrorResponse {
-  error: string | { code?: number; message?: string; details?: string };
-  details?: string;
-  status: number;
-}
-
 class ApiClient {
   private client: AxiosInstance;
 

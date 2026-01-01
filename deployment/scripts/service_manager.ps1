@@ -18,6 +18,24 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Get-Item "$ScriptDir\..\..\").FullName
 $PidDir = "$env:TEMP\mbse-pids"
 
+function Get-PythonExe {
+    $venvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+    if (Test-Path $venvPython) {
+        return $venvPython
+    }
+    return "python"
+}
+
+function Get-NpmExe {
+    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+    if ($npmCmd -and $npmCmd.Source) {
+        return $npmCmd.Source
+    }
+
+    # Fallback for PATH edge-cases
+    return "npm"
+}
+
 if (-not (Test-Path $PidDir)) {
     New-Item -ItemType Directory -Path $PidDir -Force | Out-Null
 }
@@ -42,21 +60,31 @@ function Show-Usage {
 
 function Start-Backend {
     Write-Host "Starting backend..." -ForegroundColor Blue
-    Set-Location $ProjectRoot
-    $env:PYTHONPATH = $ProjectRoot
+    Push-Location $ProjectRoot
+    try {
+        $env:PYTHONPATH = $ProjectRoot
+
+    if (-not (Test-Path (Join-Path $ProjectRoot ".env")) -and (Test-Path (Join-Path $ProjectRoot ".env.example"))) {
+        Copy-Item (Join-Path $ProjectRoot ".env.example") (Join-Path $ProjectRoot ".env") -Force
+        Write-Host "[WARNING] Created .env from .env.example; review credentials before production use" -ForegroundColor Yellow
+    }
     
-    $process = Start-Process -FilePath "python" -ArgumentList "-m", "src.web.app" `
-        -RedirectStandardOutput "$env:TEMP\mbse-backend.log" `
-        -RedirectStandardError "$env:TEMP\mbse-backend-error.log" `
-        -PassThru -WindowStyle Hidden
+        $pythonExe = Get-PythonExe
+        $process = Start-Process -FilePath $pythonExe -ArgumentList "-m", "uvicorn", "src.web.app_fastapi:app", "--host", "127.0.0.1", "--port", "5000" `
+            -RedirectStandardOutput "$env:TEMP\mbse-backend.log" `
+            -RedirectStandardError "$env:TEMP\mbse-backend-error.log" `
+            -PassThru -WindowStyle Hidden
     
-    Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 2
     
-    if ($process -and !$process.HasExited) {
-        $process.Id | Out-File -FilePath "$PidDir\backend.pid" -Encoding ASCII
-        Write-Host "[SUCCESS] Backend started (PID: $($process.Id))" -ForegroundColor Green
-    } else {
-        Write-Host "[ERROR] Failed to start backend" -ForegroundColor Red
+        if ($process -and !$process.HasExited) {
+            $process.Id | Out-File -FilePath "$PidDir\backend.pid" -Encoding ASCII
+            Write-Host "[SUCCESS] Backend started (PID: $($process.Id))" -ForegroundColor Green
+        } else {
+            Write-Host "[ERROR] Failed to start backend" -ForegroundColor Red
+        }
+    } finally {
+        Pop-Location
     }
 }
 
@@ -73,29 +101,54 @@ function Stop-Backend {
             Write-Host "[WARNING] Backend process not found" -ForegroundColor Yellow
         }
     } else {
-        Get-Process -Name python -ErrorAction SilentlyContinue | 
-            Where-Object { $_.CommandLine -like "*src.web.app*" } | 
-            Stop-Process -Force -ErrorAction SilentlyContinue
-        Write-Host "[SUCCESS] Backend stopped" -ForegroundColor Green
+        $venvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+        $matches = Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.CommandLine -and
+                $_.CommandLine -like "*uvicorn*src.web.app_fastapi:app*" -and
+                (
+                    (Test-Path $venvPython -and $_.CommandLine -like ("*" + $venvPython + "*")) -or
+                    $_.CommandLine -like "*\\MBSE_MOSSEC\\*"
+                )
+            }
+
+        if ($matches) {
+            foreach ($m in $matches) {
+                Stop-Process -Id $m.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+            Write-Host "[SUCCESS] Backend stopped" -ForegroundColor Green
+        } else {
+            Write-Host "[WARNING] Backend PID file not found and no matching uvicorn process detected" -ForegroundColor Yellow
+        }
     }
 }
 
 function Start-Frontend {
     Write-Host "Starting frontend..." -ForegroundColor Blue
-    Set-Location $ProjectRoot
+    Push-Location $ProjectRoot
+    try {
+        $npmExe = Get-NpmExe
+
+        if (-not (Test-Path (Join-Path $ProjectRoot "node_modules"))) {
+            Write-Host "node_modules not found; installing frontend dependencies..." -ForegroundColor Yellow
+            & $npmExe install
+        }
+        
+        $process = Start-Process -FilePath $npmExe -ArgumentList "run", "dev", "--", "--host", "0.0.0.0", "--port", "3001" `
+            -RedirectStandardOutput "$env:TEMP\mbse-frontend.log" `
+            -RedirectStandardError "$env:TEMP\mbse-frontend-error.log" `
+            -PassThru -WindowStyle Hidden
     
-    $process = Start-Process -FilePath "npm" -ArgumentList "run", "preview", "--", "--host", "0.0.0.0", "--port", "3001" `
-        -RedirectStandardOutput "$env:TEMP\mbse-frontend.log" `
-        -RedirectStandardError "$env:TEMP\mbse-frontend-error.log" `
-        -PassThru -WindowStyle Hidden
+        Start-Sleep -Seconds 2
     
-    Start-Sleep -Seconds 2
-    
-    if ($process -and !$process.HasExited) {
-        $process.Id | Out-File -FilePath "$PidDir\frontend.pid" -Encoding ASCII
-        Write-Host "[SUCCESS] Frontend started (PID: $($process.Id))" -ForegroundColor Green
-    } else {
-        Write-Host "[ERROR] Failed to start frontend" -ForegroundColor Red
+        if ($process -and !$process.HasExited) {
+            $process.Id | Out-File -FilePath "$PidDir\frontend.pid" -Encoding ASCII
+            Write-Host "[SUCCESS] Frontend started (PID: $($process.Id))" -ForegroundColor Green
+        } else {
+            Write-Host "[ERROR] Failed to start frontend" -ForegroundColor Red
+        }
+    } finally {
+        Pop-Location
     }
 }
 
@@ -103,19 +156,40 @@ function Stop-Frontend {
     Write-Host "Stopping frontend..." -ForegroundColor Blue
     
     if (Test-Path "$PidDir\frontend.pid") {
-        $pid = Get-Content "$PidDir\frontend.pid"
+        $processId = [int](Get-Content "$PidDir\frontend.pid")
         try {
             # Stop the process and all child processes
-            Get-Process -Id $pid -ErrorAction Stop | Stop-Process -Force
-            Get-Process | Where-Object { $_.Parent.Id -eq $pid } | Stop-Process -Force -ErrorAction SilentlyContinue
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+
+            # Best-effort: stop child processes (Windows)
+            Get-CimInstance Win32_Process -Filter "ParentProcessId=$processId" -ErrorAction SilentlyContinue |
+                ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
             Remove-Item "$PidDir\frontend.pid" -ErrorAction SilentlyContinue
             Write-Host "[SUCCESS] Frontend stopped" -ForegroundColor Green
         } catch {
             Write-Host "[WARNING] Frontend process not found" -ForegroundColor Yellow
         }
     } else {
-        Get-Process -Name node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-        Write-Host "[SUCCESS] Frontend stopped" -ForegroundColor Green
+        $viteBin1 = Join-Path $ProjectRoot "node_modules\vite\bin\vite.js"
+        $viteBin2 = Join-Path $ProjectRoot "node_modules\vite\bin\vite.mjs"
+        $matches = Get-CimInstance Win32_Process -Filter "Name='node.exe'" -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.CommandLine -and
+                (
+                    $_.CommandLine -like ("*" + $viteBin1 + "*") -or
+                    $_.CommandLine -like ("*" + $viteBin2 + "*") -or
+                    ($_.CommandLine -like "*vite*--port*3001*" -and $_.CommandLine -like "*\\MBSE_MOSSEC\\*")
+                )
+            }
+
+        if ($matches) {
+            foreach ($m in $matches) {
+                Stop-Process -Id $m.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+            Write-Host "[SUCCESS] Frontend stopped" -ForegroundColor Green
+        } else {
+            Write-Host "[WARNING] Frontend PID file not found and no matching dev server process detected" -ForegroundColor Yellow
+        }
     }
 }
 
@@ -125,10 +199,10 @@ function Show-Status {
     
     Write-Host "Backend Service:" -ForegroundColor Yellow
     if (Test-Path "$PidDir\backend.pid") {
-        $pid = Get-Content "$PidDir\backend.pid"
-        $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        $backendPid = [int](Get-Content "$PidDir\backend.pid")
+        $process = Get-Process -Id $backendPid -ErrorAction SilentlyContinue
         if ($process) {
-            Write-Host "[RUNNING] Backend running with PID: $pid" -ForegroundColor Green
+            Write-Host "[RUNNING] Backend running with PID: $backendPid" -ForegroundColor Green
         } else {
             Write-Host "[STOPPED] Backend not running" -ForegroundColor Red
             Remove-Item "$PidDir\backend.pid" -ErrorAction SilentlyContinue
@@ -140,10 +214,10 @@ function Show-Status {
     Write-Host ""
     Write-Host "Frontend Service:" -ForegroundColor Yellow
     if (Test-Path "$PidDir\frontend.pid") {
-        $pid = Get-Content "$PidDir\frontend.pid"
-        $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        $frontendPid = [int](Get-Content "$PidDir\frontend.pid")
+        $process = Get-Process -Id $frontendPid -ErrorAction SilentlyContinue
         if ($process) {
-            Write-Host "[RUNNING] Frontend running with PID: $pid" -ForegroundColor Green
+            Write-Host "[RUNNING] Frontend running with PID: $frontendPid" -ForegroundColor Green
         } else {
             Write-Host "[STOPPED] Frontend not running" -ForegroundColor Red
             Remove-Item "$PidDir\frontend.pid" -ErrorAction SilentlyContinue

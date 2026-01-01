@@ -11,9 +11,9 @@ All hardcoded values removed from codebase. Everything now centralized in `.env`
 
 ```env
 # Neo4j Configuration
-NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=tcs12345
+NEO4J_PASSWORD=your-neo4j-password
 NEO4J_DATABASE=neo4j
 
 # Application Configuration
@@ -316,5 +316,5 @@ curl http://localhost:5000/api/health
 ---
 
 *Last updated: December 8, 2025*
-*Neo4j Aura: neo4j+s://2cccd05b.databases.neo4j.io*
+*Neo4j Aura: neo4j+s://your-neo4j-uri.databases.neo4j.io*
 *Database: 3,257 nodes, 15 labels*

@@ -338,7 +338,7 @@ Edit `/opt/mbse-neo4j-graph-rep/.env`:
 NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
 
 # Self-hosted
-# NEO4J_URI=bolt://localhost:7687
+# NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-secure-password

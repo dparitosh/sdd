@@ -47,7 +47,7 @@ try {
 
 function Start-Containers {
     Write-Host "Starting MBSE Knowledge Graph with Docker Compose..." -ForegroundColor Blue
-    docker-compose up -d
+    docker compose up -d
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[SUCCESS] Containers started" -ForegroundColor Green
@@ -58,7 +58,7 @@ function Start-Containers {
         Write-Host ""
         Write-Host "Access points:" -ForegroundColor Cyan
         Write-Host "  Neo4j Browser: http://localhost:7474"
-        Write-Host "  Bolt Protocol: bolt://localhost:7687"
+        Write-Host "  Bolt Protocol: (see NEO4J_URI in .env / your environment)"
         Write-Host "  Backend API: http://localhost:5000"
     } else {
         Write-Host "[ERROR] Failed to start containers" -ForegroundColor Red
@@ -67,7 +67,7 @@ function Start-Containers {
 
 function Stop-Containers {
     Write-Host "Stopping MBSE Knowledge Graph containers..." -ForegroundColor Blue
-    docker-compose down
+    docker compose down
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[SUCCESS] Containers stopped" -ForegroundColor Green
@@ -78,7 +78,7 @@ function Stop-Containers {
 
 function Restart-Containers {
     Write-Host "Restarting MBSE Knowledge Graph containers..." -ForegroundColor Blue
-    docker-compose restart
+    docker compose restart
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[SUCCESS] Containers restarted" -ForegroundColor Green
@@ -91,7 +91,7 @@ function Restart-Containers {
 function Show-Status {
     Write-Host "=== Container Status ===" -ForegroundColor Cyan
     Write-Host ""
-    docker-compose ps
+    docker compose ps
     Write-Host ""
     Write-Host "=== Docker Stats ===" -ForegroundColor Cyan
     docker stats --no-stream --format "table {{.Container}}`t{{.CPUPerc}}`t{{.MemUsage}}`t{{.NetIO}}"
@@ -100,13 +100,13 @@ function Show-Status {
 function Show-Logs {
     if ($SubCommand -eq "neo4j") {
         Write-Host "Following Neo4j logs... Press Ctrl+C to stop" -ForegroundColor Yellow
-        docker-compose logs -f neo4j
+        docker compose logs -f neo4j
     } elseif ($SubCommand -eq "app") {
         Write-Host "Following application logs... Press Ctrl+C to stop" -ForegroundColor Yellow
-        docker-compose logs -f app
+        docker compose logs -f app
     } else {
         Write-Host "Following all logs... Press Ctrl+C to stop" -ForegroundColor Yellow
-        docker-compose logs -f
+        docker compose logs -f
     }
 }
 
@@ -121,7 +121,7 @@ function Reset-Database {
     
     Write-Host ""
     Write-Host "Stopping containers and removing volumes..." -ForegroundColor Yellow
-    docker-compose down -v
+    docker compose down -v
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[SUCCESS] Containers stopped and volumes removed" -ForegroundColor Green
@@ -135,17 +135,17 @@ function Manage-Neo4j {
     switch ($SubCommand) {
         'start' {
             Write-Host "Starting Neo4j container..." -ForegroundColor Blue
-            docker-compose up -d neo4j
+            docker compose up -d neo4j
             Write-Host "[SUCCESS] Neo4j started" -ForegroundColor Green
         }
         'stop' {
             Write-Host "Stopping Neo4j container..." -ForegroundColor Blue
-            docker-compose stop neo4j
+            docker compose stop neo4j
             Write-Host "[SUCCESS] Neo4j stopped" -ForegroundColor Green
         }
         'restart' {
             Write-Host "Restarting Neo4j container..." -ForegroundColor Blue
-            docker-compose restart neo4j
+            docker compose restart neo4j
             Write-Host "[SUCCESS] Neo4j restarted" -ForegroundColor Green
         }
         default {
@@ -158,17 +158,17 @@ function Manage-App {
     switch ($SubCommand) {
         'start' {
             Write-Host "Starting application container..." -ForegroundColor Blue
-            docker-compose up -d app
+            docker compose up -d app
             Write-Host "[SUCCESS] Application started" -ForegroundColor Green
         }
         'stop' {
             Write-Host "Stopping application container..." -ForegroundColor Blue
-            docker-compose stop app
+            docker compose stop app
             Write-Host "[SUCCESS] Application stopped" -ForegroundColor Green
         }
         'restart' {
             Write-Host "Restarting application container..." -ForegroundColor Blue
-            docker-compose restart app
+            docker compose restart app
             Write-Host "[SUCCESS] Application restarted" -ForegroundColor Green
         }
         default {
@@ -179,13 +179,13 @@ function Manage-App {
 
 function Open-Shell {
     Write-Host "Opening shell in application container..." -ForegroundColor Blue
-    docker-compose exec app bash
+    docker compose exec app bash
 }
 
 function Open-CypherShell {
     Write-Host "Opening Cypher shell for Neo4j..." -ForegroundColor Blue
     Write-Host "Use Ctrl+D to exit" -ForegroundColor Yellow
-    docker-compose exec neo4j cypher-shell -u neo4j -p password123
+    docker compose exec neo4j cypher-shell -u neo4j -p password123
 }
 
 function Backup-Database {
@@ -200,12 +200,12 @@ function Backup-Database {
     $backupFile = "$backupDir\neo4j_backup_$timestamp.dump"
     
     Write-Host "Backing up to: $backupFile" -ForegroundColor Cyan
-    docker-compose exec -T neo4j neo4j-admin database dump neo4j --to-stdout | Set-Content -Path $backupFile -Encoding Byte
+    docker compose exec -T neo4j neo4j-admin database dump neo4j --to-stdout | Set-Content -Path $backupFile -Encoding Byte
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[SUCCESS] Backup created: $backupFile" -ForegroundColor Green
         Write-Host ""
-        Write-Host "To restore: Get-Content $backupFile -Encoding Byte | docker-compose exec -T neo4j neo4j-admin database load neo4j --from-stdin" -ForegroundColor Cyan
+        Write-Host "To restore: Get-Content $backupFile -Encoding Byte | docker compose exec -T neo4j neo4j-admin database load neo4j --from-stdin" -ForegroundColor Cyan
     } else {
         Write-Host "[ERROR] Backup failed" -ForegroundColor Red
     }

@@ -26,7 +26,7 @@ mbse-neo4j-graph-rep/
 
 ## 🔧 Configuration
 
-- **Neo4j URI**: neo4j+s://2cccd05b.databases.neo4j.io
+- **Neo4j URI**: neo4j+s://your-neo4j-uri.databases.neo4j.io
 - **Credentials**: Configured in `.env` file
 - **Connection**: ✅ Verified working
 

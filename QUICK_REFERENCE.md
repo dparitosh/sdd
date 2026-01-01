@@ -7,29 +7,29 @@
 
 ### Development Mode
 ```bash
-# Backend (Flask)
+# Backend (FastAPI)
 ./start_backend.sh
-# or
-python src/web/app.py
+# or (manual)
+python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000
 
 # Frontend (Vite)
 npm run dev
 
 # Check status
-curl http://localhost:5000/health
+curl http://localhost:5000/api/health
 curl http://localhost:3001
 ```
 
 ### Production Mode (Docker)
 ```bash
 # Build & start all services
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Check logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Stop
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 ```
 
 ---
@@ -76,7 +76,7 @@ agent.run("Find all classes that have more than 10 properties")
 ### Core APIs
 ```bash
 # Health check
-GET http://localhost:5000/health
+GET http://localhost:5000/api/health
 
 # Statistics
 GET http://localhost:5000/api/stats
@@ -154,19 +154,19 @@ docker build -t mbse-backend .
 docker build -f Dockerfile.frontend -t mbse-frontend .
 
 # Build all (compose)
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 ```
 
 ### Run
 ```bash
 # Start all services
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Start specific service
-docker-compose -f docker-compose.prod.yml up -d backend
+docker compose -f docker-compose.prod.yml up -d backend
 
 # View logs
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f backend
 
 # Shell access
 docker exec -it mbse-backend /bin/bash
@@ -187,10 +187,10 @@ docker inspect --format='{{.State.Health.Status}}' mbse-backend
 ### Clean Up
 ```bash
 # Stop all
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 
 # Remove volumes
-docker-compose -f docker-compose.prod.yml down -v
+docker compose -f docker-compose.prod.yml down -v
 
 # Clean system
 docker system prune -a
@@ -282,7 +282,7 @@ python scripts/validate_api_alignment.py
 ### Environment Variables (.env)
 ```bash
 # Neo4j Connection
-NEO4J_URI=bolt://localhost:7687
+NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j
@@ -301,7 +301,7 @@ LOG_LEVEL=INFO
 
 ### Docker Environment
 ```bash
-# For docker-compose
+# For docker compose
 cp .env.example .env
 # Edit values for production
 ```
@@ -316,10 +316,10 @@ cp .env.example .env
 tail -f logs/app.log
 
 # Docker logs
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f backend
 
 # Filter errors
-docker-compose -f docker-compose.prod.yml logs backend | grep ERROR
+docker compose -f docker-compose.prod.yml logs backend | grep ERROR
 ```
 
 ### Metrics
@@ -372,7 +372,7 @@ docker logs mbse-backend
 docker inspect mbse-backend
 
 # Restart service
-docker-compose -f docker-compose.prod.yml restart backend
+docker compose -f docker-compose.prod.yml restart backend
 
 # Check network
 docker network inspect mbse-network
@@ -381,7 +381,7 @@ docker network inspect mbse-network
 ### Neo4j Connection
 ```bash
 # Test connection
-neo4j-driver-test bolt://localhost:7687
+neo4j-driver-test %NEO4J_URI%
 
 # Check Neo4j status
 systemctl status neo4j  # if running as service
@@ -449,16 +449,16 @@ python tests/benchmark_agent.py
 ### Docker Deployment
 ```bash
 # 1. Build
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 # 2. Test locally
-docker-compose -f docker-compose.prod.yml up
+docker compose -f docker-compose.prod.yml up
 
 # 3. If successful, detach
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # 4. Monitor
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 ```
 
 ---

@@ -183,11 +183,9 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j
 
-# Flask Configuration
-FLASK_HOST=0.0.0.0
-FLASK_PORT=5000
-FLASK_ENV=production
-FLASK_DEBUG=False
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=5000
 
 # Frontend Configuration
 VITE_PORT=3001
@@ -220,7 +218,7 @@ Group=$APP_USER
 WorkingDirectory=$APP_DIR
 Environment="PYTHONPATH=$APP_DIR"
 Environment="PATH=/usr/bin:/usr/local/bin"
-ExecStart=/usr/bin/python3 -m src.web.app
+ExecStart=/usr/bin/python3 -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000
 Restart=always
 RestartSec=10
 StandardOutput=append:$LOG_DIR/backend.log

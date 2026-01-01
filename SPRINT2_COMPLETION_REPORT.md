@@ -404,7 +404,7 @@ Sprint 2 successfully delivered all planned features, closing 4 critical archite
 **Services Status**:
 - ✅ Backend (Flask): Running on port 5000, all routes registered
 - ✅ Frontend (Vite): Running on port 3001, HMR enabled
-- ✅ Neo4j: Connected (neo4j+s://2cccd05b.databases.neo4j.io)
+- ✅ Neo4j: Connected (neo4j+s://your-neo4j-uri.databases.neo4j.io)
 
 **Endpoint Tests**:
 ```

@@ -133,7 +133,7 @@
       build: ./frontend
       ports: ["3001:3001"]
     neo4j:
-      image: neo4j:5.15-enterprise
+      image: neo4j:5.15
     redis:
       image: redis:7-alpine
   ```
@@ -332,7 +332,7 @@ cp .env.example .env
 python scripts/migrate_phase2.py
 
 # Start services
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Test Agent
@@ -347,13 +347,13 @@ python tests/test_agent_performance.py
 ### Deploy to Production
 ```bash
 # Build containers
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 # Deploy
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Monitor
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ---

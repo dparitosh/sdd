@@ -3,7 +3,7 @@
  * Provides typed query methods for accessing UML/SysML model data
  */
 
-import neo4j, { Driver, Session, Result, SessionMode } from 'neo4j-driver';
+import neo4j, { Driver, Session, SessionMode } from 'neo4j-driver';
 
 export interface Neo4jConfig {
   uri: string;

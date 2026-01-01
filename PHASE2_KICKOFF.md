@@ -131,12 +131,12 @@ Created production-ready Docker infrastructure:
 2. **Docker Testing** (Priority: HIGH)
    ```bash
    # Build and test locally
-   docker-compose -f docker-compose.prod.yml build
-   docker-compose -f docker-compose.prod.yml up -d
+   docker compose -f docker-compose.prod.yml build
+   docker compose -f docker-compose.prod.yml up -d
    
    # Verify all services healthy
    docker ps
-   curl http://localhost:5000/health
+   curl http://localhost:5000/api/health
    curl http://localhost:3001/health
    ```
 
@@ -253,7 +253,7 @@ Created production-ready Docker infrastructure:
 
 ### Docker Deployment
 - [x] Dockerfiles created
-- [x] docker-compose configured
+- [x] docker compose configured
 - [ ] All containers building successfully
 - [ ] Health checks passing
 - [ ] < 30s startup time
@@ -330,7 +330,7 @@ No critical blockers identified. System is operational and ready for Phase 2.
 ### Infrastructure
 - [x] Phase 2 dependencies installed
 - [x] Docker containers created
-- [x] docker-compose configured
+- [x] docker compose configured
 - [x] Nginx configuration ready
 - [ ] Containers tested locally
 

@@ -13,6 +13,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+FRONTEND_DIR="$REPO_ROOT/frontend"
+
 # Check if running with systemd or manual mode
 if systemctl list-units --type=service | grep -q "mbse-backend"; then
     USE_SYSTEMD=true
@@ -55,25 +59,43 @@ start_service() {
         case $service in
             backend)
                 echo -e "${BLUE}Starting backend manually...${NC}"
-                export PYTHONPATH=$PWD
-                nohup python3 -m src.web.app > /tmp/mbse-backend.log 2>&1 &
+                if ! command -v python3 >/dev/null 2>&1; then
+                    echo -e "${RED}✗ python3 not found in PATH${NC}"
+                    return 1
+                fi
+                pushd "$REPO_ROOT" >/dev/null || return 1
+                export PYTHONPATH="$REPO_ROOT"
+                nohup python3 -m uvicorn src.web.app_fastapi:app --host 127.0.0.1 --port 5000 > /tmp/mbse-backend.log 2>&1 &
                 echo $! > /tmp/mbse-backend.pid
                 sleep 2
                 if ps -p $(cat /tmp/mbse-backend.pid) > /dev/null; then
                     echo -e "${GREEN}✓ Backend started (PID: $(cat /tmp/mbse-backend.pid))${NC}"
+                    popd >/dev/null || true
                 else
+                    popd >/dev/null || true
                     echo -e "${RED}✗ Backend failed to start${NC}"
                     return 1
                 fi
                 ;;
             frontend)
                 echo -e "${BLUE}Starting frontend manually...${NC}"
-                nohup npm run preview -- --host 0.0.0.0 --port 3001 > /tmp/mbse-frontend.log 2>&1 &
+                if [ ! -d "$FRONTEND_DIR" ]; then
+                    echo -e "${RED}✗ Frontend directory not found: $FRONTEND_DIR${NC}"
+                    return 1
+                fi
+                if ! command -v npm >/dev/null 2>&1; then
+                    echo -e "${RED}✗ npm not found in PATH${NC}"
+                    return 1
+                fi
+                pushd "$FRONTEND_DIR" >/dev/null || return 1
+                nohup npm run preview -- --host 127.0.0.1 --port 3001 > /tmp/mbse-frontend.log 2>&1 &
                 echo $! > /tmp/mbse-frontend.pid
                 sleep 2
                 if ps -p $(cat /tmp/mbse-frontend.pid) > /dev/null; then
                     echo -e "${GREEN}✓ Frontend started (PID: $(cat /tmp/mbse-frontend.pid))${NC}"
+                    popd >/dev/null || true
                 else
+                    popd >/dev/null || true
                     echo -e "${RED}✗ Frontend failed to start${NC}"
                     return 1
                 fi
@@ -104,7 +126,8 @@ stop_service() {
                     rm /tmp/mbse-backend.pid
                     echo -e "${GREEN}✓ Backend stopped${NC}"
                 else
-                    pkill -f "python.*src.web.app" && echo -e "${GREEN}✓ Backend stopped${NC}" || echo -e "${YELLOW}⚠ Backend not running${NC}"
+                    echo -e "${YELLOW}⚠ Backend PID file not found; not attempting broad process kill${NC}"
+                    echo -e "${YELLOW}  If backend is running, stop it using its PID or systemd.${NC}"
                 fi
                 ;;
             frontend)
@@ -115,7 +138,8 @@ stop_service() {
                     rm /tmp/mbse-frontend.pid
                     echo -e "${GREEN}✓ Frontend stopped${NC}"
                 else
-                    pkill -f "npm run preview" && echo -e "${GREEN}✓ Frontend stopped${NC}" || echo -e "${YELLOW}⚠ Frontend not running${NC}"
+                    echo -e "${YELLOW}⚠ Frontend PID file not found; not attempting broad process kill${NC}"
+                    echo -e "${YELLOW}  If frontend is running, stop it using its PID or systemd.${NC}"
                 fi
                 ;;
         esac
@@ -149,7 +173,7 @@ show_status() {
         
         echo ""
         echo "Process details:"
-        ps aux | grep -E "python.*src.web.app|npm run preview" | grep -v grep || echo "No processes found"
+        ps aux | grep -E "uvicorn.*src.web.app_fastapi:app|npm run (dev|preview)" | grep -v grep || echo "No processes found"
     fi
 }
 

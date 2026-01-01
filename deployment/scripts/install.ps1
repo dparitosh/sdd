@@ -180,11 +180,9 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j
 
-# Flask Configuration
-FLASK_HOST=0.0.0.0
-FLASK_PORT=5000
-FLASK_ENV=production
-FLASK_DEBUG=False
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=5000
 
 # Frontend Configuration
 VITE_PORT=3001
@@ -208,7 +206,7 @@ Write-Host "Starting MBSE Knowledge Graph services..." -ForegroundColor Cyan
 Set-Location "$InstallDir"
 `$env:PYTHONPATH = "$InstallDir"
 
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; python -m src.web.app" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; `$env:PYTHONPATH='$InstallDir'; python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000" -WindowStyle Normal
 Start-Sleep -Seconds 3
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; npm run preview -- --host 0.0.0.0 --port 3001" -WindowStyle Normal
 

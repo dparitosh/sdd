@@ -250,9 +250,9 @@ Flask uses port 5000, MCP uses stdio - no conflict possible!
 ### Database Connection Issues
 Both servers need same credentials:
 ```env
-NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=tcs12345
+NEO4J_PASSWORD=your-neo4j-password
 ```
 
 ## 📈 Performance Considerations

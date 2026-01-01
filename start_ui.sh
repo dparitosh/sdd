@@ -1,10 +1,6 @@
 #!/bin/bash
 
-# Kill any existing frontend processes
-pkill -f "vite" 2>/dev/null
-
-# Set up environment
-cd /workspaces/mbse-neo4j-graph-rep
+cd "$(dirname "$0")"
 
 echo "=================================="
 echo "🚀 Starting MBSE Knowledge Graph UI"

@@ -1,8 +1,8 @@
 #!/bin/bash
 # Convenience script to run the application with proper PYTHONPATH
 
-export PYTHONPATH="/workspaces/mbse-neo4j-graph-rep/src:$PYTHONPATH"
-cd /workspaces/mbse-neo4j-graph-rep
+cd "$(dirname "$0")"
+export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
 
 case "$1" in
   "test")

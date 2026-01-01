@@ -19,6 +19,14 @@ i18n
     },
     fallbackLng: 'en',
     debug: false,
+    detection: {
+      order: ['localStorage', 'navigator', 'htmlTag'],
+      lookupLocalStorage: 'mbse-language',
+      caches: ['localStorage'],
+    },
+    react: {
+      useSuspense: false,
+    },
     interpolation: {
       escapeValue: false, // React already escapes
     },

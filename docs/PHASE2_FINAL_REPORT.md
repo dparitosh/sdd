@@ -333,7 +333,7 @@ Phase 2 has been **successfully completed** 3+ weeks ahead of the original 6-wee
 
 ### Infrastructure ✅
 - [x] Docker multi-stage builds
-- [x] Production docker-compose configuration
+- [x] Production docker compose configuration
 - [x] Nginx reverse proxy setup
 - [x] Resource limits defined
 - [x] Health check endpoints
@@ -516,7 +516,7 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
 # 4. Start services
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Production Deployment
@@ -526,14 +526,14 @@ cp .env.production.template .env.production
 # Edit .env.production with production values
 
 # 2. Build containers
-docker-compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml build
 
 # 3. Start production stack
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # 4. Verify health
-curl http://localhost:8000/health
-curl http://localhost:8000/metrics
+curl http://localhost:5000/api/health
+curl http://localhost:5000/metrics
 
 # 5. Access Grafana
 open http://localhost:3001
@@ -630,9 +630,9 @@ open http://localhost:3001
 - **Grafana Setup:** `/docs/GRAFANA_SETUP.md`
 
 ### Troubleshooting
-- **Logs:** Check `docker-compose logs -f backend`
+- **Logs:** Check `docker compose logs -f backend`
 - **Metrics:** Visit `/metrics` endpoint
-- **Health:** Check `/health` endpoint
+- **Health:** Check `/api/health` endpoint
 - **Tests:** Run `python test_phase2_integration.py`
 
 ### Contact

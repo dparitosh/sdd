@@ -37,10 +37,26 @@ class Neo4jService:
             database: Neo4j database name (defaults to NEO4J_DATABASE env var or 'neo4j')
             query_cache: Optional QueryCache instance for result caching
         """
-        self.uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
-        self.user = user or os.getenv("NEO4J_USER", "neo4j")
-        self.password = password or os.getenv("NEO4J_PASSWORD", "password")
+        self.uri = uri or os.getenv("NEO4J_URI")
+        self.user = user or os.getenv("NEO4J_USER")
+        self.password = password or os.getenv("NEO4J_PASSWORD")
         self.database = database or os.getenv("NEO4J_DATABASE", "neo4j")
+
+        missing = [
+            name
+            for name, value in (
+                ("NEO4J_URI", self.uri),
+                ("NEO4J_USER", self.user),
+                ("NEO4J_PASSWORD", self.password),
+            )
+            if not value
+        ]
+        if missing:
+            raise ValueError(
+                "Missing required Neo4j configuration: "
+                + ", ".join(missing)
+                + ". Set these in your .env or environment variables."
+            )
         self._driver = None
         self._connection_verified = False
         self.query_cache = query_cache  # QueryCache instance

@@ -26,9 +26,9 @@ npm install
 Create `.env` file in the `mcp-server` directory:
 
 ```env
-NEO4J_URI=neo4j+s://2cccd05b.databases.neo4j.io
+NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=tcs12345
+NEO4J_PASSWORD=your-neo4j-password
 MCP_SERVER_NAME=mbse-knowledge-graph
 MCP_SERVER_VERSION=1.0.0
 ```
@@ -63,9 +63,9 @@ Add this to your Claude Desktop config file:
         "/absolute/path/to/mbse-neo4j-graph-rep/mcp-server/dist/index.js"
       ],
       "env": {
-        "NEO4J_URI": "neo4j+s://2cccd05b.databases.neo4j.io",
+        "NEO4J_URI": "neo4j+s://your-neo4j-uri.databases.neo4j.io",
         "NEO4J_USER": "neo4j",
-        "NEO4J_PASSWORD": "tcs12345"
+        "NEO4J_PASSWORD": "your-neo4j-password"
       }
     }
   }
@@ -238,7 +238,7 @@ npm start
 ### "Failed to connect to Neo4j"
 - Check your `.env` file has correct credentials
 - Verify Neo4j Aura is accessible
-- Test connection: `curl -I https://2cccd05b.databases.neo4j.io`
+- Test connection: `curl -I https://<your-instance-id>.databases.neo4j.io`
 
 ### "Tools not showing in Claude Desktop"
 - Verify config file path is correct
@@ -255,7 +255,7 @@ npm start
 # Test connection
 node -e "
 const neo4j = require('neo4j-driver');
-const driver = neo4j.driver('neo4j+s://2cccd05b.databases.neo4j.io', neo4j.auth.basic('neo4j', 'tcs12345'));
+const driver = neo4j.driver(process.env.NEO4J_URI, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD));
 driver.verifyConnectivity().then(() => console.log('✅ Connected')).catch(e => console.error('❌', e));
 "
 ```

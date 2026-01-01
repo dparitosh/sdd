@@ -9,6 +9,7 @@ setlocal enabledelayedexpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "PROJECT_ROOT=%SCRIPT_DIR%..\.."
+set "FRONTEND_DIR=%PROJECT_ROOT%\frontend"
 set "PID_DIR=%TEMP%\mbse-pids"
 
 if not exist "%PID_DIR%" mkdir "%PID_DIR%"
@@ -148,15 +149,19 @@ REM Internal functions
 echo Starting backend...
 cd /d "%PROJECT_ROOT%"
 set PYTHONPATH=%CD%
-start /b cmd /c "python -m src.web.app > %TEMP%\mbse-backend.log 2>&1"
-timeout /t 2 /nobreak >nul
-for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /NH ^| findstr /i "python"') do (
+
+set "PYTHON_EXE=python"
+if exist "%PROJECT_ROOT%\.venv\Scripts\python.exe" set "PYTHON_EXE=%PROJECT_ROOT%\.venv\Scripts\python.exe"
+
+for /f %%a in ('powershell -NoProfile -Command "$pythonExe='%PYTHON_EXE%'; $p=Start-Process -FilePath $pythonExe -ArgumentList @('-m','uvicorn','src.web.app_fastapi:app','--host','127.0.0.1','--port','5000') -RedirectStandardOutput '%TEMP%\mbse-backend.log' -RedirectStandardError '%TEMP%\mbse-backend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\backend.pid"
-    echo [SUCCESS] Backend started with PID: %%a
-    goto :backend_started
 )
-echo [ERROR] Failed to start backend
-:backend_started
+if exist "%PID_DIR%\backend.pid" (
+    set /p BACKEND_PID=<"%PID_DIR%\backend.pid"
+    echo [SUCCESS] Backend started with PID: %BACKEND_PID%
+) else (
+    echo [ERROR] Failed to start backend
+)
 goto :eof
 
 :stop_backend
@@ -167,27 +172,22 @@ if exist "%PID_DIR%\backend.pid" (
     del "%PID_DIR%\backend.pid" 2>nul
     echo [SUCCESS] Backend stopped
 ) else (
-    taskkill /F /IM python.exe /FI "WINDOWTITLE eq *src.web.app*" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo [SUCCESS] Backend stopped
-    ) else (
-        echo [WARNING] Backend not running
-    )
+    echo [WARNING] Backend PID file not found; not stopping arbitrary python.exe
 )
 goto :eof
 
 :start_frontend
 echo Starting frontend...
-cd /d "%PROJECT_ROOT%"
-start /b cmd /c "npm run preview -- --host 0.0.0.0 --port 3001 > %TEMP%\mbse-frontend.log 2>&1"
-timeout /t 2 /nobreak >nul
-for /f "tokens=2" %%a in ('tasklist /FI "IMAGENAME eq node.exe" /NH ^| findstr /i "node"') do (
+cd /d "%FRONTEND_DIR%"
+for /f %%a in ('powershell -NoProfile -Command "$p=Start-Process -FilePath npm -ArgumentList @('run','dev','--','--host','127.0.0.1','--port','3001') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\frontend.pid"
-    echo [SUCCESS] Frontend started with PID: %%a
-    goto :frontend_started
 )
-echo [ERROR] Failed to start frontend
-:frontend_started
+if exist "%PID_DIR%\frontend.pid" (
+    set /p FRONTEND_PID=<"%PID_DIR%\frontend.pid"
+    echo [SUCCESS] Frontend started with PID: %FRONTEND_PID%
+) else (
+    echo [ERROR] Failed to start frontend
+)
 goto :eof
 
 :stop_frontend
@@ -198,12 +198,7 @@ if exist "%PID_DIR%\frontend.pid" (
     del "%PID_DIR%\frontend.pid" 2>nul
     echo [SUCCESS] Frontend stopped
 ) else (
-    taskkill /F /IM node.exe >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo [SUCCESS] Frontend stopped
-    ) else (
-        echo [WARNING] Frontend not running
-    )
+    echo [WARNING] Frontend PID file not found; not stopping arbitrary node.exe
 )
 goto :eof
 

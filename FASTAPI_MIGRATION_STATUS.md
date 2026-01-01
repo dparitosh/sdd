@@ -235,7 +235,7 @@ uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --workers 4
 gunicorn src.web.app_fastapi:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:5000
 
 # Using Docker
-docker-compose up -d
+docker compose up -d
 ```
 
 ## API Documentation Access

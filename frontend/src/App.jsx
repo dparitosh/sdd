@@ -30,8 +30,7 @@ import ResultsAnalysis from '@/pages/ResultsAnalysis';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import logger from '@/utils/logger';
 import '@/i18n';
-import { QUERY_CONFIG } from '@/constants';import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-
+import { QUERY_CONFIG } from '@/constants';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -41,74 +40,18 @@ const queryClient = new QueryClient({
     }
   }
 });
-
 function AppContent() {
-  // Initialize WebSocket connection for real-time updates (optional)
-  const { connected } = useWebSocket(true);
-
-  // Log connection status only when connected
+  const {
+    connected
+  } = useWebSocket(true);
   useEffect(() => {
     if (connected) {
       logger.log('✓ WebSocket connected - real-time updates enabled');
     }
   }, [connected]);
-
-  return (/*#__PURE__*/
-    _jsx(Router, { children: /*#__PURE__*/
-      _jsxs(Routes, { children: [/*#__PURE__*/
-
-        _jsx(Route, { path: "/login", element: /*#__PURE__*/_jsx(Login, {}) }), /*#__PURE__*/
-        _jsx(Route, { path: "/auth/callback", element: /*#__PURE__*/_jsx(AuthCallback, {}) }), /*#__PURE__*/
-
-
-        _jsx(Route, {
-          path: "/*",
-          element: /*#__PURE__*/
-          _jsx(ProtectedRoute, { children: /*#__PURE__*/
-            _jsx(Layout, { children: /*#__PURE__*/
-              _jsxs(Routes, { children: [/*#__PURE__*/
-                _jsx(Route, { path: "/", element: /*#__PURE__*/_jsx(Navigate, { to: "/dashboard", replace: true }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/dashboard", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(Dashboard, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/search", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(AdvancedSearch, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/api-explorer", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(RestApiExplorer, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/query-editor", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(QueryEditor, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/requirements", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(RequirementsManager, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/traceability", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(TraceabilityMatrix, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/plm", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(PLMIntegration, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/monitoring", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(SystemMonitoring, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/ap239/requirements", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(RequirementsDashboard, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/ap242/parts", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(PartsExplorer, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/graph", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(GraphBrowser, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/import", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(DataImport, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/ai/insights", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(AIInsights, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/ai/analysis", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(SmartAnalysis, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/ai/chat", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(ModelChat, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/simulation/models", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(ModelRepository, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/simulation/workflows", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(WorkflowStudio, {}) }) }), /*#__PURE__*/
-                _jsx(Route, { path: "/simulation/results", element: /*#__PURE__*/_jsx(ErrorBoundary, { children: /*#__PURE__*/_jsx(ResultsAnalysis, {}) }) })] }
-              ) }
-            ) }
-          ) }
-
-        )] }
-      ) }
-    ));
-
+  return <Router><Routes><Route path="/login" element={<Login />} /><Route path="/auth/callback" element={<AuthCallback />} /><Route path="/*" element={<ProtectedRoute><Layout><Routes><Route path="/" element={<Navigate to="/dashboard" replace />} /><Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} /><Route path="/search" element={<ErrorBoundary><AdvancedSearch /></ErrorBoundary>} /><Route path="/api-explorer" element={<ErrorBoundary><RestApiExplorer /></ErrorBoundary>} /><Route path="/query-editor" element={<ErrorBoundary><QueryEditor /></ErrorBoundary>} /><Route path="/requirements" element={<ErrorBoundary><RequirementsManager /></ErrorBoundary>} /><Route path="/traceability" element={<ErrorBoundary><TraceabilityMatrix /></ErrorBoundary>} /><Route path="/plm" element={<ErrorBoundary><PLMIntegration /></ErrorBoundary>} /><Route path="/monitoring" element={<ErrorBoundary><SystemMonitoring /></ErrorBoundary>} /><Route path="/ap239/requirements" element={<ErrorBoundary><RequirementsDashboard /></ErrorBoundary>} /><Route path="/ap242/parts" element={<ErrorBoundary><PartsExplorer /></ErrorBoundary>} /><Route path="/graph" element={<ErrorBoundary><GraphBrowser /></ErrorBoundary>} /><Route path="/import" element={<ErrorBoundary><DataImport /></ErrorBoundary>} /><Route path="/ai/insights" element={<ErrorBoundary><AIInsights /></ErrorBoundary>} /><Route path="/ai/analysis" element={<ErrorBoundary><SmartAnalysis /></ErrorBoundary>} /><Route path="/ai/chat" element={<ErrorBoundary><ModelChat /></ErrorBoundary>} /><Route path="/simulation/models" element={<ErrorBoundary><ModelRepository /></ErrorBoundary>} /><Route path="/simulation/workflows" element={<ErrorBoundary><WorkflowStudio /></ErrorBoundary>} /><Route path="/simulation/results" element={<ErrorBoundary><ResultsAnalysis /></ErrorBoundary>} /></Routes></Layout></ProtectedRoute>} /></Routes></Router>;
 }
-
 function App() {
-  return (/*#__PURE__*/
-    _jsx(ErrorBoundary, { children: /*#__PURE__*/
-      _jsx(HelmetProvider, { children: /*#__PURE__*/
-        _jsx(ThemeProvider, { defaultTheme: "system", storageKey: "mbse-ui-theme", children: /*#__PURE__*/
-          _jsxs(QueryClientProvider, { client: queryClient, children: [/*#__PURE__*/
-            _jsx(AppContent, {}), /*#__PURE__*/
-            _jsx(Toaster, {})] }
-          ) }
-        ) }
-      ) }
-    ));
-
+  return <ErrorBoundary><HelmetProvider><ThemeProvider defaultTheme="system" storageKey="mbse-ui-theme"><QueryClientProvider client={queryClient}><AppContent /><Toaster /></QueryClientProvider></ThemeProvider></HelmetProvider></ErrorBoundary>;
 }
-
 export default App;

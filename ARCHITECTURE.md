@@ -109,7 +109,7 @@ python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 - `FRONTEND_URL=https://...` - Frontend URL for redirects
 
 ### 3. Database (Neo4j Aura)
-**Connection:** `neo4j+s://2cccd05b.databases.neo4j.io`
+**Connection:** `neo4j+s://your-neo4j-uri.databases.neo4j.io`
 
 **Schema:**
 - **AP239 Nodes:** Requirements, Specifications, Approvals, Changes, Versions
@@ -234,7 +234,7 @@ curl http://localhost:5000/info | jq
 |---------|----------------|----------------|
 | Frontend | http://localhost:3001 | https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev |
 | Backend | http://localhost:5000 | https://vigilant-space-goldfish-5x6rp4rvpxg244wj-5000.app.github.dev |
-| Database | neo4j+s://2cccd05b.databases.neo4j.io | (same) |
+| Database | neo4j+s://your-neo4j-uri.databases.neo4j.io | (same) |
 
 ## Recent Achievements
 

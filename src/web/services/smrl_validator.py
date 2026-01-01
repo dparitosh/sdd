@@ -14,8 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from loguru import logger
 
 try:
-    from jsonschema import validate, ValidationError, Draft7Validator, RefResolver
-    from jsonschema.exceptions import SchemaError
+    from jsonschema import Draft7Validator
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
@@ -93,30 +92,21 @@ class SMRLSchemaValidator:
             return
 
         try:
-            # Get the schema for this resource type
+            # Build a ref path into the OpenAPI components tree.
+            # Some schemas wrap the actual resource under a property named after the resource type.
+            ref_path = f"#/components/schemas/{resource_type}"
             resource_schema = self.schemas[resource_type]
-
-            # Handle nested structure (some schemas have resource_type as root)
             if "properties" in resource_schema and resource_type in resource_schema["properties"]:
-                resource_schema = resource_schema["properties"][resource_type]
+                ref_path = f"#/components/schemas/{resource_type}/properties/{resource_type}"
 
-            # Create a resolver to handle $ref pointers within the schema
-            from jsonschema import RefResolver
-            
-            # Build the full schema URI for proper resolution
-            schema_store = {
-                f"#/components/schemas/{key}": value
-                for key, value in self.schemas.items()
+            # Validate against a wrapper schema containing the full components tree.
+            # This avoids deprecated RefResolver usage while still resolving $ref across components.
+            wrapper_schema = {
+                "$ref": ref_path,
+                "components": {"schemas": self.schemas},
             }
-            
-            # Create resolver with the full schema context
-            resolver = RefResolver.from_schema(
-                {"components": {"schemas": self.schemas}},
-                store=schema_store
-            )
-            
-            # Create validator with custom resolver
-            validator = Draft7Validator(resource_schema, resolver=resolver)
+
+            validator = Draft7Validator(wrapper_schema)
             self.validators[resource_type] = validator
 
         except Exception as e:

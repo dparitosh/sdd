@@ -70,7 +70,7 @@ def get_neo4j_service() -> Neo4jService:
 ```python
 # In Neo4jService.__init__()
 self.driver = GraphDatabase.driver(
-    self.uri,  # neo4j+s://2cccd05b.databases.neo4j.io
+    self.uri,  # neo4j+s://your-neo4j-uri.databases.neo4j.io
     auth=(self.user, self.password),
     max_connection_pool_size=50,
     connection_acquisition_timeout=60,  # ← Hangs here!
