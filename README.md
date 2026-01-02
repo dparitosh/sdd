@@ -60,10 +60,12 @@ A distributed collaboration platform for Model-Based Systems Engineering (MBSE) 
 cd /workspaces/mbse-neo4j-graph-rep
 
 # Using uvicorn directly (recommended for development)
+cd backend
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
 # Or using the startup script
-./start_backend.sh
+cd ..
+./scripts/start_backend.sh
 ```
 
 ### 2. Access the Application
@@ -81,7 +83,7 @@ python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
 ```bash
 # Test legacy REST API
-python3 test_rest_api.py
+python backend/scripts/test_rest_api.py
 
 # Test SMRL v1 API (NEW!)
 curl http://127.0.0.1:5000/api/v1/health
@@ -379,7 +381,7 @@ pytest
 pytest --cov=src tests/
 
 # Run specific test
-pytest tests/unit/test_xmi_parser.py
+pytest backend/tests/unit/test_xmi_parser.py
 ```
 
 ### Code Quality

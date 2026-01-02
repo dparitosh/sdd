@@ -2,7 +2,7 @@
 # Convenience script to run the application with proper PYTHONPATH
 
 cd "$(dirname "$0")"
-export PYTHONPATH="$(pwd)/src:$PYTHONPATH"
+export PYTHONPATH="$(pwd):$PYTHONPATH"
 
 case "$1" in
   "test")

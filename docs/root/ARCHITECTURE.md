@@ -99,7 +99,7 @@ cd /workspaces/mbse-neo4j-graph-rep
 export PYTHONPATH=/workspaces/mbse-neo4j-graph-rep
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 # OR use the startup script
-./start_backend.sh
+./scripts/start_backend.sh
 ```
 
 **Environment:**

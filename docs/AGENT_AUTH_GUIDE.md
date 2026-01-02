@@ -567,7 +567,7 @@ CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "src.web.app:app"]
 ```
 
 ```yaml
-# docker-compose.yml
+# deployment/docker-compose.yml
 version: '3.8'
 services:
   app:

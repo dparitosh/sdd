@@ -59,10 +59,10 @@
 Created production-ready Docker infrastructure:
 
 **Files Created**:
-- `Dockerfile` - Multi-stage Python backend container
-- `Dockerfile.frontend` - React/Vite + Nginx frontend
-- `docker-compose.prod.yml` - Production orchestration
-- `docker/nginx.conf` - Optimized Nginx configuration
+- `deployment/dockerfiles/Dockerfile.backend` - Multi-stage Python backend container
+- `deployment/dockerfiles/Dockerfile.frontend` - React/Vite + Nginx frontend
+- `deployment/docker-compose.prod.yml` - Production orchestration
+- `deployment/nginx/nginx.conf` - Optimized Nginx configuration
 - `DOCKER_GUIDE.md` - Complete deployment documentation
 
 **Features**:
@@ -131,8 +131,8 @@ Created production-ready Docker infrastructure:
 2. **Docker Testing** (Priority: HIGH)
    ```bash
    # Build and test locally
-   docker compose -f docker-compose.prod.yml build
-   docker compose -f docker-compose.prod.yml up -d
+   docker compose -f deployment/docker-compose.prod.yml build
+   docker compose -f deployment/docker-compose.prod.yml up -d
    
    # Verify all services healthy
    docker ps
@@ -319,7 +319,7 @@ No critical blockers identified. System is operational and ready for Phase 2.
 
 ### Code Examples
 - Agent implementation: `src/agents/langgraph_agent.py`
-- Docker setup: `docker-compose.prod.yml`
+- Docker setup: `deployment/docker-compose.prod.yml`
 - Service layer: `src/web/services/neo4j_service.py`
 - REST API: `src/web/routes/`
 

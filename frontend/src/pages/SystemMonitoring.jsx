@@ -119,84 +119,164 @@ export default function SystemMonitoring() {
       </div>
     );
   }
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px'
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="requests"
-              stroke="#3b82f6"
-              fillOpacity={1}
-              fill="url(#colorRequests)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
 
-    <Card>
-      <CardHeader>
-        <CardTitle>Response Latency (Last 20 minutes)</CardTitle>
-        <CardDescription>P95 latency in milliseconds</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={historicalData}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-            <XAxis dataKey="timestamp" className="text-xs" />
-            <YAxis className="text-xs" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px'
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="latency"
-              stroke="#10b981"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  </div>
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['health'] });
+    queryClient.invalidateQueries({ queryKey: ['system-metrics'] });
+    queryClient.invalidateQueries({ queryKey: ['historical-metrics'] });
+  };
 
-  <Card>
-    <CardHeader>
-      <CardTitle>System Health</CardTitle>
-      <CardDescription>Overall system status and component health</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {[
-          { name: 'API Server', status: 'healthy', uptime: '99.98%' },
-          { name: 'Neo4j Database', status: 'healthy', uptime: '99.95%' },
-          { name: 'Redis Cache', status: 'healthy', uptime: '99.99%' },
-          { name: 'Prometheus', status: 'healthy', uptime: '99.97%' },
-          { name: 'Grafana', status: 'healthy', uptime: '99.96%' }
-        ].map(component => (
-          <div
-            key={component.name}
-            className="flex items-center justify-between py-2 border-b last:border-0"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-green-500" />
-              <span className="font-medium">{component.name}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline">Uptime: {component.uptime}</Badge>
-              <Badge variant="default">{component.status}</Badge>
-            </div>
-          </div>
-        ))}
+  const overallHealth = health?.status || (healthLoading ? 'loading' : 'unknown');
+  const historicalSeries = historicalData ?? [];
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <PageHeader
+        title="System Monitoring"
+        description="Real-time system performance and health metrics"
+        icon={<Activity className="h-6 w-6 text-primary" />}
+        breadcrumbs={[
+          { label: 'System', href: '/monitoring' },
+          { label: 'System Health' }
+        ]}
+      />
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant={overallHealth === 'healthy' ? 'default' : 'outline'}>
+            {overallHealth}
+          </Badge>
+          <span className="text-sm text-muted-foreground">
+            Updates every 5 seconds
+          </span>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
-    </CardContent>
-  </Card>
-</div>;
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {metricCards.map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Card key={metric.title}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                  <Icon className={`h-4 w-4 ${metric.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{metric.value}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  {metric.trendUp === true && <TrendingUp className="h-3 w-3 text-green-500" />}
+                  {metric.trendUp === false && <TrendingUp className="h-3 w-3 text-red-500 rotate-180" />}
+                  <span>{metric.trend}</span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>API Requests (Last Hour)</CardTitle>
+            <CardDescription>Requests per minute</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={historicalSeries}>
+                <defs>
+                  <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="timestamp" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px'
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="requests"
+                  stroke="#3b82f6"
+                  fillOpacity={1}
+                  fill="url(#colorRequests)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Response Latency (Last 20 minutes)</CardTitle>
+            <CardDescription>P95 latency in milliseconds</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={historicalSeries}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="timestamp" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px'
+                  }}
+                />
+                <Line type="monotone" dataKey="latency" stroke="#10b981" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>System Health</CardTitle>
+          <CardDescription>Overall system status and component health</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[
+              { name: 'API Server', status: 'healthy', uptime: '99.98%' },
+              { name: 'Neo4j Database', status: 'healthy', uptime: '99.95%' },
+              { name: 'Redis Cache', status: 'unavailable', uptime: 'n/a' },
+            ].map((component) => (
+              <div
+                key={component.name}
+                className="flex items-center justify-between py-2 border-b last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      component.status === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'
+                    }`}
+                  />
+                  <span className="font-medium">{component.name}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Badge variant="outline">Uptime: {component.uptime}</Badge>
+                  <Badge variant={component.status === 'healthy' ? 'default' : 'outline'}>
+                    {component.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

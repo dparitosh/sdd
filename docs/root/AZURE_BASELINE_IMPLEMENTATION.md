@@ -148,7 +148,7 @@ tests/
 
 ```bash
 # Run integration tests
-pytest tests/test_baseline_orchestrator.py -v
+pytest backend/tests/test_baseline_orchestrator.py -v
 
 # Execute baseline orchestrator
 python -m src.agents.orchestrator_workflow baseline

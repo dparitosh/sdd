@@ -35,14 +35,11 @@ class ApiClient {
           logger.error('Error reading auth token:', error);
         }
         
-        // Add API key from environment variable (REQUIRED)
+        // Add API key from environment variable (optional in dev)
         const apiKey = import.meta.env.VITE_API_KEY;
-        if (!apiKey) {
-          logger.error('VITE_API_KEY environment variable is not set');
-          toast.error(i18n.t('errors.apiKeyNotConfigured'));
-          throw new Error('API key is not configured');
+        if (apiKey) {
+          config.headers['X-API-Key'] = apiKey;
         }
-        config.headers['X-API-Key'] = apiKey;
         
         return config;
       },
@@ -84,6 +81,12 @@ class ApiClient {
               : error.response.data?.details;
           }
           
+          // If API key isn't configured client-side and the server requires it, surface that explicitly.
+          if ((error.response.status === 401 || error.response.status === 403) && !import.meta.env.VITE_API_KEY) {
+            toast.error(i18n.t('errors.apiKeyNotConfigured'));
+            return Promise.reject(error);
+          }
+
           // Handle 401 Unauthorized - redirect to login
           if (error.response.status === 401) {
             toast.error(i18n.t('errors.sessionExpired'), {

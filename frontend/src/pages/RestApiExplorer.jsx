@@ -228,7 +228,7 @@ const API_ENDPOINTS = [{
   body: '{\n  "name": "New Resource",\n  "description": "Resource description"\n}'
 }, {
   method: 'PUT',
-  path: '/v1/{type}/{uid}',
+  path: '/api/v1/{type}/{uid}',
   description: 'Update a resource',
   blueprint: 'SMRL v1',
   params: [{
@@ -245,7 +245,7 @@ const API_ENDPOINTS = [{
   body: '{\n  "name": "Updated Name",\n  "description": "Updated description"\n}'
 }, {
   method: 'DELETE',
-  path: '/v1/{type}/{uid}',
+  path: '/api/v1/{type}/{uid}',
   description: 'Delete a resource',
   blueprint: 'SMRL v1',
   params: [{
@@ -261,62 +261,56 @@ const API_ENDPOINTS = [{
   }]
 }, {
   method: 'GET',
-  path: '/ap239/requirements/{uid}/traceability',
+  path: '/api/ap239/requirements/{req_id}/traceability',
   description: 'Get requirement traceability links',
   blueprint: 'AP239 Requirements',
   params: [{
-    name: 'uid',
+    name: 'req_id',
     type: 'string',
     required: true,
-    description: 'Requirement UID'
+    description: 'Requirement ID'
   }]
 }, {
   method: 'GET',
-  path: '/plm/bom/{partId}',
-  description: 'Get Bill of Materials for a part',
+  path: '/api/plm/composition/{node_id}',
+  description: 'Get Bill of Materials (composition) hierarchy for a node',
   blueprint: 'PLM',
   params: [{
-    name: 'partId',
+    name: 'node_id',
     type: 'string',
     required: true,
-    description: 'Part ID'
+    description: 'Node ID'
   }]
 }, {
   method: 'GET',
-  path: '/plm/change-impact/{partId}',
-  description: 'Analyze change impact for a part',
+  path: '/api/plm/impact/{node_id}',
+  description: 'Analyze change impact for a node',
   blueprint: 'PLM',
   params: [{
-    name: 'partId',
+    name: 'node_id',
     type: 'string',
     required: true,
-    description: 'Part ID'
+    description: 'Node ID'
   }]
 }, {
   method: 'GET',
-  path: '/simulation/models',
-  description: 'List simulation models',
+  path: '/api/simulation/parameters',
+  description: 'Extract simulation parameters with metadata (types, defaults, constraints)',
   blueprint: 'Simulation'
 }, {
   method: 'GET',
-  path: '/simulation/models/{id}',
-  description: 'Get simulation model details',
-  blueprint: 'Simulation',
-  params: [{
-    name: 'id',
-    type: 'string',
-    required: true,
-    description: 'Model ID'
-  }]
+  path: '/api/simulation/units',
+  description: 'Get unit types and properties used for simulation integration',
+  blueprint: 'Simulation'
 }, {
   method: 'POST',
-  path: '/simulation/run',
-  description: 'Run a simulation',
+  path: '/api/simulation/validate',
+  description: 'Validate parameter values against constraints',
   blueprint: 'Simulation',
-  body: '{\n  "modelId": "model-123",\n  "parameters": {\n    "param1": 100,\n    "param2": 200\n  }\n}'
+  body: '{\n  "parameters": [\n    {\n      "id": "param-123",\n      "value": 100\n    }\n  ]\n}'
 }, {
   method: 'POST',
-  path: '/cypher',
+  path: '/api/cypher',
   description: 'Execute Cypher query',
   blueprint: 'Query',
   body: '{\n  "query": "MATCH (n) RETURN n LIMIT 10"\n}'
@@ -434,11 +428,11 @@ export default function RestApiExplorer() {
     return acc;
   }, {});
   const pathParamKeys = selectedEndpoint?.path.match(/\{([^}]+)\}/g)?.map(p => p.slice(1, -1)) || [];
-  const queryParamKeys = selectedEndpoint?.params?.filter(p => p.name !== 'type' && p.name !== 'uid' && p.name !== 'id' && p.name !== 'partId') || [];
-  return <div className="space-y-6"><div className="border-b pb-6"><div className="flex items-center gap-4 mb-2"><div className="h-12 w-12 rounded-lg bg-gradient-primary flex items-center justify-center"><Terminal className="h-6 w-6 text-white" /></div><div><h1 className="text-3xl font-bold tracking-tight">REST API Documentation</h1><p className="text-sm text-muted-foreground">OpenAPI 3.0 Compatible Interface</p></div></div><div className="flex gap-2 mt-4"><Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">API v1.0</Badge><Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">ISO 10303 SMRL</Badge><Badge variant="outline">Base: /api</Badge></div></div><div className="grid grid-cols-1 gap-4"><div className="space-y-2"><div className="text-sm font-semibold text-muted-foreground mb-4">{API_ENDPOINTS.length} Operations</div><Accordion type="single" collapsible className="w-full space-y-2">{Object.entries(groupedEndpoints).map(([blueprint, endpoints]) => <AccordionItem value={blueprint} className="border rounded-lg"><AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50"><div className="flex items-center justify-between w-full"><span className="font-semibold text-base">{blueprint}</span><Badge variant="secondary" className="ml-2">{endpoints.length} endpoints</Badge></div></AccordionTrigger><AccordionContent className="px-4 pb-4"><div className="space-y-2 mt-2">{endpoints.map((endpoint, index) => <Card className={`cursor-pointer transition-all hover:shadow-md ${selectedEndpoint === endpoint ? 'ring-2 ring-primary shadow-md' : ''}`} onClick={() => handleSelectEndpoint(endpoint)}><CardContent className="p-4"><div className="flex items-start gap-3"><Badge className={`${METHOD_COLORS[endpoint.method]} text-white text-xs font-bold shrink-0 mt-0.5`}>{endpoint.method}</Badge><div className="flex-1 min-w-0"><code className="text-sm font-mono font-semibold block mb-1">{endpoint.path}</code><p className="text-xs text-muted-foreground">{endpoint.description}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /></div></CardContent></Card>)}</div></AccordionContent></AccordionItem>)}</Accordion></div>{selectedEndpoint && <Card className="border-2 border-primary/20 shadow-lg"><CardHeader className="border-b bg-muted/30"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><Badge className={`${METHOD_COLORS[selectedEndpoint.method]} text-white font-bold px-3 py-1`}>{selectedEndpoint.method}</Badge><div><code className="text-base font-mono font-semibold">{selectedEndpoint.path}</code><p className="text-sm text-muted-foreground mt-1">{selectedEndpoint.description}</p></div></div><Badge variant="outline" className="bg-blue-50 text-blue-700">Try it out</Badge></div></CardHeader><CardContent className="space-y-4">{pathParamKeys.length > 0 && <div className="space-y-2"><Label className="text-sm font-semibold">Path Parameters</Label>{pathParamKeys.map(param => <div><Label htmlFor={param} className="text-xs">{param} <span className="text-destructive">*</span></Label><Input id={param} value={pathParams[param] || ''} onChange={e => setPathParams({
+  const queryParamKeys = selectedEndpoint?.params?.filter(p => p.name !== 'type' && p.name !== 'uid' && p.name !== 'id' && p.name !== 'partId' && p.name !== 'req_id' && p.name !== 'node_id') || [];
+  return <div className="space-y-6"><div className="border-b pb-6"><div className="flex items-center gap-4 mb-2"><div className="h-12 w-12 rounded-lg bg-gradient-primary flex items-center justify-center"><Terminal className="h-6 w-6 text-white" /></div><div><h1 className="text-3xl font-bold tracking-tight">REST API Documentation</h1><p className="text-sm text-muted-foreground">OpenAPI 3.0 Compatible Interface</p></div></div><div className="flex gap-2 mt-4"><Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">API v1.0</Badge><Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">ISO 10303 SMRL</Badge><Badge variant="outline">Base: /api</Badge></div></div><div className="grid grid-cols-1 gap-4"><div className="space-y-2"><div className="text-sm font-semibold text-muted-foreground mb-4">{API_ENDPOINTS.length} Operations</div><Accordion type="single" collapsible className="w-full space-y-2">{Object.entries(groupedEndpoints).map(([blueprint, endpoints]) => <AccordionItem key={blueprint} value={blueprint} className="border rounded-lg"><AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50"><div className="flex items-center justify-between w-full"><span className="font-semibold text-base">{blueprint}</span><Badge variant="secondary" className="ml-2">{endpoints.length} endpoints</Badge></div></AccordionTrigger><AccordionContent className="px-4 pb-4"><div className="space-y-2 mt-2">{endpoints.map((endpoint, index) => <Card key={`${endpoint.method}:${endpoint.path}`} className={`cursor-pointer transition-all hover:shadow-md ${selectedEndpoint === endpoint ? 'ring-2 ring-primary shadow-md' : ''}`} onClick={() => handleSelectEndpoint(endpoint)}><CardContent className="p-4"><div className="flex items-start gap-3"><Badge className={`${METHOD_COLORS[endpoint.method]} text-white text-xs font-bold shrink-0 mt-0.5`}>{endpoint.method}</Badge><div className="flex-1 min-w-0"><code className="text-sm font-mono font-semibold block mb-1">{endpoint.path}</code><p className="text-xs text-muted-foreground">{endpoint.description}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" /></div></CardContent></Card>)}</div></AccordionContent></AccordionItem>)}</Accordion></div>{selectedEndpoint && <Card className="border-2 border-primary/20 shadow-lg"><CardHeader className="border-b bg-muted/30"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><Badge className={`${METHOD_COLORS[selectedEndpoint.method]} text-white font-bold px-3 py-1`}>{selectedEndpoint.method}</Badge><div><code className="text-base font-mono font-semibold">{selectedEndpoint.path}</code><p className="text-sm text-muted-foreground mt-1">{selectedEndpoint.description}</p></div></div><Badge variant="outline" className="bg-blue-50 text-blue-700">Try it out</Badge></div></CardHeader><CardContent className="space-y-4">{pathParamKeys.length > 0 && <div className="space-y-2"><Label className="text-sm font-semibold">Path Parameters</Label>{pathParamKeys.map(param => <div key={param}><Label htmlFor={param} className="text-xs">{param} <span className="text-destructive">*</span></Label><Input id={param} value={pathParams[param] || ''} onChange={e => setPathParams({
                 ...pathParams,
                 [param]: e.target.value
-              })} placeholder={`Enter ${param}`} /></div>)}</div>}{queryParamKeys.length > 0 && <div className="space-y-2"><Label className="text-sm font-semibold">Query Parameters</Label>{queryParamKeys.map(param => <div><Label htmlFor={param.name} className="text-xs">{param.name}{param.required && <span className="text-destructive"> *</span>}</Label><Input id={param.name} value={queryParams[param.name] || ''} onChange={e => setQueryParams({
+              })} placeholder={`Enter ${param}`} /></div>)}</div>}{queryParamKeys.length > 0 && <div className="space-y-2"><Label className="text-sm font-semibold">Query Parameters</Label>{queryParamKeys.map(param => <div key={param.name}><Label htmlFor={param.name} className="text-xs">{param.name}{param.required && <span className="text-destructive"> *</span>}</Label><Input id={param.name} value={queryParams[param.name] || ''} onChange={e => setQueryParams({
                 ...queryParams,
                 [param.name]: e.target.value
               })} placeholder={param.description} /></div>)}</div>}{(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && <div className="space-y-2"><Label className="text-sm font-semibold">Request Body (JSON)</Label><Textarea value={requestBody} onChange={e => setRequestBody(e.target.value)} placeholder="Enter JSON request body" rows={8} className="font-mono text-xs" /></div>}<Button onClick={handleExecute} disabled={executeMutation.isPending} className="w-full"><Play className="h-4 w-4 mr-2" />{executeMutation.isPending ? 'Executing...' : 'Send Request'}</Button>{(response || error) && <Tabs defaultValue="response" className="w-full"><div className="flex items-center justify-between mb-2"><TabsList><TabsTrigger value="response">Response</TabsTrigger><TabsTrigger value="headers">Headers</TabsTrigger></TabsList><div className="flex items-center gap-2">{responseTime && <Badge variant="outline">{responseTime}ms</Badge>}{response && <Button variant="ghost" size="sm" onClick={copyResponse}><Copy className="h-4 w-4" /></Button>}</div></div><TabsContent value="response" className="mt-0">{error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : <div className="rounded-md border p-4 bg-muted/50 max-h-[400px] overflow-auto"><pre className="text-xs font-mono">{JSON.stringify(response, null, 2)}</pre></div>}</TabsContent><TabsContent value="headers" className="mt-0"><div className="rounded-md border p-4 bg-muted/50"><pre className="text-xs font-mono">{JSON.stringify({

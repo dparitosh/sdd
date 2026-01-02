@@ -174,10 +174,10 @@ BATCH_SIZE=100
    - ⚠️ **Note**: Uses basic credentials (should use database + bcrypt in production)
 
 10. **DevOps Infrastructure** ✅ **NEW - CONTAINERIZED**
-    - ✅ Dockerfile for Python backend (`Dockerfile`)
-    - ✅ Dockerfile for React frontend (`Dockerfile.frontend`)
-    - ✅ docker-compose.yml for local development
-    - ✅ docker-compose.prod.yml for production
+    - ✅ Dockerfile for Python backend (`deployment/dockerfiles/Dockerfile.backend`)
+    - ✅ Dockerfile for React frontend (`deployment/dockerfiles/Dockerfile.frontend`)
+    - ✅ deployment/docker-compose.yml for local development
+    - ✅ deployment/docker-compose.prod.yml for production
     - ✅ Health check endpoints
     - ✅ Non-root user security
     - ✅ Deployment scripts and checklists (`deployment/`)
@@ -1506,24 +1506,24 @@ class AnsysConnector:
 **Goal:** Full CI/CD pipeline for MBSE workflows
 
 #### Week 13-14: CI/CD Pipeline → ✅ **80% DONE**
-- [x] Create Dockerfile ✅
+- [x] Create deployment/dockerfiles/Dockerfile.backend ✅
   ```dockerfile
-  # ✅ IMPLEMENTED: /Dockerfile (42 lines)
+    # ✅ IMPLEMENTED: deployment/dockerfiles/Dockerfile.backend
   FROM python:3.12-slim
   # Health checks, non-root user, all dependencies
   ```
-- [x] Create Dockerfile.frontend ✅
+- [x] Create deployment/dockerfiles/Dockerfile.frontend ✅
   ```dockerfile
-  # ✅ IMPLEMENTED: /Dockerfile.frontend
+    # ✅ IMPLEMENTED: deployment/dockerfiles/Dockerfile.frontend
   FROM node:20-alpine
   # Multi-stage build for React frontend
   ```
-- [x] docker-compose.yml ✅
+- [x] deployment/docker-compose.yml ✅
   ```yaml
   # ✅ IMPLEMENTED: Local development setup
   # Services: neo4j, app
   ```
-- [x] docker-compose.prod.yml ✅
+- [x] deployment/docker-compose.prod.yml ✅
   ```yaml
   # ✅ IMPLEMENTED: Production configuration
   ```
@@ -1538,7 +1538,7 @@ class AnsysConnector:
       steps:
         - uses: actions/checkout@v3
         - name: Run tests
-          run: pytest tests/
+          run: pytest backend/tests/
         - name: Build Docker image
           run: docker build -t mbse-graph .
         - name: Deploy to Kubernetes

@@ -214,10 +214,10 @@ cytoscape = service.export_cytoscape()
 
 ### 7. Docker Production Deployment
 **Files Updated/Created:**
-- `Dockerfile` - Multi-stage backend build
-- `Dockerfile.frontend` - React/nginx container
-- `docker-compose.prod.yml` - Full orchestration
-- `docker/nginx.conf` - Optimized web server
+- `deployment/dockerfiles/Dockerfile.backend` - Multi-stage backend build
+- `deployment/dockerfiles/Dockerfile.frontend` - React/nginx container
+- `deployment/docker-compose.prod.yml` - Full orchestration
+- `deployment/nginx/nginx.conf` - Optimized web server
 
 **Features:**
 - Multi-stage builds (smaller images)
@@ -238,13 +238,13 @@ services:
 **Deployment:**
 ```bash
 # Build all containers
-docker compose -f docker-compose.prod.yml build
+docker compose -f deployment/docker-compose.prod.yml build
 
 # Start services
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # Check health
-docker compose -f docker-compose.prod.yml ps
+docker compose -f deployment/docker-compose.prod.yml ps
 ```
 
 ---

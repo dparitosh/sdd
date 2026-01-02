@@ -1,6 +1,4 @@
-import { toast } from 'sonner';
 import i18n from '../i18n';
-import logger from '../utils/logger';
 
 const GRAPHQL_ENDPOINT = '/api/graphql';
 
@@ -18,24 +16,27 @@ export async function graphqlRequest<TData, TVariables extends Record<string, un
   variables?: TVariables
 ): Promise<TData> {
   const apiKey = import.meta.env.VITE_API_KEY;
-  if (!apiKey) {
-    logger.error('VITE_API_KEY environment variable is not set');
-    toast.error(i18n.t('errors.apiKeyNotConfigured'));
-    throw new Error('API key is not configured');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (apiKey) {
+    headers['X-API-Key'] = apiKey;
   }
 
   const response = await fetch(GRAPHQL_ENDPOINT, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-    },
+    headers,
     body: JSON.stringify({ query, variables }),
   });
 
   const payload = (await response.json()) as GraphQLResponse<TData>;
 
   if (!response.ok) {
+    if (!apiKey && (response.status === 401 || response.status === 403)) {
+      throw new Error(i18n.t('errors.apiKeyNotConfigured'));
+    }
     const message = payload.errors?.[0]?.message || `GraphQL request failed (${response.status})`;
     throw new Error(message);
   }

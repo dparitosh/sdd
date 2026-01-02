@@ -17,9 +17,17 @@ import requests
 from dotenv import load_dotenv
 
 
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# Ensure both `import src...` and `import web...` work in tests.
+for _p in (str(_BACKEND_DIR), str(_BACKEND_DIR / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+
 def pytest_configure():
-    repo_root = Path(__file__).resolve().parent.parent
-    env_file = repo_root / ".env"
+    env_file = _REPO_ROOT / ".env"
 
     if env_file.exists():
         # Do not override variables already provided by the environment/CI.
@@ -78,7 +86,7 @@ def api_server():
         cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        cwd=str(Path(__file__).resolve().parent.parent),
+        cwd=str(_BACKEND_DIR),
         env=os.environ.copy(),
         creationflags=creationflags,
     )

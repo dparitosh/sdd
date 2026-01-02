@@ -27,17 +27,17 @@ docker compose down
 #### Production Mode
 ```bash
 # Build containers
-docker compose -f docker-compose.prod.yml build
+docker compose -f deployment/docker-compose.prod.yml build
 
 # Start services
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # Monitor
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f deployment/docker-compose.prod.yml ps
+docker compose -f deployment/docker-compose.prod.yml logs -f backend
 
 # Stop
-docker compose -f docker-compose.prod.yml down
+docker compose -f deployment/docker-compose.prod.yml down
 ```
 
 ### Individual Container Management
@@ -66,7 +66,7 @@ docker exec -it mbse-backend /bin/bash
 #### Frontend
 ```bash
 # Build
-docker build -f Dockerfile.frontend -t mbse-frontend:latest .
+docker build -f deployment/dockerfiles/Dockerfile.frontend -t mbse-frontend:latest .
 
 # Run standalone
 docker run -d \
@@ -215,7 +215,7 @@ jobs:
       - name: Build Docker images
         run: |
           docker build -t mbse-backend:${{ github.sha }} .
-          docker build -f Dockerfile.frontend -t mbse-frontend:${{ github.sha }} .
+          docker build -f deployment/dockerfiles/Dockerfile.frontend -t mbse-frontend:${{ github.sha }} .
       
       - name: Push to registry
         run: |

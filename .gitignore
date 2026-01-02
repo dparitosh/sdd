@@ -97,3 +97,6 @@ frontend/package-lock.json
 # Upload staging
 data/uploads/
 !data/uploads/.gitkeep
+
+# Large reference datasets (keep out of git)
+samples/reference/

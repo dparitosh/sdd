@@ -48,7 +48,7 @@ pip list | grep -E "(fastapi|uvicorn|pydantic|PyJWT)"
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
 # Or using the startup script
-./start_backend.sh
+./scripts/start_backend.sh
 ```
 
 Look for:
@@ -206,13 +206,13 @@ The agent has 7 tools:
 
 ```bash
 # Run all authentication tests
-pytest tests/integration/test_authentication.py -v
+pytest backend/tests/integration/test_authentication.py -v
 
 # Run specific test class
-pytest tests/integration/test_authentication.py::TestLogin -v
+pytest backend/tests/integration/test_authentication.py::TestLogin -v
 
 # Run with output
-pytest tests/integration/test_authentication.py -v -s
+pytest backend/tests/integration/test_authentication.py -v -s
 ```
 
 **Expected output**: 47+ tests covering login, refresh, logout, verification
@@ -221,10 +221,10 @@ pytest tests/integration/test_authentication.py -v -s
 
 ```bash
 # Run all integration tests
-pytest tests/integration/ -v
+pytest backend/tests/integration/ -v
 
 # Run specific workflow
-pytest tests/integration/test_api_workflows.py::TestPLMWorkflows -v
+pytest backend/tests/integration/test_api_workflows.py::TestPLMWorkflows -v
 ```
 
 **Expected output**: 87+ tests covering all API workflows
@@ -409,7 +409,7 @@ for tool in agent.tools:
 
 ### For Development
 1. ✅ Test authentication with curl/Postman
-2. ✅ Run integration tests (`pytest tests/integration/ -v`)
+2. ✅ Run integration tests (`pytest backend/tests/integration/ -v`)
 3. ✅ Load sample data (`scripts/sample_data.cypher`)
 4. ⏳ Test agent with example queries
 5. ⏳ Protect sensitive endpoints with @require_auth

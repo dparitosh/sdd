@@ -519,7 +519,7 @@ Legacy Flask routes/app modules referenced in older plans have been removed as p
   - TestAuthenticationWorkflow: 2 tests (full flow, concurrent sessions)
 
 - ⏳ **Test execution** - Requires running server and sample data
-  - Command: `pytest tests/integration/ -v`
+  - Command: `pytest backend/tests/integration/ -v`
   - Expected: 87+ tests covering all workflows
   - Prerequisites: Flask server on port 5000, sample data loaded
 
@@ -1184,12 +1184,11 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
   - API proxy
 
 **Files Created:**
-- `Dockerfile.production`
-- `docker-compose.production.yml`
+- `deployment/dockerfiles/Dockerfile.backend`
+- `deployment/dockerfiles/Dockerfile.frontend`
+- `deployment/docker-compose.prod.yml`
 - `k8s/00-namespace.yaml` through `k8s/06-ingress.yaml`
-- `deployment/PRODUCTION_DEPLOYMENT_GUIDE.md`
-- `docker/nginx.prod.conf`
-- `docker/prometheus.yml`
+- `deployment/nginx/nginx.conf`
 
 #### 2.2 CI/CD Pipeline - Azure DevOps ✅ COMPLETE
 - ✅ **Multi-stage Build Pipeline** (`azure-pipelines.yml`)
@@ -1350,8 +1349,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
   - Cache performance
 
 **Configuration Files:**
-- `docker/prometheus.yml`
-- `deployment/config/grafana/`
+- (Configuration examples not checked in after repo re-org)
 
 #### Phase 2 Summary
 
@@ -1511,7 +1509,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 
 - [ ] **Docker Compose** (Priority: HIGH)
   ```yaml
-  # docker-compose.yml
+  # deployment/docker-compose.yml
   version: '3.8'
   services:
     backend:
@@ -1863,7 +1861,7 @@ cp .env.example .env
 # Edit .env with your Neo4j credentials
 
 # Run tests
-pytest tests/
+pytest backend/tests/
 cd frontend && npm test && cd ..
 
 # Start development servers

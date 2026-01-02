@@ -214,7 +214,7 @@ Phase 1 ("Foundation & Cleanup") is now **100% complete** with all 11 subsection
 
 **Total**: 87+ integration tests, 1,037 lines of test code
 
-**Status**: Ready for execution with `pytest tests/integration/ -v`
+**Status**: Ready for execution with `pytest backend/tests/integration/ -v`
 
 ---
 
@@ -344,7 +344,7 @@ Phase 1 ("Foundation & Cleanup") is now **100% complete** with all 11 subsection
 
 ### Immediate Priority (Week 1-2)
 1. **Execute Integration Tests**
-   - Command: `pytest tests/integration/ -v`
+   - Command: `pytest backend/tests/integration/ -v`
    - Verify all 87 tests pass
    - Fix any failures
 

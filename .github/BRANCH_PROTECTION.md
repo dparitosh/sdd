@@ -187,15 +187,14 @@ Create `.github/CODEOWNERS` to define code ownership:
 * @dparitosh
 
 # Backend code
-/src/ @backend-team
-/tests/ @backend-team
+/backend/src/ @backend-team
+/backend/tests/ @backend-team
 
 # Frontend code
 /frontend/ @frontend-team
 
 # Infrastructure
 /deployment/ @devops-team
-/docker/ @devops-team
 /.github/ @devops-team
 
 # MCP Server
@@ -206,17 +205,17 @@ Create `.github/CODEOWNERS` to define code ownership:
 *.md @documentation-team
 
 # PLM Connectors (requires domain expert review)
-/src/integrations/teamcenter_connector.py @plm-team @senior-engineers
-/src/integrations/windchill_connector.py @plm-team @senior-engineers
-/src/integrations/sap_odata_connector.py @plm-team @senior-engineers
+/backend/src/integrations/teamcenter_connector.py @plm-team @senior-engineers
+/backend/src/integrations/windchill_connector.py @plm-team @senior-engineers
+/backend/src/integrations/sap_odata_connector.py @plm-team @senior-engineers
 
 # Security-sensitive files
-/src/web/middleware/auth.py @security-team
-/src/web/middleware/rbac.py @security-team
+/backend/src/web/middleware/auth.py @security-team
+/backend/src/web/middleware/rbac.py @security-team
 SECURITY.md @security-team
 
 # Agent framework (critical components)
-/src/agents/ @ai-team @senior-engineers
+/backend/src/agents/ @ai-team @senior-engineers
 
 # Database schema changes
 /scripts/*migration* @database-team @senior-engineers

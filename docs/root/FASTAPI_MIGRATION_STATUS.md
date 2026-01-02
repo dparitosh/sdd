@@ -95,9 +95,9 @@ Status: **✅ 100% COMPLETE** (15/15 routes - ALL MIGRATED)
 ### ✅ Updated Configuration Files
 
 - ✅ `start_backend.sh` - Uses uvicorn instead of Flask
-- ✅ `Dockerfile` - CMD updated to uvicorn
-- ✅ `docker-compose.yml` - Command updated to FastAPI
-- ✅ `docker-compose.prod.yml` - Health check and environment updated
+- ✅ `deployment/dockerfiles/Dockerfile.backend` - CMD updated to uvicorn
+- ✅ `deployment/docker-compose.yml` - Command updated to FastAPI
+- ✅ `deployment/docker-compose.prod.yml` - Health check and environment updated
 - ✅ `README.md` - Startup instructions updated
 - ✅ `QUICKSTART.md` - FastAPI quick start guide
 - ✅ `ARCHITECTURE.md` - Architecture reflects FastAPI
@@ -220,7 +220,7 @@ async def health():
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
 # Or using the startup script
-./start_backend.sh
+./scripts/start_backend.sh
 
 # With custom workers (production-like)
 uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --workers 4

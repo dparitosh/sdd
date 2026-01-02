@@ -8,7 +8,7 @@
 ### Development Mode
 ```bash
 # Backend (FastAPI)
-./start_backend.sh
+./scripts/start_backend.sh
 # or (manual)
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000
 
@@ -23,13 +23,13 @@ curl http://localhost:3001
 ### Production Mode (Docker)
 ```bash
 # Build & start all services
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # Check logs
-docker compose -f docker-compose.prod.yml logs -f
+docker compose -f deployment/docker-compose.prod.yml logs -f
 
 # Stop
-docker compose -f docker-compose.prod.yml down
+docker compose -f deployment/docker-compose.prod.yml down
 ```
 
 ---
@@ -116,17 +116,17 @@ GET http://localhost:5000/api/openapi.json
 pytest
 
 # Specific suite
-pytest tests/unit/ -v
-pytest tests/integration/ -v
+pytest backend/tests/unit/ -v
+pytest backend/tests/integration/ -v
 
 # With coverage
 pytest --cov=src --cov-report=html
 
 # Specific test file
-pytest tests/unit/test_neo4j_service.py -v
+pytest backend/tests/unit/test_neo4j_service.py -v
 
 # Single test
-pytest tests/unit/test_neo4j_service.py::TestNeo4jService::test_initialization -v
+pytest backend/tests/unit/test_neo4j_service.py::TestNeo4jService::test_initialization -v
 ```
 
 ### Service Tests
@@ -151,22 +151,22 @@ python scripts/test_rest_api.py
 docker build -t mbse-backend .
 
 # Build frontend
-docker build -f Dockerfile.frontend -t mbse-frontend .
+docker build -f deployment/dockerfiles/Dockerfile.frontend -t mbse-frontend .
 
 # Build all (compose)
-docker compose -f docker-compose.prod.yml build
+docker compose -f deployment/docker-compose.prod.yml build
 ```
 
 ### Run
 ```bash
 # Start all services
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # Start specific service
-docker compose -f docker-compose.prod.yml up -d backend
+docker compose -f deployment/docker-compose.prod.yml up -d backend
 
 # View logs
-docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f deployment/docker-compose.prod.yml logs -f backend
 
 # Shell access
 docker exec -it mbse-backend /bin/bash
@@ -187,10 +187,10 @@ docker inspect --format='{{.State.Health.Status}}' mbse-backend
 ### Clean Up
 ```bash
 # Stop all
-docker compose -f docker-compose.prod.yml down
+docker compose -f deployment/docker-compose.prod.yml down
 
 # Remove volumes
-docker compose -f docker-compose.prod.yml down -v
+docker compose -f deployment/docker-compose.prod.yml down -v
 
 # Clean system
 docker system prune -a
@@ -316,10 +316,10 @@ cp .env.example .env
 tail -f logs/app.log
 
 # Docker logs
-docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f deployment/docker-compose.prod.yml logs -f backend
 
 # Filter errors
-docker compose -f docker-compose.prod.yml logs backend | grep ERROR
+docker compose -f deployment/docker-compose.prod.yml logs backend | grep ERROR
 ```
 
 ### Metrics
@@ -372,7 +372,7 @@ docker logs mbse-backend
 docker inspect mbse-backend
 
 # Restart service
-docker compose -f docker-compose.prod.yml restart backend
+docker compose -f deployment/docker-compose.prod.yml restart backend
 
 # Check network
 docker network inspect mbse-network
@@ -415,14 +415,14 @@ tail -f /var/log/neo4j/neo4j.log
 ### Daily Development
 ```bash
 # 1. Start services
-./start_backend.sh &
+./scripts/start_backend.sh &
 npm run dev &
 
 # 2. Make changes
 # Edit code...
 
 # 3. Test
-pytest tests/unit/test_your_changes.py
+pytest backend/tests/unit/test_your_changes.py
 
 # 4. Commit
 git add .
@@ -449,16 +449,16 @@ python tests/benchmark_agent.py
 ### Docker Deployment
 ```bash
 # 1. Build
-docker compose -f docker-compose.prod.yml build
+docker compose -f deployment/docker-compose.prod.yml build
 
 # 2. Test locally
-docker compose -f docker-compose.prod.yml up
+docker compose -f deployment/docker-compose.prod.yml up
 
 # 3. If successful, detach
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # 4. Monitor
-docker compose -f docker-compose.prod.yml logs -f
+docker compose -f deployment/docker-compose.prod.yml logs -f
 ```
 
 ---

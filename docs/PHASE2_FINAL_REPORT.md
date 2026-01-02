@@ -246,10 +246,10 @@ Phase 2 has been **successfully completed** 3+ weeks ahead of the original 6-wee
 ### 7. Docker Deployment (100% Complete)
 
 **Files:**
-- `Dockerfile` (multi-stage Python build)
-- `frontend/Dockerfile` (React + Vite)
-- `docker-compose.yml` (development)
-- `docker-compose.prod.yml` (production)
+- `deployment/dockerfiles/Dockerfile.backend` (multi-stage Python build)
+- `deployment/dockerfiles/Dockerfile.frontend` (React + Vite)
+- `deployment/docker-compose.yml` (development)
+- `deployment/docker-compose.prod.yml` (production)
 - `nginx.conf` (reverse proxy)
 
 - ✅ **Features:**
@@ -324,7 +324,7 @@ Phase 2 has been **successfully completed** 3+ weeks ahead of the original 6-wee
 **Docker Configuration (4/4)** ✅
 - Backend Dockerfile exists
 - Frontend Dockerfile exists
-- Production docker-compose.yml exists
+- Production deployment/docker-compose.yml exists
 - Nginx configuration exists
 
 ---
@@ -526,10 +526,10 @@ cp .env.production.template .env.production
 # Edit .env.production with production values
 
 # 2. Build containers
-docker compose -f docker-compose.prod.yml build
+docker compose -f deployment/docker-compose.prod.yml build
 
 # 3. Start production stack
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # 4. Verify health
 curl http://localhost:5000/api/health

@@ -246,7 +246,7 @@ python -m black src/ tests/ scripts/
 python -m isort src/ tests/ scripts/
 
 # Run tests
-pytest tests/
+pytest backend/tests/
 
 # Check for errors
 python -m flake8 src/ --max-line-length=100

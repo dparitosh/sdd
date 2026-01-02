@@ -347,10 +347,10 @@ python tests/test_agent_performance.py
 ### Deploy to Production
 ```bash
 # Build containers
-docker compose -f docker-compose.prod.yml build
+docker compose -f deployment/docker-compose.prod.yml build
 
 # Deploy
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f deployment/docker-compose.prod.yml up -d
 
 # Monitor
 docker compose logs -f

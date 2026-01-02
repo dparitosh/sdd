@@ -30,8 +30,8 @@ services:
   # Backend API (FastAPI + Python)
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: deployment/dockerfiles/Dockerfile.backend
     container_name: mbse-backend
     environment:
       - NEO4J_URI=bolt://neo4j:7687
@@ -41,8 +41,8 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data:ro
+      - ../logs:/app/logs
+      - ../data:/app/data:ro
     depends_on:
       neo4j:
         condition: service_healthy
@@ -59,8 +59,8 @@ services:
   # Frontend (React + Nginx)
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ..
+      dockerfile: deployment/dockerfiles/Dockerfile.frontend
     container_name: mbse-frontend
     ports:
       - "3001:3001"

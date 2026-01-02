@@ -317,25 +317,25 @@ def test_docker_configuration(results: TestResults):
         # Test 1: Dockerfile exists
         results.record(
             "Dockerfile exists",
-            os.path.exists('Dockerfile')
+            os.path.exists('deployment/dockerfiles/Dockerfile.backend')
         )
         
         # Test 2: Frontend Dockerfile exists
         results.record(
             "Frontend Dockerfile exists",
-            os.path.exists('Dockerfile.frontend')
+            os.path.exists('deployment/dockerfiles/Dockerfile.frontend')
         )
         
         # Test 3: docker-compose.prod.yml exists
         results.record(
             "docker-compose.prod.yml exists",
-            os.path.exists('docker-compose.prod.yml')
+            os.path.exists('deployment/docker-compose.prod.yml')
         )
         
         # Test 4: nginx config exists
         results.record(
             "nginx config exists",
-            os.path.exists('docker/nginx.conf')
+            os.path.exists('deployment/nginx/nginx.conf')
         )
         
     except Exception as e:
