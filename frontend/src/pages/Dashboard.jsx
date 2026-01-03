@@ -28,6 +28,8 @@ export default function Dashboard() {
   }
   const nodeTypes = Object.entries(stats?.node_types || {}).sort(([, a], [, b]) => b - a);
   const relationshipTypes = Object.entries(stats?.relationship_types || {}).sort(([, a], [, b]) => b - a);
+  const nodeGradientClasses = ['from-blue-400 to-blue-500', 'from-blue-500 to-blue-600', 'from-blue-600 to-blue-700'];
+  const relationshipGradientClasses = ['from-indigo-400 to-indigo-500', 'from-indigo-500 to-indigo-600', 'from-indigo-600 to-indigo-700'];
   const gridItems = [{
     id: 'total-nodes',
     symbol: 'N',
@@ -62,14 +64,14 @@ export default function Dashboard() {
     name: type,
     value: count,
     category: 'node',
-    color: `from-blue-${400 + idx % 3 * 100} to-blue-${500 + idx % 3 * 100}`
+    color: nodeGradientClasses[idx % nodeGradientClasses.length]
   })), ...relationshipTypes.slice(0, 8).map(([type, count], idx) => ({
     id: `rel-${type}`,
     symbol: type.substring(0, 3).toUpperCase(),
     name: type,
     value: count,
     category: 'relationship',
-    color: `from-indigo-${400 + idx % 3 * 100} to-indigo-${500 + idx % 3 * 100}`
+    color: relationshipGradientClasses[idx % relationshipGradientClasses.length]
   }))];
   return <div className="container mx-auto p-6 space-y-6"><PageHeader title="Dashboard" description="Overview of your knowledge graph and system analytics" icon={<LayoutDashboard className="h-6 w-6 text-primary" />} /><div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border-2 border-primary/20 shadow-lg p-8"><div className="absolute top-0 right-0 -mt-8 -mr-8 h-40 w-40 rounded-full bg-primary/10 blur-3xl" /><div className="absolute bottom-0 left-0 -mb-8 -ml-8 h-40 w-40 rounded-full bg-primary/10 blur-3xl" /><div className="relative"><div className="flex items-center gap-4 mb-4"><div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg"><Database className="h-8 w-8 text-primary-foreground" /></div><div><div className="flex items-center gap-3"><h1 className="text-4xl font-bold tracking-tight">Knowledge Graph Dashboard</h1><Badge className="bg-green-500 text-white">Online</Badge></div><p className="text-lg text-muted-foreground">Periodic table view of system components</p></div></div></div></div><div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">{gridItems.map((item, index) => <Card key={item.id || index} className="group relative overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg hover:z-10" style={{
         animationDelay: `${index * 15}ms`
