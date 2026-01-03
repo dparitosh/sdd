@@ -95,7 +95,7 @@ export default function SystemMonitoring() {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <PageHeader
-          title="System Monitoring"
+          title="System Health"
           description="Real-time system performance and health metrics"
           icon={<Activity className="h-6 w-6 text-primary" />}
           breadcrumbs={[
@@ -132,7 +132,7 @@ export default function SystemMonitoring() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <PageHeader
-        title="System Monitoring"
+        title="System Health"
         description="Real-time system performance and health metrics"
         icon={<Activity className="h-6 w-6 text-primary" />}
         breadcrumbs={[
@@ -250,9 +250,21 @@ export default function SystemMonitoring() {
         <CardContent>
           <div className="space-y-4">
             {[
-              { name: 'API Server', status: 'healthy', uptime: '99.98%' },
-              { name: 'Neo4j Database', status: 'healthy', uptime: '99.95%' },
-              { name: 'Redis Cache', status: 'unavailable', uptime: 'n/a' },
+              {
+                name: 'API Server',
+                status: health?.components?.api === 'healthy' ? 'healthy' : 'unhealthy',
+                uptime: 'n/a'
+              },
+              {
+                name: 'Neo4j Database',
+                status: health?.components?.database === 'healthy' ? 'healthy' : 'unhealthy',
+                uptime: 'n/a'
+              },
+              {
+                name: 'Cache',
+                status: health?.components?.cache === 'healthy' ? 'healthy' : 'unhealthy',
+                uptime: 'n/a'
+              }
             ].map((component) => (
               <div
                 key={component.name}
@@ -261,7 +273,7 @@ export default function SystemMonitoring() {
                 <div className="flex items-center gap-3">
                   <div
                     className={`h-2 w-2 rounded-full ${
-                      component.status === 'healthy' ? 'bg-green-500' : 'bg-yellow-500'
+                      component.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'
                     }`}
                   />
                   <span className="font-medium">{component.name}</span>

@@ -1,56 +1,122 @@
 # Stop Vite frontend (Windows PowerShell)
 # Kills the process listening on port 3001.
 
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
+
+function Get-ChildProcessIds([int]$ParentPid) {
+    if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
+        try {
+            return (Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentPid" | Select-Object -ExpandProperty ProcessId)
+        } catch {
+            return @()
+        }
+    }
+
+    try {
+        return (Get-WmiObject Win32_Process -Filter "ParentProcessId=$ParentPid" | Select-Object -ExpandProperty ProcessId)
+    } catch {
+        return @()
+    }
+}
+
+function Kill-ProcessTree([int]$RootPid) {
+    if ($RootPid -le 4) {
+        throw "Refusing to terminate protected PID=$RootPid"
+    }
+
+    $toVisit = New-Object System.Collections.Generic.Queue[int]
+    $visited = New-Object System.Collections.Generic.HashSet[int]
+    $ordered = New-Object System.Collections.Generic.List[int]
+
+    $toVisit.Enqueue($RootPid)
+    while ($toVisit.Count -gt 0) {
+        $current = $toVisit.Dequeue()
+        if (-not $visited.Add($current)) { continue }
+        $ordered.Add($current) | Out-Null
+
+        foreach ($child in (Get-ChildProcessIds -ParentPid $current)) {
+            if ($child -and $child -gt 0) {
+                $toVisit.Enqueue([int]$child)
+            }
+        }
+    }
+
+    # Kill children first
+    for ($i = $ordered.Count - 1; $i -ge 0; $i--) {
+        $pidToKill = $ordered[$i]
+        if ($pidToKill -le 4) { continue }
+        Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
+    }
+}
 
 function Get-ListeningPids([int]$Port) {
     $pids = @()
 
     if (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue) {
-        $connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-        foreach ($c in $connections) {
-            if ($c.OwningProcess -and $c.OwningProcess -gt 0) {
-                $pids += [int]$c.OwningProcess
+        try {
+            $connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop
+            foreach ($c in $connections) {
+                if ($c.OwningProcess -and $c.OwningProcess -gt 0) {
+                    $pids += [int]$c.OwningProcess
+                }
             }
+            $pids = $pids | Select-Object -Unique
+            if ($pids -and $pids.Count -gt 0) {
+                return $pids
+            }
+        } catch {
+            # Fall back to netstat
         }
-        return $pids | Select-Object -Unique
     }
 
-    # Fallback for older environments: netstat parsing
-    $lines = netstat -ano | Select-String -Pattern (":$Port\s+")
-    foreach ($line in $lines) {
-        $parts = ($line -replace "\s+", " ").Trim().Split(' ')
-        if ($parts.Length -ge 5) {
-            $pid = $parts[-1]
-            if ($pid -match '^\d+$' -and [int]$pid -gt 0) {
-                $pids += [int]$pid
+    # Netstat fallback (works even when Get-NetTCPConnection returns nothing)
+    $netstatLines = netstat -ano -p tcp | Select-String -Pattern "LISTENING" | ForEach-Object { $_.Line }
+    foreach ($line in $netstatLines) {
+        # Handles IPv4 and IPv6 formats, e.g. 0.0.0.0:3001 or [::]:3001
+        if ($line -match "\s+(\S+):(\d+)\s+\S+\s+LISTENING\s+(\d+)\s*$") {
+            $linePort = [int]$Matches[2]
+            $owningPid = [int]$Matches[3]
+            if ($linePort -eq $Port -and $owningPid -gt 0) {
+                $pids += $owningPid
             }
         }
     }
+
     return $pids | Select-Object -Unique
 }
 
 $pids = Get-ListeningPids -Port 3001
 if (-not $pids -or $pids.Count -eq 0) {
-    Write-Host "Frontend not running on port 3001."
+    Write-Output "Frontend not running on port 3001."
     exit 0
 }
 
 $stoppedAny = $false
-foreach ($pid in $pids) {
+foreach ($listeningPid in $pids) {
     try {
-        # Stop-Process does not reliably kill child processes (npm/vite spawn node).
-        # taskkill /T ensures the full tree is terminated.
-        cmd /c "taskkill /PID $pid /T /F" | Out-Null
-        Write-Host "Stopped frontend process tree PID=$pid (port 3001)."
+        Kill-ProcessTree -RootPid $listeningPid
+        Write-Output "Stopped frontend process tree PID=$listeningPid (port 3001)."
         $stoppedAny = $true
     } catch {
-        Write-Host "Failed to stop frontend PID=$pid (port 3001): $($_.Exception.Message)"
+        Write-Output "Failed to stop frontend PID=$listeningPid (port 3001): $($_.Exception.Message)"
     }
 }
 
 if ($stoppedAny) {
-    exit 0
+    # Verify the port is actually freed (handles spawned children + slow teardown)
+    $deadline = (Get-Date).AddSeconds(5)
+    while ((Get-Date) -lt $deadline) {
+        $stillListening = Get-ListeningPids -Port 3001
+        if (-not $stillListening -or $stillListening.Count -eq 0) {
+            exit 0
+        }
+        Start-Sleep -Milliseconds 200
+    }
+
+    $stillListening = Get-ListeningPids -Port 3001
+    $pidList = ($stillListening | ForEach-Object { $_.ToString() }) -join ','
+    Write-Output "Frontend still listening on port 3001 after stop attempt. PIDs=$pidList"
+    exit 1
 }
 
 exit 1

@@ -5,15 +5,17 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $failed = $false
 
 try {
-	& (Join-Path $repoRoot "scripts\stop_ui.ps1")
-	if ($LASTEXITCODE -ne 0) { $failed = $true }
+	$stopUi = Join-Path $repoRoot "scripts\stop_ui.ps1"
+	& powershell -NoProfile -ExecutionPolicy Bypass -File $stopUi
+	if (-not $?) { $failed = $true }
 } catch {
 	$failed = $true
 }
 
 try {
-	& (Join-Path $repoRoot "scripts\stop_backend.ps1")
-	if ($LASTEXITCODE -ne 0) { $failed = $true }
+	$stopBackend = Join-Path $repoRoot "scripts\stop_backend.ps1"
+	& powershell -NoProfile -ExecutionPolicy Bypass -File $stopBackend
+	if (-not $?) { $failed = $true }
 } catch {
 	$failed = $true
 }
