@@ -39,8 +39,10 @@ if (-not $pids -or $pids.Count -eq 0) {
 $stoppedAny = $false
 foreach ($pid in $pids) {
     try {
-        Stop-Process -Id $pid -Force -ErrorAction Stop
-        Write-Host "Stopped backend process PID=$pid (port 5000)."
+        # Stop-Process does not reliably kill child processes (uvicorn reload spawns).
+        # taskkill /T ensures the full tree is terminated.
+        cmd /c "taskkill /PID $pid /T /F" | Out-Null
+        Write-Host "Stopped backend process tree PID=$pid (port 5000)."
         $stoppedAny = $true
     } catch {
         Write-Host "Failed to stop backend PID=$pid (port 5000): $($_.Exception.Message)"

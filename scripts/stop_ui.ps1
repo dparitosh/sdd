@@ -39,8 +39,10 @@ if (-not $pids -or $pids.Count -eq 0) {
 $stoppedAny = $false
 foreach ($pid in $pids) {
     try {
-        Stop-Process -Id $pid -Force -ErrorAction Stop
-        Write-Host "Stopped frontend process PID=$pid (port 3001)."
+        # Stop-Process does not reliably kill child processes (npm/vite spawn node).
+        # taskkill /T ensures the full tree is terminated.
+        cmd /c "taskkill /PID $pid /T /F" | Out-Null
+        Write-Host "Stopped frontend process tree PID=$pid (port 3001)."
         $stoppedAny = $true
     } catch {
         Write-Host "Failed to stop frontend PID=$pid (port 3001): $($_.Exception.Message)"
