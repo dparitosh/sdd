@@ -66,8 +66,11 @@ jobs:
       - name: Validate commit messages
         if: github.event_name == 'pull_request'
         run: |
+          # Ensure the base branch exists locally for range comparisons.
+          git fetch --no-tags --prune --depth=1 origin "${{ github.base_ref }}"
           echo "Checking commit messages for conventional commit format..."
-          git log --format=%s origin/${{ github.base_ref }}..${{ github.sha }} | while read -r msg; do
+          # Use HEAD (PR merge ref) and ignore merge commits to avoid false failures.
+          git log --no-merges --format=%s origin/${{ github.base_ref }}..HEAD | while read -r msg; do
             if [[ ! "$msg" =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?:.+ ]]; then
               echo "❌ Invalid commit message: $msg"
               echo "Use conventional commits: type(scope): description"
