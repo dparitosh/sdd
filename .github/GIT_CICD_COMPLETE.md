@@ -23,8 +23,7 @@
   - Linting (Black, Flake8, mypy)
   - Backend testing (pytest with Neo4j)
   - Frontend testing (TypeScript, build)
-  - Docker image builds
-  - Security scanning (Trivy)
+   - Security scanning
   - Deployment automation
 
 ### 2. Pull Request Template
@@ -136,7 +135,7 @@ git push -u origin release/v1.0.0
 
 ### Main Branch
 - **Approvals**: 2 required
-- **Status Checks**: 6 required (git-validation, lint, test-backend, test-frontend, build-docker, security-scan)
+- **Status Checks**: 5 required (git-validation, lint, test-backend, test-frontend, security-scan)
 - **Force Push**: Blocked
 - **Delete**: Blocked
 - **Direct Commits**: Blocked
@@ -153,9 +152,8 @@ git push -u origin release/v1.0.0
 2. **Lint** → Black, Flake8, mypy type checking
 3. **Test Backend** → pytest with Neo4j service (87 tests)
 4. **Test Frontend** → TypeScript checks, production build
-5. **Build Docker** → Backend + Frontend images → Push to GHCR
-6. **Security Scan** → Trivy vulnerability scanning
-7. **Deploy** → Staging (develop) or Production (main)
+5. **Security Scan** → Vulnerability scanning
+6. **Deploy** → Staging (develop) or Production (main)
 
 ## 📦 Required GitHub Configuration
 

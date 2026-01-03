@@ -270,7 +270,7 @@ For a standardized component model and an Azure-aligned “agentic system” dec
 1. 🔄 **Frontend testing** - Verify all dashboards load real data
 2. 📋 **Performance optimization** - Add caching, optimize queries
 3. 🔒 **Security hardening** - JWT authentication, rate limiting
-4. 📦 **Production deployment** - Docker, Kubernetes, CI/CD
+4. 📦 **Production deployment** - Kubernetes, CI/CD
 
 ## Support
 

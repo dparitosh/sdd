@@ -20,17 +20,8 @@ curl http://localhost:5000/api/health
 curl http://localhost:3001
 ```
 
-### Production Mode (Docker)
-```bash
-# Build & start all services
-docker compose -f deployment/docker-compose.prod.yml up -d
-
-# Check logs
-docker compose -f deployment/docker-compose.prod.yml logs -f
-
-# Stop
-docker compose -f deployment/docker-compose.prod.yml down
-```
+### Production Mode
+Container-based deployment has been removed from this repository.
 
 ---
 
@@ -143,61 +134,6 @@ python scripts/test_rest_api.py
 
 ---
 
-## 🐳 Docker Commands
-
-### Build
-```bash
-# Build backend
-docker build -t mbse-backend .
-
-# Build frontend
-docker build -f deployment/dockerfiles/Dockerfile.frontend -t mbse-frontend .
-
-# Build all (compose)
-docker compose -f deployment/docker-compose.prod.yml build
-```
-
-### Run
-```bash
-# Start all services
-docker compose -f deployment/docker-compose.prod.yml up -d
-
-# Start specific service
-docker compose -f deployment/docker-compose.prod.yml up -d backend
-
-# View logs
-docker compose -f deployment/docker-compose.prod.yml logs -f backend
-
-# Shell access
-docker exec -it mbse-backend /bin/bash
-```
-
-### Monitor
-```bash
-# List containers
-docker ps
-
-# Container stats
-docker stats
-
-# Health status
-docker inspect --format='{{.State.Health.Status}}' mbse-backend
-```
-
-### Clean Up
-```bash
-# Stop all
-docker compose -f deployment/docker-compose.prod.yml down
-
-# Remove volumes
-docker compose -f deployment/docker-compose.prod.yml down -v
-
-# Clean system
-docker system prune -a
-```
-
----
-
 ## 📊 Neo4j Commands
 
 ### Cypher Browser (http://localhost:7474)
@@ -299,13 +235,6 @@ LANGSMITH_API_KEY=your-langsmith-key
 LOG_LEVEL=INFO
 ```
 
-### Docker Environment
-```bash
-# For docker compose
-cp .env.example .env
-# Edit values for production
-```
-
 ---
 
 ## 🔍 Monitoring & Logs
@@ -314,12 +243,6 @@ cp .env.example .env
 ```bash
 # Backend logs
 tail -f logs/app.log
-
-# Docker logs
-docker compose -f deployment/docker-compose.prod.yml logs -f backend
-
-# Filter errors
-docker compose -f deployment/docker-compose.prod.yml logs backend | grep ERROR
 ```
 
 ### Metrics
@@ -363,21 +286,6 @@ lsof -i :3001
 kill -9 <PID>
 ```
 
-### Docker Issues
-```bash
-# Check container logs
-docker logs mbse-backend
-
-# Inspect container
-docker inspect mbse-backend
-
-# Restart service
-docker compose -f deployment/docker-compose.prod.yml restart backend
-
-# Check network
-docker network inspect mbse-network
-```
-
 ### Neo4j Connection
 ```bash
 # Test connection
@@ -404,7 +312,6 @@ tail -f /var/log/neo4j/neo4j.log
 ### Documentation
 - Phase 2 Plan: `PHASE2_PLAN.md`
 - Phase 2 Kickoff: `PHASE2_KICKOFF.md`
-- Docker Guide: `DOCKER_GUIDE.md`
 - API Guide: `REST_API_GUIDE.md`
 - Quick Start: `QUICKSTART.md`
 
@@ -444,21 +351,6 @@ print(agent.run('How many classes?'))
 
 # 3. Benchmark
 python tests/benchmark_agent.py
-```
-
-### Docker Deployment
-```bash
-# 1. Build
-docker compose -f deployment/docker-compose.prod.yml build
-
-# 2. Test locally
-docker compose -f deployment/docker-compose.prod.yml up
-
-# 3. If successful, detach
-docker compose -f deployment/docker-compose.prod.yml up -d
-
-# 4. Monitor
-docker compose -f deployment/docker-compose.prod.yml logs -f
 ```
 
 ---

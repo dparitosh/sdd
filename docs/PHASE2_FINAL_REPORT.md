@@ -243,23 +243,9 @@ Phase 2 has been **successfully completed** 3+ weeks ahead of the original 6-wee
 
 ---
 
-### 7. Docker Deployment (100% Complete)
+### 7. Deployment
 
-**Files:**
-- `deployment/dockerfiles/Dockerfile.backend` (multi-stage Python build)
-- `deployment/dockerfiles/Dockerfile.frontend` (React + Vite)
-- `deployment/docker-compose.yml` (development)
-- `deployment/docker-compose.prod.yml` (production)
-- `nginx.conf` (reverse proxy)
-
-- ✅ **Features:**
-  - Multi-stage builds (optimized size)
-  - Health checks
-  - Resource limits
-  - Volume mounts
-  - Network isolation
-  - Secrets management
-  - Production-ready configuration
+Container-based deployment has been removed from this repository.
 
 ---
 
@@ -280,7 +266,7 @@ Phase 2 has been **successfully completed** 3+ weeks ahead of the original 6-wee
 | PLM Connectors | 4 | ✅ | 100% |
 | OAuth Authentication | 4 | ✅ | 100% |
 | WebSocket Handler | 2 | ✅ | 100% |
-| Docker Configuration | 4 | ✅ | 100% |
+| Deployment Configuration | 4 | ✅ | 100% |
 | **Total** | **29** | ✅ | **100%** |
 
 #### Test Details
@@ -321,24 +307,15 @@ Phase 2 has been **successfully completed** 3+ weeks ahead of the original 6-wee
 - WebSocket notifier initialization
 - Connection statistics tracking
 
-**Docker Configuration (4/4)** ✅
-- Backend Dockerfile exists
-- Frontend Dockerfile exists
-- Production deployment/docker-compose.yml exists
-- Nginx configuration exists
+**Deployment Configuration**
+- Container-based deployment has been removed from this repository
 
 ---
 
 ## Production Readiness Checklist
 
 ### Infrastructure ✅
-- [x] Docker multi-stage builds
-- [x] Production docker compose configuration
-- [x] Nginx reverse proxy setup
-- [x] Resource limits defined
 - [x] Health check endpoints
-- [x] Volume mounts configured
-- [x] Network isolation
 - [x] Environment variable template (`.env.production.template`)
 
 ### Security ✅
@@ -516,32 +493,12 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
 # 4. Start services
-docker compose up -d
+./scripts/start_backend.sh
+cd frontend && npm run dev
 ```
 
 ### Production Deployment
-```bash
-# 1. Configure production environment
-cp .env.production.template .env.production
-# Edit .env.production with production values
-
-# 2. Build containers
-docker compose -f deployment/docker-compose.prod.yml build
-
-# 3. Start production stack
-docker compose -f deployment/docker-compose.prod.yml up -d
-
-# 4. Verify health
-curl http://localhost:5000/api/health
-curl http://localhost:5000/metrics
-
-# 5. Access Grafana
-open http://localhost:3001
-# Login: admin / <GRAFANA_ADMIN_PASSWORD>
-
-# 6. Import dashboard
-# Upload grafana-dashboard.json from docs/GRAFANA_SETUP.md
-```
+Container-based deployment has been removed from this repository.
 
 ### Monitoring Setup
 1. **Prometheus**: Auto-configured at `http://localhost:9090`
@@ -630,7 +587,7 @@ open http://localhost:3001
 - **Grafana Setup:** `/docs/GRAFANA_SETUP.md`
 
 ### Troubleshooting
-- **Logs:** Check `docker compose logs -f backend`
+- **Logs:** Check backend stdout and `logs/app.log` (if configured)
 - **Metrics:** Visit `/metrics` endpoint
 - **Health:** Check `/api/health` endpoint
 - **Tests:** Run `python test_phase2_integration.py`

@@ -31,7 +31,6 @@ main
     - `lint / Lint Python Code`
     - `test-backend / Test Backend (Python) (3.12)`
     - `test-frontend / Test Frontend (React)`
-    - `build-docker / Build Docker Images`
     - `security-scan / Security Scan`
 
 - [x] **Require conversation resolution before merging**
@@ -232,8 +231,7 @@ Required status checks that must pass before merging:
 2. ✅ `lint / Lint Python Code` - Black, Flake8, mypy
 3. ✅ `test-backend / Test Backend (Python) (3.12)` - pytest with Neo4j
 4. ✅ `test-frontend / Test Frontend (React)` - TypeScript, build
-5. ✅ `build-docker / Build Docker Images` - Docker image builds
-6. ✅ `security-scan / Security Scan` - Trivy vulnerability scan
+5. ✅ `security-scan / Security Scan` - Vulnerability scan
 
 ### For `develop` branch:
 1. ✅ `git-validation`

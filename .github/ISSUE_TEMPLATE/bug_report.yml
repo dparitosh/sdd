@@ -71,7 +71,7 @@ body:
         - PLM Connector
         - Agent Framework
         - Database
-        - Docker/Deployment
+        - Deployment/Infrastructure
         - Other
     validations:
       required: true
@@ -106,7 +106,6 @@ body:
         - Python: [e.g., 3.12]
         - Node.js: [e.g., 20.10]
         - Browser: [e.g., Chrome 120]
-        - Docker: [e.g., 24.0.7]
 
   - type: textarea
     id: additional

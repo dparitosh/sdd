@@ -642,14 +642,14 @@ The MBSE Knowledge Graph employs a **graph-based knowledge representation** stra
 - **Cost**: ~$500-1000/month for 50 users
 
 #### Option 2: Hybrid (On-Prem App + Cloud DB)
-- **Application**: On-premise Docker containers
+- **Application**: On-premise deployment (VMs or orchestrated services)
 - **Database**: Neo4j Aura (managed cloud service)
 - **Identity**: On-premise Active Directory via LDAP
 - **Benefits**: Data sovereignty, existing infrastructure leverage
 - **Cost**: ~$300-600/month + infrastructure
 
 #### Option 3: Full On-Premise
-- **Application**: On-premise Docker/Kubernetes
+- **Application**: On-premise Kubernetes or VM-based deployment
 - **Database**: Self-hosted Neo4j Enterprise
 - **Identity**: On-premise Active Directory
 - **Benefits**: Complete control, air-gapped deployment

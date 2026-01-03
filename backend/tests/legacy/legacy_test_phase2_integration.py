@@ -305,43 +305,6 @@ def test_websocket_handler(results: TestResults):
         results.record("WebSocket handler", False, str(e))
 
 
-def test_docker_configuration(results: TestResults):
-    """Test Docker configuration files"""
-    print("\n" + "="*60)
-    print("TESTING DOCKER CONFIGURATION")
-    print("="*60)
-    
-    try:
-        import os
-        
-        # Test 1: Dockerfile exists
-        results.record(
-            "Dockerfile exists",
-            os.path.exists('deployment/dockerfiles/Dockerfile.backend')
-        )
-        
-        # Test 2: Frontend Dockerfile exists
-        results.record(
-            "Frontend Dockerfile exists",
-            os.path.exists('deployment/dockerfiles/Dockerfile.frontend')
-        )
-        
-        # Test 3: docker-compose.prod.yml exists
-        results.record(
-            "docker-compose.prod.yml exists",
-            os.path.exists('deployment/docker-compose.prod.yml')
-        )
-        
-        # Test 4: nginx config exists
-        results.record(
-            "nginx config exists",
-            os.path.exists('deployment/nginx/nginx.conf')
-        )
-        
-    except Exception as e:
-        results.record("Docker configuration", False, str(e))
-
-
 def main():
     """Run all Phase 2 integration tests"""
     print("\n" + "="*60)
@@ -361,7 +324,6 @@ def main():
     
     test_oauth_authentication(results)
     test_websocket_handler(results)
-    test_docker_configuration(results)
     
     # Print summary
     success = results.summary()

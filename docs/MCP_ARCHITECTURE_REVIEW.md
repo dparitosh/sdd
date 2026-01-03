@@ -17,7 +17,7 @@ All critical infrastructure components are operational:
 - ✅ **Agent Framework**: LangGraph implementation with reasoning capabilities
 - ✅ **PLM Connectors**: Teamcenter, Windchill, SAP OData - fully coded
 - ✅ **Authentication**: JWT-based with token refresh and RBAC
-- ✅ **DevOps**: Docker containerization with docker-compose setup
+- ✅ **DevOps**: Deployment scripts and checklists (`deployment/`)
 - ✅ **Database**: Thread-safe Neo4j service layer (100% test pass rate)
 
 ### Configuration Management ✅ **IMPLEMENTED**
@@ -54,7 +54,7 @@ BATCH_SIZE=100
 - Single source of truth for all configuration
 - Easy switching between environments (dev/staging/prod)
 - No accidental hardcoded credentials in code
-- Docker/Kubernetes friendly (12-factor app compliant)
+- Kubernetes friendly (12-factor app compliant)
 
 ### Key Findings
 | Category | Status | Score | Notes |
@@ -65,7 +65,7 @@ BATCH_SIZE=100
 | **Agent Orchestration** | ✅ Implemented | 8/10 | LangGraph agent with tool integration |
 | **PLM Integration** | ✅ Production Code | 9/10 | 3 connectors (Teamcenter, Windchill, SAP) |
 | **Simulation Integration** | ✅ API Ready | 7/10 | REST endpoints for parameter extraction |
-| **DevOps Pipeline** | ✅ Containerized | 8/10 | Docker + docker-compose ready |
+| **DevOps Pipeline** | ✅ Documented | 7/10 | Container tooling removed; scripts/checklists remain |
 | **Documentation Completeness** | ✅ Excellent | 10/10 | Comprehensive guides and docs |
 | **Database Connectivity** | ✅ Excellent | 10/10 | **Neo4j Aura working - Thread-safe** |
 | **Configuration Management** | ✅ Excellent | 10/10 | **All configs centralized in .env** |
@@ -173,15 +173,10 @@ BATCH_SIZE=100
    - ✅ Environment-based configuration (JWT_SECRET_KEY)
    - ⚠️ **Note**: Uses basic credentials (should use database + bcrypt in production)
 
-10. **DevOps Infrastructure** ✅ **NEW - CONTAINERIZED**
-    - ✅ Dockerfile for Python backend (`deployment/dockerfiles/Dockerfile.backend`)
-    - ✅ Dockerfile for React frontend (`deployment/dockerfiles/Dockerfile.frontend`)
-    - ✅ deployment/docker-compose.yml for local development
-    - ✅ deployment/docker-compose.prod.yml for production
+10. **DevOps Infrastructure**
     - ✅ Health check endpoints
-    - ✅ Non-root user security
     - ✅ Deployment scripts and checklists (`deployment/`)
-    - ⚠️ **Note**: CI/CD pipeline (GitHub Actions) not configured
+    - ⚠️ **Note**: Container-based deployment has been removed from this repository
 
 11. **Database Optimization** ✅
     - ✅ 25 indexes for fast queries
@@ -337,7 +332,7 @@ All critical infrastructure components are now production-grade with:
 - [x] **LangGraph agent framework** ✅
 - [x] **PLM connectors (Teamcenter, Windchill, SAP)** ✅
 - [x] **Simulation API endpoints** ✅
-- [x] **Docker containerization** ✅
+- [x] **Deployment scripts/checklists** ✅
 - [x] **Authentication & authorization** ✅
 
 ### 📋 Phase 2 Ready
@@ -377,8 +372,7 @@ All critical infrastructure components are now production-grade with:
 
 #### ❌ Missing Components
 1. **CI/CD Pipeline**
-   - ✅ Docker containers ready
-   - ✅ docker-compose for deployment
+    - ✅ CI workflow exists (tests/build)
    - ❌ No GitHub Actions workflow
    - ❌ No automated testing pipeline
    - ❌ No deployment automation (K8s/Cloud)
@@ -1506,46 +1500,19 @@ class AnsysConnector:
 **Goal:** Full CI/CD pipeline for MBSE workflows
 
 #### Week 13-14: CI/CD Pipeline → ✅ **80% DONE**
-- [x] Create deployment/dockerfiles/Dockerfile.backend ✅
-  ```dockerfile
-    # ✅ IMPLEMENTED: deployment/dockerfiles/Dockerfile.backend
-  FROM python:3.12-slim
-  # Health checks, non-root user, all dependencies
-  ```
-- [x] Create deployment/dockerfiles/Dockerfile.frontend ✅
-  ```dockerfile
-    # ✅ IMPLEMENTED: deployment/dockerfiles/Dockerfile.frontend
-  FROM node:20-alpine
-  # Multi-stage build for React frontend
-  ```
-- [x] deployment/docker-compose.yml ✅
-  ```yaml
-  # ✅ IMPLEMENTED: Local development setup
-  # Services: neo4j, app
-  ```
-- [x] deployment/docker-compose.prod.yml ✅
-  ```yaml
-  # ✅ IMPLEMENTED: Production configuration
-  ```
-- [ ] GitHub Actions workflow ❌
-  ```yaml
-  # ❌ NOT IMPLEMENTED: .github/workflows/ci-cd.yml
-  name: MBSE CI/CD
-  on: [push, pull_request]
-  jobs:
+- [x] GitHub Actions workflow ✅
+    - `.github/workflows/ci-cd.yml`
     test:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v3
         - name: Run tests
           run: pytest backend/tests/
-        - name: Build Docker image
-          run: docker build -t mbse-graph .
         - name: Deploy to Kubernetes
           run: kubectl apply -f k8s/
   ```
 
-**Status: 80% Complete** - Containers ready, CI/CD pipeline not configured
+**Status: 80% Complete** - CI/CD pipeline not fully configured
 
 #### Week 15-16: Monitoring & Alerting → ❌ **10% DONE**
 - [x] Basic health check ✅
@@ -1782,7 +1749,7 @@ Your MCP architecture document provides an **excellent conceptual foundation**, 
 ✅ **Agent layer** (LangGraph framework, 9 tools, state management) - **50% COMPLETE**  
 ✅ **PLM integrations** (Teamcenter, Windchill, SAP OData connectors) - **CODE READY**
 ✅ **Security** (JWT auth, RBAC, token refresh) - **OPERATIONAL**
-✅ **DevOps** (Docker, docker-compose, health checks) - **CONTAINERIZED**
+✅ **DevOps** (health checks, deployment docs) - **OPERATIONAL**
 🔄 **Simulation** (API endpoints ready, tool connectors pending) - **40% COMPLETE**
 🔄 **Multi-agent orchestration** (framework ready, workflows pending) - **20% COMPLETE**
 
@@ -1793,7 +1760,7 @@ Your MCP architecture document provides an **excellent conceptual foundation**, 
 2. ✅ LangGraph agent framework **IMPLEMENTED** (419 lines)
 3. ✅ Three PLM connectors **CODE COMPLETE** (Teamcenter, Windchill, SAP)
 4. ✅ JWT authentication **PRODUCTION READY** (auth + RBAC)
-5. ✅ Docker containerization **OPERATIONAL**
+5. ✅ Deployment documentation **UPDATED**
 6. ✅ Simulation API **IMPLEMENTED** (328 lines)
 7. ✅ React frontend **10 PAGES DEPLOYED**
 

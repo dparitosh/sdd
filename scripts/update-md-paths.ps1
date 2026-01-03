@@ -9,15 +9,6 @@ $files = Get-ChildItem -Path $RepoRoot -Recurse -File -Filter *.md |
     Where-Object { $_.FullName -notmatch "\\node_modules\\" }
 
 $repls = @(
-    @{ p = '(?<!deployment/)docker-compose\.prod\.yml'; r = 'deployment/docker-compose.prod.yml' },
-    @{ p = '(?<!deployment/)docker-compose\.yml';      r = 'deployment/docker-compose.yml' },
-    @{ p = '\\bfrontend/Dockerfile\\b';              r = 'deployment/dockerfiles/Dockerfile.frontend' },
-    @{ p = '(?<!\\w)/Dockerfile\\.frontend\\b';    r = 'deployment/dockerfiles/Dockerfile.frontend' },
-    @{ p = '(?<!\\w)/Dockerfile\\b';                 r = 'deployment/dockerfiles/Dockerfile.backend' },
-    @{ p = '`Dockerfile\\.frontend`';                  r = '`deployment/dockerfiles/Dockerfile.frontend`' },
-    @{ p = '`Dockerfile`';                               r = '`deployment/dockerfiles/Dockerfile.backend`' },
-    @{ p = '(-f\s+)Dockerfile\.frontend';            r = '$1deployment/dockerfiles/Dockerfile.frontend' },
-    @{ p = '(-f\s+)Dockerfile(\b)';                 r = '$1deployment/dockerfiles/Dockerfile.backend$2' },
     @{ p = '\./start_backend\.sh';                  r = './scripts/start_backend.sh' },
     @{ p = '\./start_ui\.sh';                       r = './scripts/start_ui.sh' },
     @{ p = 'pytest\s+tests/';                        r = 'pytest backend/tests/' },

@@ -75,7 +75,7 @@
 | **MCP Server** | TypeScript + Node.js | ✅ Operational | 12 tools for AI integration |
 | **Testing** | pytest + integration tests | ⚠️ Improving | Endpoint tests passing, need E2E |
 | **Build** | Vite + Uvicorn | ✅ Production | Separate frontend/backend build |
-| **Deployment** | Dev containers | ⚠️ Staging | Docker ready, K8s pending |
+| **Deployment** | Dev containers | ⚠️ Staging | Container tooling removed; K8s pending |
 
 ### Code Quality Assessment
 
@@ -102,7 +102,7 @@
 Legacy Flask routes/app modules referenced in older plans have been removed as part of the completed FastAPI migration.
 
 #### Remaining Issues ❌
-- **Production Deployment**: No Docker compose, K8s manifests
+- **Production Deployment**: Runbook not finalized; K8s manifests pending
 - **CI/CD**: No GitHub Actions workflow
 - **Security**: Rate limiting partial, no JWT enforcement
 - **Accessibility**: Need WCAG 2.1 AA compliance audit
@@ -1153,16 +1153,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 **Goal**: Production deployment, CI/CD, authentication, caching, monitoring
 
 #### 2.1 Production Deployment Configuration ✅ COMPLETE
-- ✅ **Docker multi-stage builds** (`Dockerfile.production`)
-  - Multi-stage builds for optimized images
-  - FastAPI backend with Uvicorn
-  - Production dependencies only
-  
-- ✅ **Docker Compose Production** (`docker-compose.production.yml`)
-  - 7 services: backend, frontend, neo4j, redis, nginx, prometheus, grafana
-  - Volume mounts for persistence
-  - Health checks for all services
-  - Network isolation
+- ✅ Container-based deployment removed from repository
   
 - ✅ **Kubernetes Manifests**
   - 7 K8s YAML files in `k8s/` directory
@@ -1184,17 +1175,14 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
   - API proxy
 
 **Files Created:**
-- `deployment/dockerfiles/Dockerfile.backend`
-- `deployment/dockerfiles/Dockerfile.frontend`
-- `deployment/docker-compose.prod.yml`
 - `k8s/00-namespace.yaml` through `k8s/06-ingress.yaml`
-- `deployment/nginx/nginx.conf`
+Container-based deployment artifacts have been removed from this repository.
 
 #### 2.2 CI/CD Pipeline - Azure DevOps ✅ COMPLETE
 - ✅ **Multi-stage Build Pipeline** (`azure-pipelines.yml`)
   - Build stage: Python dependencies, tests
   - Test stage: pytest with coverage
-  - Docker stage: Build and push to ACR
+  - Package stage: Build and publish artifacts
   - Deploy stage: Deploy to AKS
   - 300+ lines of YAML configuration
   
@@ -1356,7 +1344,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 **Status:** ✅ **100% COMPLETE** (December 2024)
 
 **Completed Tasks:**
-1. ✅ Production Deployment Configuration (Docker + K8s)
+1. ✅ Production Deployment Configuration (K8s)
 2. ✅ CI/CD Pipeline (Azure DevOps)
 3. ✅ JWT Authentication & Session Management
 4. ✅ Redis Caching Layer for Neo4j
@@ -1375,7 +1363,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 - 25 new files across infrastructure, services, APIs, and documentation
 
 **Production Ready Features:**
-- ✅ Docker & Kubernetes deployment
+- ✅ Kubernetes deployment
 - ✅ Azure DevOps CI/CD pipelines
 - ✅ JWT authentication with RBAC
 - ✅ Redis session management
@@ -1495,40 +1483,8 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 ---
 
 #### 4.4 Deployment
-- [ ] **Containerization** (Priority: HIGH)
-  ```dockerfile
-  # Dockerfile
-  FROM python:3.12-slim
-  WORKDIR /app
-  COPY requirements.txt .
-  RUN pip install --no-cache-dir -r requirements.txt
-  COPY . .
-  EXPOSE 5000
-  CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "src.web.app:app"]
-  ```
-
-- [ ] **Docker Compose** (Priority: HIGH)
-  ```yaml
-  # deployment/docker-compose.yml
-  version: '3.8'
-  services:
-    backend:
-      build: .
-      ports:
-        - "5000:5000"
-      environment:
-        - NEO4J_URI=${NEO4J_URI}
-        - NEO4J_USER=${NEO4J_USER}
-        - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-    frontend:
-      build: ./frontend
-      ports:
-        - "3000:3000"
-    redis:
-      image: redis:alpine
-      ports:
-        - "6379:6379"
-  ```
+- [ ] **Deployment** (Priority: HIGH)
+  Container-based deployment has been removed from this repository.
 
 - [ ] **Kubernetes deployment** (Priority: MEDIUM)
   - Deployment manifests
@@ -1544,7 +1500,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
   - Uptime monitoring
 
 **Deliverables**:
-- Docker images
+- Deployment artifacts
 - K8s deployment manifests
 - Monitoring dashboard
 
@@ -1572,7 +1528,7 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 15. ⚠️ **CI/CD pipeline** - GitHub Actions
 16. ⚠️ **Accessibility** - WCAG 2.1 AA compliance
 17. ⚠️ **API documentation** - OpenAPI UI improvements
-18. ⚠️ **Containerization** - Docker + docker-compose
+18. ⚠️ **Containerization** - removed from repository
 
 ### Nice to Have (Sprint 6+: Weeks 11-12)
 19. 💡 **OSLC integration** - IBM DOORS compatibility

@@ -291,40 +291,6 @@ assert len(result) > 0
 
 ---
 
-## 🐳 Docker Deployment
-
-### Build Containers
-```bash
-# Build all services
-docker compose -f deployment/docker-compose.prod.yml build
-
-# Build specific service
-docker compose -f deployment/docker-compose.prod.yml build backend
-```
-
-### Run Services
-```bash
-# Start all services
-docker compose -f deployment/docker-compose.prod.yml up -d
-
-# Check status
-docker compose -f deployment/docker-compose.prod.yml ps
-
-# View logs
-docker compose -f deployment/docker-compose.prod.yml logs -f backend
-```
-
-### Stop Services
-```bash
-# Stop all
-docker compose -f deployment/docker-compose.prod.yml down
-
-# Stop and remove volumes
-docker compose -f deployment/docker-compose.prod.yml down -v
-```
-
----
-
 ## 🔗 API Endpoints
 
 ### New Phase 2 Endpoints

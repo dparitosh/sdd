@@ -11,7 +11,7 @@
 
 1. **AI Agent Framework** - LangGraph-based intelligent query system
 2. **PLM Integration Foundation** - Prepare for Teamcenter, Windchill integration
-3. **Production Deployment** - Docker, security hardening, monitoring
+3. **Production Readiness** - Security hardening, monitoring
 4. **Advanced Visualization** - 3D graph, real-time updates
 5. **Performance Optimization** - Query optimization, caching strategies
 
@@ -116,34 +116,6 @@
 
 ### Week 5: Production Deployment
 
-#### 3.1 Docker Containerization
-- [ ] **Create Docker containers**
-  - Backend (Flask + Neo4j driver)
-  - Frontend (Vite build + Nginx)
-  - Neo4j database
-  - Redis cache
-
-- [ ] **Docker Compose orchestration**
-  ```yaml
-  services:
-    backend:
-      build: ./
-      ports: ["5000:5000"]
-    frontend:
-      build: ./frontend
-      ports: ["3001:3001"]
-    neo4j:
-      image: neo4j:5.15
-    redis:
-      image: redis:7-alpine
-  ```
-
-- [ ] **Kubernetes manifests** (optional)
-  - Deployments
-  - Services
-  - Ingress
-  - ConfigMaps/Secrets
-
 #### 3.2 Security Hardening
 - [ ] **Authentication enhancements**
   - Replace hardcoded credentials with DB
@@ -176,7 +148,7 @@
   - Error tracking (Sentry optional)
 
 **Deliverables Week 5:**
-- ✅ Docker containers working
+- ✅ Production readiness documentation updated
 - ✅ Production-ready security
 - ✅ Monitoring dashboard
 - ✅ CI/CD pipeline (GitHub Actions)
@@ -270,23 +242,6 @@ class BasePLMConnector(ABC):
         pass
 ```
 
-### 3. Docker Configuration
-
-```dockerfile
-# Dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY src/ ./src/
-COPY frontend/dist/ ./frontend/dist/
-
-EXPOSE 5000
-CMD ["python", "src/web/app.py"]
-```
-
 ---
 
 ## 📊 Success Metrics
@@ -332,7 +287,8 @@ cp .env.example .env
 python scripts/migrate_phase2.py
 
 # Start services
-docker compose up -d
+./scripts/start_backend.sh
+npm run dev
 ```
 
 ### Test Agent
@@ -342,18 +298,6 @@ python -m src.agents.test_agent
 
 # Run agent benchmarks
 python tests/test_agent_performance.py
-```
-
-### Deploy to Production
-```bash
-# Build containers
-docker compose -f deployment/docker-compose.prod.yml build
-
-# Deploy
-docker compose -f deployment/docker-compose.prod.yml up -d
-
-# Monitor
-docker compose logs -f
 ```
 
 ---
@@ -375,8 +319,8 @@ docker compose logs -f
 - [ ] Day 5: BOM sync testing
 
 ### Week 3
-- [ ] Day 1: Docker container creation
-- [ ] Day 2: Docker Compose orchestration
+- [ ] Day 1: Deployment packaging
+- [ ] Day 2: Deployment orchestration
 - [ ] Day 3: Security enhancements (auth, RBAC)
 - [ ] Day 4: Rate limiting, HTTPS, Redis
 - [ ] Day 5: Monitoring & logging setup
@@ -402,8 +346,7 @@ docker compose logs -f
 - Windchill REST Services Documentation
 - SAP OData V4 Specification
 
-### Docker & DevOps
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+### DevOps
 - [Kubernetes Basics](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
 - GitHub Actions CI/CD Workflows
 

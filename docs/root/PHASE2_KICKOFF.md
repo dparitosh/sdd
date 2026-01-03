@@ -55,29 +55,12 @@
 - ✅ Execute custom Cypher queries
 - ✅ Database statistics and analytics
 
-### 4. Docker Containerization ✅
-Created production-ready Docker infrastructure:
-
-**Files Created**:
-- `deployment/dockerfiles/Dockerfile.backend` - Multi-stage Python backend container
-- `deployment/dockerfiles/Dockerfile.frontend` - React/Vite + Nginx frontend
-- `deployment/docker-compose.prod.yml` - Production orchestration
-- `deployment/nginx/nginx.conf` - Optimized Nginx configuration
-- `DOCKER_GUIDE.md` - Complete deployment documentation
-
-**Features**:
-- Multi-stage builds for smaller images
-- Health checks on all services
-- Non-root user security
-- Volume persistence for Neo4j
-- Network isolation
-- Auto-restart policies
+### 4. Production Deployment ✅
+Container-based deployment has been removed from this repository. Run the backend/frontend directly and provide a reachable Neo4j instance via environment variables.
 
 ### 5. Documentation ✅
 - **PHASE2_PLAN.md** - 6-week implementation roadmap
-- **DOCKER_GUIDE.md** - Container deployment guide
 - **requirements-phase2.txt** - Production dependencies
-- Updated Dockerfile with Phase 2 requirements
 
 ---
 
@@ -128,16 +111,13 @@ Created production-ready Docker infrastructure:
    - Measure response times
    - **Target**: < 5s average response
 
-2. **Docker Testing** (Priority: HIGH)
+2. **Local Smoke Test** (Priority: HIGH)
    ```bash
-   # Build and test locally
-   docker compose -f deployment/docker-compose.prod.yml build
-   docker compose -f deployment/docker-compose.prod.yml up -d
-   
-   # Verify all services healthy
-   docker ps
+   ./scripts/start_backend.sh
+   npm run dev
+
    curl http://localhost:5000/api/health
-   curl http://localhost:3001/health
+   curl http://localhost:3001
    ```
 
 3. **PLM Connector Design** (Priority: MEDIUM)
@@ -148,7 +128,7 @@ Created production-ready Docker infrastructure:
 
 ### This Week Goals
 - [ ] Agent framework fully tested and optimized
-- [ ] Docker containers verified working
+- [ ] Local services verified working
 - [ ] PLM connector architecture designed
 - [ ] Monitoring dashboard prototype
 - [ ] Agent performance benchmarks completed
@@ -194,11 +174,8 @@ Created production-ready Docker infrastructure:
 | **Async HTTP** | httpx | 0.25+ | PLM API calls |
 | **Security** | bcrypt | 4.1+ | Password hashing |
 | **Rate Limiting** | Flask-Limiter | 3.5+ | API protection |
-| **Containers** | Docker | 24.0+ | Deployment |
-| **Orchestration** | Docker Compose | 2.0+ | Multi-container management |
 
 ### Infrastructure
-- **Container Registry**: Docker Hub / GitHub Container Registry
 - **CI/CD**: GitHub Actions (ready to configure)
 - **Monitoring**: Prometheus + Grafana (ready to deploy)
 - **Logging**: Loguru (already implemented)
@@ -215,15 +192,7 @@ Created production-ready Docker infrastructure:
 - Can add later without architectural changes
 **Impact**: Minimal - will need Redis for distributed deployments
 
-### 2. Multi-Stage Docker Builds
-**Decision**: Use multi-stage builds for smaller images  
-**Rationale**:
-- 40-60% smaller final images
-- Faster deployment and pulls
-- Build-time dependencies isolated
-**Impact**: Longer build time, but better production performance
-
-### 3. LangGraph Over Custom Framework
+### 2. LangGraph Over Custom Framework
 **Decision**: Use LangGraph for agent orchestration  
 **Rationale**:
 - Battle-tested framework from LangChain team
@@ -232,7 +201,7 @@ Created production-ready Docker infrastructure:
 - Active community and documentation
 **Impact**: Faster development, more maintainable
 
-### 4. Nginx for Frontend
+### 3. Nginx for Frontend
 **Decision**: Use Nginx instead of Node.js server  
 **Rationale**:
 - 10x better static file serving performance
@@ -250,13 +219,6 @@ Created production-ready Docker infrastructure:
 - [ ] < 5s average response time
 - [ ] Multi-step reasoning working
 - [ ] Error recovery reliable
-
-### Docker Deployment
-- [x] Dockerfiles created
-- [x] docker compose configured
-- [ ] All containers building successfully
-- [ ] Health checks passing
-- [ ] < 30s startup time
 
 ### Production Readiness
 - [x] Phase 2 dependencies installed
@@ -287,7 +249,7 @@ Created production-ready Docker infrastructure:
    
 3. **Frontend Vite Process**: Keeps getting interrupted
    - **Impact**: Low (development only)
-   - **Fix**: Use nohup or Docker for stability
+   - **Fix**: Use nohup or a process manager for stability
 
 ### Blockers (None Currently)
 No critical blockers identified. System is operational and ready for Phase 2.
@@ -298,7 +260,7 @@ No critical blockers identified. System is operational and ready for Phase 2.
 
 ### Daily Standup Topics
 1. Agent testing progress
-2. Docker deployment status
+2. Deployment status
 3. PLM integration design review
 4. Blockers and dependencies
 
@@ -314,12 +276,10 @@ No critical blockers identified. System is operational and ready for Phase 2.
 ### Recommended Reading (Week 1)
 - [ ] [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [ ] [Multi-Agent Systems Tutorial](https://python.langchain.com/docs/use_cases/multi_agent)
-- [ ] [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
 - [ ] [Teamcenter REST API Guide](https://docs.sw.siemens.com/)
 
 ### Code Examples
 - Agent implementation: `src/agents/langgraph_agent.py`
-- Docker setup: `deployment/docker-compose.prod.yml`
 - Service layer: `src/web/services/neo4j_service.py`
 - REST API: `src/web/routes/`
 
@@ -329,10 +289,8 @@ No critical blockers identified. System is operational and ready for Phase 2.
 
 ### Infrastructure
 - [x] Phase 2 dependencies installed
-- [x] Docker containers created
-- [x] docker compose configured
 - [x] Nginx configuration ready
-- [ ] Containers tested locally
+- [ ] Local deployment/runbook verified
 
 ### AI Agent
 - [x] LangGraph agent implemented
@@ -343,7 +301,6 @@ No critical blockers identified. System is operational and ready for Phase 2.
 
 ### Documentation
 - [x] Phase 2 plan created
-- [x] Docker guide written
 - [x] Requirements documented
 - [x] Architecture diagrams
 - [ ] API documentation updated
@@ -352,7 +309,6 @@ No critical blockers identified. System is operational and ready for Phase 2.
 - [x] All services running
 - [x] Tests executed
 - [x] Health checks verified
-- [ ] Docker build tested
 - [ ] CI/CD pipeline ready
 
 ---
@@ -361,9 +317,9 @@ No critical blockers identified. System is operational and ready for Phase 2.
 
 **Phase 1**: ✅ **COMPLETE** - Solid foundation with working backend, frontend, and database
 
-**Phase 2**: 🚀 **LAUNCHED** - Agent framework ready, Docker containers built, 6-week roadmap in place
+**Phase 2**: 🚀 **LAUNCHED** - Agent framework ready, 6-week roadmap in place
 
-**Next Milestone**: Week 1 completion with fully tested agent and working Docker deployment
+**Next Milestone**: Week 1 completion with fully tested agent and a verified deployment/runbook
 
 **Estimated Phase 2 Completion**: January 19, 2026 (6 weeks)
 

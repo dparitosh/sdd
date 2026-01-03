@@ -47,7 +47,7 @@ body:
         - PLM Connector
         - Agent Framework
         - Database
-        - Docker/Deployment
+        - Deployment/Infrastructure
         - Documentation
         - Other
     validations:

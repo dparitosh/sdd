@@ -544,46 +544,8 @@ def is_token_revoked(token: str) -> bool:
     return redis_client.exists(f"blacklist:{token}") > 0
 ```
 
-### 4. **Docker Deployment**
-
-```dockerfile
-# Dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-# Set environment variables
-ENV FLASK_APP=src/web/app.py
-ENV FLASK_ENV=production
-
-EXPOSE 5000
-
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "src.web.app:app"]
-```
-
-```yaml
-# deployment/docker-compose.yml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - NEO4J_URI=${NEO4J_URI}
-      - NEO4J_USER=${NEO4J_USER}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    env_file:
-      - .env
-    restart: unless-stopped
-```
+### 4. **Deployment**
+Container-based deployment has been removed from this repository.
 
 ---
 
@@ -686,7 +648,7 @@ def test_agent_tool_selection():
 **Next Steps:**
 - Implement user database (replace hardcoded credentials)
 - Add Redis for token blacklist (production scalability)
-- Create Docker/Kubernetes deployment
+- Create a deployment plan
 - Add rate limiting (Flask-Limiter)
 - Implement refresh token rotation
 - Add audit logging for authentication events

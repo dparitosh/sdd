@@ -10,19 +10,10 @@ This guide configures Grafana dashboards for monitoring the MBSE Neo4j Knowledge
 
 ## Quick Setup
 
-### 1. Install Grafana (Docker)
-```bash
-# Run Grafana container
-docker run -d \
-  --name grafana \
-  -p 3000:3000 \
-  -e GF_SECURITY_ADMIN_PASSWORD=admin \
-  -e GF_INSTALL_PLUGINS=grafana-clock-panel \
-  grafana/grafana:latest
+### 1. Install Grafana
+Install Grafana 10.0+ using the official installer or package manager for your OS.
 
-# Access Grafana at http://localhost:3000
-# Default credentials: admin/admin
-```
+Access Grafana at http://localhost:3000 and complete the initial admin login.
 
 ### 2. Add Prometheus Data Source
 1. Navigate to **Configuration** → **Data Sources**
@@ -428,23 +419,10 @@ scrape_configs:
     metrics_path: '/metrics'
 ```
 
-```bash
-# Run Prometheus
-docker run -d \
-  --name prometheus \
-  -p 9090:9090 \
-  -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml \
-  prom/prometheus:latest
-```
+Start Prometheus using your preferred installation method for your OS, and point it at the `prometheus.yml` above.
 
 ### 2. Start Grafana
-```bash
-docker run -d \
-  --name grafana \
-  -p 3000:3000 \
-  --link prometheus:prometheus \
-  grafana/grafana:latest
-```
+Start Grafana using your preferred installation method for your OS.
 
 ### 3. Import Dashboard
 1. Login to Grafana (http://localhost:3000)
