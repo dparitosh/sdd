@@ -6,6 +6,9 @@
     "scripts": {
         "dev": "vite",
         "kill": "fuser -k 5000/tcp",
+        "stop:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop_backend.ps1",
+        "stop:ui": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop_ui.ps1",
+        "stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop_all.ps1",
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
