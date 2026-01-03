@@ -28,6 +28,7 @@ class WebSocketService {
     error: null
   };
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private didLogDisabled = false;
 
   /**
    * Initialize WebSocket connection
@@ -42,11 +43,23 @@ class WebSocketService {
 
     this.queryClient = queryClient;
 
-    // WebSocket through Codespaces doesn't work well - disable for now
-    // In production, API calls will handle updates
-    logger.warn('[WebSocket] Skipping connection - not supported in Codespaces environment');
-    this.status.error = 'WebSocket disabled in Codespaces environment';
-    return;
+    // WebSocket is opt-in for this app. The backend may not expose Socket.IO in all environments.
+    // Enable explicitly with VITE_ENABLE_WEBSOCKETS=true.
+    const websocketsEnabled = String((import.meta as any)?.env?.VITE_ENABLE_WEBSOCKETS).toLowerCase() === 'true';
+    if (!websocketsEnabled) {
+      this.status.connected = false;
+      this.status.error = null;
+
+      if (!this.didLogDisabled) {
+        logger.log('[WebSocket] Disabled (set VITE_ENABLE_WEBSOCKETS=true to enable)');
+        this.didLogDisabled = true;
+      }
+
+      // Emit state so hooks/UI can reflect the disabled status without console noise.
+      this.notifyListeners('connection', { connected: false });
+      this.notifyListeners('error', { error: null });
+      return;
+    }
 
     // Auto-detect WebSocket URL based on environment
     const wsUrl = url || window.location.origin;

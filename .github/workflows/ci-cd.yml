@@ -18,6 +18,11 @@ on:
         options:
           - staging
           - production
+      enforce_no_docker_artifacts:
+        description: 'Enforce that Docker deployment artifacts are absent'
+        required: false
+        default: false
+        type: boolean
   release:
     types: [published, created]
 
@@ -26,6 +31,10 @@ env:
   NODE_VERSION: "20"
   DOCKER_REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Optional enforcement switch.
+  # Default: disabled. Enable per-run via workflow_dispatch input, or set this to "true" if you
+  # want enforcement on every run.
+  ENFORCE_NO_DOCKER_ARTIFACTS: "false"
 
 jobs:
   # ============================================================================
@@ -46,10 +55,10 @@ jobs:
           BRANCH_NAME="${{ github.head_ref }}"
           echo "Validating branch name: $BRANCH_NAME"
           
-          # Allowed patterns: feature/*, bugfix/*, hotfix/*, release/*
-          if [[ ! "$BRANCH_NAME" =~ ^(feature|bugfix|hotfix|release)/.+ ]]; then
+          # Allowed patterns: feature/*, bugfix/*, hotfix/*, release/*, chore/*
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|bugfix|hotfix|release|chore)/.+ ]]; then
             echo "❌ Invalid branch name: $BRANCH_NAME"
-            echo "Branch must follow pattern: feature/*, bugfix/*, hotfix/*, or release/*"
+            echo "Branch must follow pattern: feature/*, bugfix/*, hotfix/*, release/*, or chore/*"
             exit 1
           fi
           echo "✓ Branch name is valid"
@@ -99,6 +108,45 @@ jobs:
           else
             echo "⚠️ Warning: CHANGELOG.md not updated (recommended for main branch PRs)"
           fi
+
+      - name: (Optional) Enforce Docker artifacts absent
+        if: env.ENFORCE_NO_DOCKER_ARTIFACTS == 'true' || (github.event_name == 'workflow_dispatch' && inputs.enforce_no_docker_artifacts)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          forbidden_paths=(
+            "Dockerfile"
+            "Dockerfile.frontend"
+            "docker-compose.yml"
+            "docker-compose.prod.yml"
+            "docker/"
+            "deployment/scripts/docker_manager.sh"
+            "deployment/scripts/docker_manager.ps1"
+            "deployment/scripts/docker_manager.bat"
+          )
+
+          failed=0
+          for p in "${forbidden_paths[@]}"; do
+            if [ -e "$p" ]; then
+              echo "::error::Forbidden Docker deployment artifact exists: $p"
+              failed=1
+            fi
+          done
+
+          # Catch other compose variants (e.g., docker-compose.*.yml)
+          if ls -1 docker-compose*.yml >/dev/null 2>&1; then
+            echo "::error::Forbidden Docker compose files present:"
+            ls -1 docker-compose*.yml || true
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then
+            echo "Docker deployment support must remain removed."
+            exit 1
+          fi
+
+          echo "✓ No Docker deployment artifacts detected"
 
   # ============================================================================
   # CODE QUALITY CHECKS
@@ -154,6 +202,7 @@ jobs:
   test-backend:
     name: Test Backend (Python)
     runs-on: ubuntu-latest
+    needs: [git-validation]
     strategy:
       matrix:
         python-version: ["3.12"]
@@ -203,9 +252,8 @@ jobs:
 
       - name: Run pytest with coverage
         env:
-          NEO4J_URI: ${{ secrets.NEO4J_URI }}
-          NEO4J_USER: ${{ secrets.NEO4J_USER }}
-          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          # Use the Neo4j service started in this workflow.
+          NEO4J_URI: bolt://localhost:7687
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: testpassword
           PYTHONPATH: ${{ github.workspace }}
@@ -237,6 +285,7 @@ jobs:
   test-frontend:
     name: Test Frontend (React)
     runs-on: ubuntu-latest
+    needs: [git-validation]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

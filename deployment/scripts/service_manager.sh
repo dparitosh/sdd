@@ -41,6 +41,12 @@ show_usage() {
     echo "  $0 backend start  # Start backend only"
     echo "  $0 logs           # View logs"
     echo "  $0 status         # Check status"
+    echo ""
+    echo "Manual mode env vars (defaults are localhost-only for safety):"
+    echo "  BACKEND_HOST   (default: 127.0.0.1)"
+    echo "  BACKEND_PORT   (default: 5000)"
+    echo "  FRONTEND_HOST  (default: 127.0.0.1)"
+    echo "  FRONTEND_PORT  (default: 3001)"
 }
 
 start_service() {
@@ -65,7 +71,11 @@ start_service() {
                 fi
                 pushd "$REPO_ROOT" >/dev/null || return 1
                 export PYTHONPATH="$REPO_ROOT"
-                nohup python3 -m uvicorn src.web.app_fastapi:app --host 127.0.0.1 --port 5000 > /tmp/mbse-backend.log 2>&1 &
+                # By default bind backend to localhost for security.
+                # To allow remote access, set BACKEND_HOST (e.g. 0.0.0.0) and/or BACKEND_PORT.
+                BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
+                BACKEND_PORT="${BACKEND_PORT:-5000}"
+                nohup python3 -m uvicorn src.web.app_fastapi:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" > /tmp/mbse-backend.log 2>&1 &
                 echo $! > /tmp/mbse-backend.pid
                 sleep 2
                 if ps -p $(cat /tmp/mbse-backend.pid) > /dev/null; then
@@ -88,7 +98,11 @@ start_service() {
                     return 1
                 fi
                 pushd "$FRONTEND_DIR" >/dev/null || return 1
-                nohup npm run preview -- --host 127.0.0.1 --port 3001 > /tmp/mbse-frontend.log 2>&1 &
+                # By default bind frontend preview to localhost for safety.
+                # To allow remote access, set FRONTEND_HOST (e.g. 0.0.0.0) and/or FRONTEND_PORT.
+                FRONTEND_HOST="${FRONTEND_HOST:-127.0.0.1}"
+                FRONTEND_PORT="${FRONTEND_PORT:-3001}"
+                nohup npm run preview -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT" > /tmp/mbse-frontend.log 2>&1 &
                 echo $! > /tmp/mbse-frontend.pid
                 sleep 2
                 if ps -p $(cat /tmp/mbse-frontend.pid) > /dev/null; then

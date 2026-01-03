@@ -5,72 +5,112 @@
 @layer base {
   :root {
     /* Corporate Design System - Light Mode */
-    --background: 0 0% 99%;
-    --foreground: 216 28% 12%;
+    /* Slight cool tint similar to RECIPE's neutral/blue look */
+    --background: 220 30% 98%;
+    --foreground: 222 32% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 216 28% 12%;
+    --card-foreground: 222 32% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 216 28% 12%;
-    --primary: 213 94% 42%; /* Corporate Blue */
+    --popover-foreground: 222 32% 12%;
+    --primary: 220 90% 45%; /* Blue hue */
     --primary-foreground: 0 0% 100%;
-    --secondary: 213 20% 92%;
-    --secondary-foreground: 216 28% 18%;
-    --muted: 213 15% 96%;
-    --muted-foreground: 215 16% 46%;
-    --accent: 213 85% 96%;
-    --accent-foreground: 213 94% 35%;
+    --secondary: 220 20% 94%;
+    --secondary-foreground: 222 32% 16%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 222 12% 45%;
+    --accent: 210 85% 96%;
+    --accent-foreground: 220 90% 35%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 213 20% 90%;
-    --input: 213 20% 90%;
-    --ring: 213 94% 42%;
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: 220 90% 45%;
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 48%;
+    --info: 205 90% 46%;
     --info-foreground: 0 0% 100%;
     --radius: 0.5rem;
+    /* Chart palette: blue/blue-hue variants */
     --chart-1: 213 94% 42%;
-    --chart-2: 199 89% 48%;
-    --chart-3: 142 76% 36%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 271 81% 56%;
+    --chart-2: 205 90% 46%;
+    --chart-3: 223 83% 52%;
+    --chart-4: 235 75% 58%;
+    --chart-5: 190 92% 40%;
   }
 
   .dark {
     /* Corporate Design System - Dark Mode */
-    --background: 216 28% 7%;
-    --foreground: 213 15% 96%;
-    --card: 216 26% 10%;
-    --card-foreground: 213 15% 96%;
-    --popover: 216 28% 9%;
-    --popover-foreground: 213 15% 96%;
-    --primary: 213 94% 58%; /* Corporate Blue - Lighter */
-    --primary-foreground: 216 28% 12%;
+    --background: 222 35% 8%;
+    --foreground: 220 20% 96%;
+    --card: 222 30% 11%;
+    --card-foreground: 220 20% 96%;
+    --popover: 222 35% 10%;
+    --popover-foreground: 220 20% 96%;
+    --primary: 220 90% 60%;
+    --primary-foreground: 222 30% 12%;
     --secondary: 216 20% 18%;
     --secondary-foreground: 213 15% 96%;
     --muted: 216 18% 15%;
     --muted-foreground: 213 12% 62%;
-    --accent: 213 85% 18%;
-    --accent-foreground: 213 94% 68%;
+    --accent: 220 80% 18%;
+    --accent-foreground: 220 90% 72%;
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
     --border: 216 20% 20%;
     --input: 216 20% 20%;
-    --ring: 213 94% 58%;
+    --ring: 220 90% 60%;
     --success: 142 76% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 55%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 89% 55%;
+    --info: 205 90% 60%;
     --info-foreground: 0 0% 100%;
+    /* Chart palette: blue/blue-hue variants */
     --chart-1: 213 94% 58%;
-    --chart-2: 199 89% 55%;
-    --chart-3: 142 76% 42%;
-    --chart-4: 38 92% 55%;
-    --chart-5: 271 81% 60%;
+    --chart-2: 205 90% 60%;
+    --chart-3: 223 83% 64%;
+    --chart-4: 235 75% 70%;
+    --chart-5: 190 92% 55%;
   }
+}
+
+@theme inline {
+  /* Radius scale (Tailwind v4 / shadcn-compatible) */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Map design tokens -> Tailwind color tokens */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
 }
 
 @layer base {
@@ -209,36 +249,41 @@
   }
 
   /* Corporate Gradient System */
-  .gradient-primary {
-    background: linear-gradient(135deg, hsl(213 94% 42%) 0%, hsl(199 89% 48%) 100%);
+  .gradient-primary,
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-2)) 100%);
   }
 
-  .gradient-secondary {
-    background: linear-gradient(135deg, hsl(213 94% 48%) 0%, hsl(213 85% 62%) 100%);
+  .gradient-secondary,
+  .bg-gradient-secondary {
+    background: linear-gradient(135deg, hsl(var(--chart-1)) 0%, hsl(var(--chart-3)) 100%);
   }
 
-  .gradient-accent {
-    background: linear-gradient(135deg, hsl(213 94% 42%) 0%, hsl(199 89% 48%) 50%, hsl(142 76% 36%) 100%);
+  .gradient-accent,
+  .bg-gradient-accent {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--chart-2)) 50%, hsl(var(--success)) 100%);
   }
 
-  .gradient-success {
-    background: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 70% 45%) 100%);
+  .gradient-success,
+  .bg-gradient-success {
+    background: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(var(--success) / 0.8) 100%);
   }
 
-  .gradient-warning {
-    background: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(38 85% 58%) 100%);
+  .gradient-warning,
+  .bg-gradient-warning {
+    background: linear-gradient(135deg, hsl(var(--warning)) 0%, hsl(var(--warning) / 0.8) 100%);
   }
 
   /* Corporate gradient text */
   .gradient-text-primary {
-    background: linear-gradient(135deg, hsl(213 94% 42%), hsl(199 89% 48%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-2)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .gradient-text-accent {
-    background: linear-gradient(135deg, hsl(213 94% 42%), hsl(271 81% 56%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-4)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

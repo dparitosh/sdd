@@ -79,8 +79,7 @@ export interface HealthCheck {
  * Get aggregated metrics summary
  */
 export const getMetricsSummary = async (): Promise<MetricsSummary> => {
-  const response = await apiClient.get<MetricsSummary>('/metrics/summary');
-  return response.data;
+  return apiClient.get<MetricsSummary>('/metrics/summary');
 };
 
 /**
@@ -90,16 +89,14 @@ export const getMetricsHistory = async (
   metric: 'cpu' | 'memory' | 'api_requests' | 'cache_hit_rate',
   window: '1h' | '6h' | '24h' | '7d' | '30d' = '1h'
 ): Promise<MetricsHistory> => {
-  const response = await apiClient.get<MetricsHistory>('/metrics/history', {
+  return apiClient.get<MetricsHistory>('/metrics/history', {
     params: { metric, window },
   });
-  return response.data;
 };
 
 /**
  * Get system health status
  */
 export const getHealthCheck = async (): Promise<HealthCheck> => {
-  const response = await apiClient.get<HealthCheck>('/metrics/health');
-  return response.data;
+  return apiClient.get<HealthCheck>('/metrics/health');
 };

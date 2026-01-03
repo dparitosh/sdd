@@ -2,7 +2,7 @@
 
 ## 📊 Executive Summary
 
-**Current Status**: FastAPI backend + React 18 (TypeScript/Vite) frontend  
+**Current Status**: FastAPI backend + React (TypeScript/Vite) frontend  
 **Target Status**: Modern, scalable, maintainable enterprise application  
 **Timeline Estimate**: 8-12 weeks (phased approach)  
 **Priority**: High (Technical debt accumulating, UX needs improvement)
@@ -22,6 +22,12 @@
   - export_fastapi.py (361 lines, multi-format exports)
   - version_fastapi.py (445 lines, version control)
   - All with comprehensive Pydantic validation (63 models total)
+
+### Recent Improvements (January 2026)
+- ✅ **Theme Tokens (Blue Hue)**: Updated global CSS variables to a blue/blue-hue palette and ensured Tailwind utilities map to the token variables so UI changes are visible.
+- ✅ **WebSockets Opt-in**: Reduced dev-mode console noise by making WebSockets explicitly opt-in via `VITE_ENABLE_WEBSOCKETS=true`.
+- ✅ **Metrics Client Consistency**: Fixed frontend metrics service to match the API client wrapper contract (wrapper returns data directly).
+- ✅ **React Key Warnings**: Added stable `key` props to list renders in Parts Explorer and Query Editor to eliminate React warnings.
 
 ### ISO 10303-4443 SMRL Compliance Status
 **Current Alignment**: 100% (Dec 7, 2025) ✅
