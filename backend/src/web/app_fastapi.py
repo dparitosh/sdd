@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from src.web.services import get_neo4j_service, reset_neo4j_service
-from src.web.services.redis_service import get_redis_service, close_redis_service
+from src.web.services.redis_service import get_redis_service, close_redis_service, is_redis_enabled
 from src.web.middleware.jwt_middleware import create_jwt_middleware
 from src.web.middleware.session_manager import SessionManager
 from src.web.routes.auth_fastapi import set_session_manager
@@ -50,36 +50,38 @@ async def lifespan(app: FastAPI):
         raise
     
     # Initialize Redis service (optional, graceful degradation)
-    logger.info("Connecting to Redis...")
-    try:
-        from src.web.services.redis_service import get_redis_service
-        from src.web.middleware.session_manager import SessionManager
-        from src.web.routes.auth_fastapi import set_session_manager
-        
-        redis_service = await get_redis_service()
-        
-        # Initialize session manager with Redis
-        if redis_service and await redis_service.is_connected():
-            session_manager = SessionManager(redis_service.client)
-            set_session_manager(session_manager)
-            logger.info("✓ Session management enabled with Redis")
+    if is_redis_enabled():
+        logger.info("Connecting to Redis...")
+        try:
+            from src.web.middleware.session_manager import SessionManager
+            from src.web.routes.auth_fastapi import set_session_manager
 
-            # Attach query cache to Neo4j service (async-safe)
-            try:
-                from src.web.services.query_cache import get_query_cache
+            redis_service = await get_redis_service()
 
-                cache = await get_query_cache()
-                if cache and getattr(cache, "enabled", False):
-                    neo4j_service.set_cache(cache)
-                    logger.info("✓ Neo4j query caching enabled")
-                else:
-                    logger.info("ℹ️  Neo4j query caching disabled - Redis unavailable")
-            except Exception as e:
-                logger.warning(f"⚠️  Failed to initialize query cache: {e}")
-        else:
-            logger.warning("⚠️  Session management disabled - Redis not available")
-    except Exception as e:
-        logger.warning(f"⚠️  Redis connection failed: {e} - Continuing without session management")
+            # Initialize session manager with Redis
+            if redis_service and await redis_service.is_connected():
+                session_manager = SessionManager(redis_service.client)
+                set_session_manager(session_manager)
+                logger.info("✓ Session management enabled with Redis")
+
+                # Attach query cache to Neo4j service (async-safe)
+                try:
+                    from src.web.services.query_cache import get_query_cache
+
+                    cache = await get_query_cache()
+                    if cache and getattr(cache, "enabled", False):
+                        neo4j_service.set_cache(cache)
+                        logger.info("✓ Neo4j query caching enabled")
+                    else:
+                        logger.info("ℹ️  Neo4j query caching disabled - Redis unavailable")
+                except Exception as e:
+                    logger.warning(f"⚠️  Failed to initialize query cache: {e}")
+            else:
+                logger.warning("⚠️  Session management disabled - Redis not available")
+        except Exception as e:
+            logger.warning(f"⚠️  Redis connection failed: {e} - Continuing without session management")
+    else:
+        logger.info("Redis disabled (set REDIS_ENABLED=true to enable)")
     
     yield
     

@@ -12,6 +12,30 @@ from loguru import logger
 from redis.asyncio.connection import ConnectionPool
 
 
+def _env_truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def is_redis_enabled() -> bool:
+    """Return True if Redis should be used.
+
+    Redis is treated as optional. By default, we do not attempt to connect
+    unless explicitly enabled or configured via environment variables.
+    """
+
+    enabled = os.getenv("REDIS_ENABLED")
+    if enabled is not None:
+        return _env_truthy(enabled)
+
+    # If no explicit toggle is present, only enable when configuration is set.
+    return any(
+        os.environ.get(key) is not None
+        for key in ("REDIS_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_DB", "REDIS_PASSWORD")
+    )
+
+
 class RedisService:
     """
     Async Redis service client with connection pooling
@@ -465,6 +489,9 @@ _redis_service: Optional[RedisService] = None
 async def get_redis_service() -> Optional[RedisService]:
     """Get global Redis service instance"""
     global _redis_service
+
+    if not is_redis_enabled():
+        return None
 
     if _redis_service is None:
         _redis_service = RedisService()
