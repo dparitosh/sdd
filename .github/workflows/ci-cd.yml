@@ -321,11 +321,24 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Verify build output
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PWD: $(pwd)"
+          echo "Top-level files:"
+          ls -la
+          echo "Frontend folder:"
+          ls -la frontend
+          echo "Frontend dist folder:"
+          ls -la frontend/dist
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/dist
+          if-no-files-found: error
 
   # ============================================================================
   # SECURITY SCANNING
