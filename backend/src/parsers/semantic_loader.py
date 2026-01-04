@@ -395,7 +395,9 @@ class SemanticXMILoader:
             elif elem_type in self.METADATA_TYPES:
                 meta_count += 1
 
-        logger.info(f"  Nodes: {node_count}, Relationships: {rel_count}, Metadata: {meta_count}")
+        logger.info(
+            f"  Nodes: {node_count}, Relationships: {rel_count}, Metadata: {meta_count}"
+        )
 
     def _get_element_name(self, elem: etree.Element) -> str:
         """Extract name from element (attribute or child element)"""
@@ -419,7 +421,9 @@ class SemanticXMILoader:
 
         # Find all elements that should be nodes
         for node_type in self.NODE_TYPES:
-            elements = root.xpath(f"//*[@xmi:type='{node_type}']", namespaces=self.namespaces)
+            elements = root.xpath(
+                f"//*[@xmi:type='{node_type}']", namespaces=self.namespaces
+            )
 
             for elem in elements:
                 elem_id = elem.get("{http://www.omg.org/spec/XMI/20131001}id")
@@ -603,7 +607,9 @@ class SemanticXMILoader:
                 # Determine relationship type based on child's tag
                 rel_type = self.CONTAINMENT_RELATIONSHIPS.get(child.tag, "CONTAINS")
 
-                batch.append({"parent_id": elem_id, "child_id": child_id, "rel_type": rel_type})
+                batch.append(
+                    {"parent_id": elem_id, "child_id": child_id, "rel_type": rel_type}
+                )
 
                 if len(batch) >= batch_size:
                     self._create_containment_batch(batch)
@@ -699,7 +705,9 @@ class SemanticXMILoader:
                     if "properties" in end_data:
                         type_ref = end_data["properties"].get("type_ref")
                         if type_ref and type_ref in self.element_cache:
-                            member_end_types.append(self.element_cache[type_ref].get("name", ""))
+                            member_end_types.append(
+                                self.element_cache[type_ref].get("name", "")
+                            )
 
             # Update Association node with memberEnd information
             if member_end_names:
@@ -774,12 +782,16 @@ class SemanticXMILoader:
             # Find general (parent) reference
             general_elem = gen.find("general")
             if general_elem is not None:
-                general_ref = general_elem.get("{http://www.omg.org/spec/XMI/20131001}idref")
+                general_ref = general_elem.get(
+                    "{http://www.omg.org/spec/XMI/20131001}idref"
+                )
 
                 # Find specific (child) - it's the parent element of the generalization
                 specific_elem = gen.getparent()
                 if specific_elem is not None:
-                    specific_id = specific_elem.get("{http://www.omg.org/spec/XMI/20131001}id")
+                    specific_id = specific_elem.get(
+                        "{http://www.omg.org/spec/XMI/20131001}id"
+                    )
 
                     if (
                         general_ref
@@ -788,7 +800,11 @@ class SemanticXMILoader:
                         and specific_id in self.element_cache
                     ):
                         batch.append(
-                            {"child_id": specific_id, "parent_id": general_ref, "gen_id": gen_id}
+                            {
+                                "child_id": specific_id,
+                                "parent_id": general_ref,
+                                "gen_id": gen_id,
+                            }
                         )
 
         if batch:
@@ -807,7 +823,9 @@ class SemanticXMILoader:
     def _create_connectors(self, root: etree.Element) -> int:
         """Create Connector relationships between ports/properties"""
         # Find Connectors from cache (they're in RELATIONSHIP_TYPES, not created as nodes)
-        connectors = root.xpath("//*[@xmi:type='uml:Connector']", namespaces=self.namespaces)
+        connectors = root.xpath(
+            "//*[@xmi:type='uml:Connector']", namespaces=self.namespaces
+        )
         count = 0
         batch = []
 
@@ -824,7 +842,9 @@ class SemanticXMILoader:
                     # Look for role child element with idref
                     role_elem = end.find("role")
                     if role_elem is not None:
-                        role_ref = role_elem.get("{http://www.omg.org/spec/XMI/20131001}idref")
+                        role_ref = role_elem.get(
+                            "{http://www.omg.org/spec/XMI/20131001}idref"
+                        )
                         if role_ref:
                             role_refs.append(role_ref)
                         else:
@@ -835,7 +855,10 @@ class SemanticXMILoader:
 
                 # Only create relationship if both roles are internal (in cache)
                 if len(role_refs) >= 2 and role_refs[0] and role_refs[1]:
-                    if role_refs[0] in self.element_cache and role_refs[1] in self.element_cache:
+                    if (
+                        role_refs[0] in self.element_cache
+                        and role_refs[1] in self.element_cache
+                    ):
                         batch.append(
                             {
                                 "source_id": role_refs[0],
@@ -868,7 +891,9 @@ class SemanticXMILoader:
         }
 
         for rel_type, (neo4j_rel, target_attr, source_attr) in rel_mappings.items():
-            elements = root.xpath(f"//*[@xmi:type='{rel_type}']", namespaces=self.namespaces)
+            elements = root.xpath(
+                f"//*[@xmi:type='{rel_type}']", namespaces=self.namespaces
+            )
             batch = []
 
             for elem in elements:
@@ -936,7 +961,9 @@ class SemanticXMILoader:
                 if not type_ref:
                     type_elem = elem.find("type")
                     if type_elem is not None:
-                        type_ref = type_elem.get("{http://www.omg.org/spec/XMI/20131001}idref")
+                        type_ref = type_elem.get(
+                            "{http://www.omg.org/spec/XMI/20131001}idref"
+                        )
 
                 if type_ref and type_ref in self.element_cache:
                     batch.append({"element_id": elem_id, "type_id": type_ref})

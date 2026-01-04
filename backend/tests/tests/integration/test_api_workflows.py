@@ -76,7 +76,9 @@ class TestCoreAPIWorkflows:
 
     def test_get_class_details(self, api_client, sample_class_id):
         """Test getting class details by ID"""
-        response = requests.get(f"{api_client['core_url']}/artifacts/Class/{sample_class_id}")
+        response = requests.get(
+            f"{api_client['core_url']}/artifacts/Class/{sample_class_id}"
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == sample_class_id
@@ -95,7 +97,9 @@ class TestCoreAPIWorkflows:
     def test_cypher_query(self, api_client):
         """Test custom Cypher query execution"""
         query = "MATCH (n:Class) RETURN n.name as name LIMIT 3"
-        response = requests.post(f"{api_client['core_url']}/cypher", json={"query": query})
+        response = requests.post(
+            f"{api_client['core_url']}/cypher", json={"query": query}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "result" in data or isinstance(data, list)
@@ -106,7 +110,9 @@ class TestPLMWorkflows:
 
     def test_traceability_matrix(self, api_client):
         """Test requirements traceability matrix"""
-        response = requests.get(f"{api_client['v1_url']}/traceability", params={"depth": 2})
+        response = requests.get(
+            f"{api_client['v1_url']}/traceability", params={"depth": 2}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "traceability" in data
@@ -150,7 +156,9 @@ class TestPLMWorkflows:
 
     def test_parameters_extraction(self, api_client):
         """Test parameter extraction"""
-        response = requests.get(f"{api_client['v1_url']}/parameters", params={"limit": 10})
+        response = requests.get(
+            f"{api_client['v1_url']}/parameters", params={"limit": 10}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "parameters" in data
@@ -159,7 +167,9 @@ class TestPLMWorkflows:
 
     def test_constraints_retrieval(self, api_client):
         """Test constraints retrieval"""
-        response = requests.get(f"{api_client['v1_url']}/constraints", params={"limit": 10})
+        response = requests.get(
+            f"{api_client['v1_url']}/constraints", params={"limit": 10}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "constraints" in data
@@ -231,7 +241,9 @@ class TestExportWorkflows:
 
     def test_jsonld_export(self, api_client):
         """Test JSON-LD export"""
-        response = requests.get(f"{api_client['v1_url']}/export/jsonld", params={"limit": 100})
+        response = requests.get(
+            f"{api_client['v1_url']}/export/jsonld", params={"limit": 100}
+        )
         assert response.status_code == 200
         assert "json" in response.headers.get("Content-Type", "")
         data = response.json()
@@ -241,14 +253,17 @@ class TestExportWorkflows:
     def test_csv_export(self, api_client):
         """Test CSV export"""
         response = requests.get(
-            f"{api_client['v1_url']}/export/csv", params={"node_type": "Class", "limit": 50}
+            f"{api_client['v1_url']}/export/csv",
+            params={"node_type": "Class", "limit": 50},
         )
         assert response.status_code == 200
         assert "zip" in response.headers.get("Content-Type", "")
 
     def test_step_export(self, api_client):
         """Test STEP AP242 export"""
-        response = requests.get(f"{api_client['v1_url']}/export/step", params={"limit": 50})
+        response = requests.get(
+            f"{api_client['v1_url']}/export/step", params={"limit": 50}
+        )
         assert response.status_code == 200
         assert len(response.content) > 0
         # Check for STEP format markers
@@ -296,7 +311,9 @@ class TestVersionControlWorkflows:
             "name": "test_checkpoint",
             "description": "Integration test checkpoint",
         }
-        response = requests.post(f"{api_client['v1_url']}/checkpoint", json=checkpoint_request)
+        response = requests.post(
+            f"{api_client['v1_url']}/checkpoint", json=checkpoint_request
+        )
         assert response.status_code == 201
         data = response.json()
         assert "name" in data
@@ -321,7 +338,8 @@ class TestEndToEndWorkflows:
 
         # 2. Get traceability links
         response = requests.get(
-            f"{api_client['v1_url']}/traceability", params={"source_type": "Requirement"}
+            f"{api_client['v1_url']}/traceability",
+            params={"source_type": "Requirement"},
         )
         assert response.status_code == 200
         traceability = response.json()
@@ -330,13 +348,17 @@ class TestEndToEndWorkflows:
         # 3. Get design elements (classes)
         if len(traceability["traceability"]) > 0:
             target_id = traceability["traceability"][0]["target"]["id"]
-            response = requests.get(f"{api_client['core_url']}/artifacts/Class/{target_id}")
+            response = requests.get(
+                f"{api_client['core_url']}/artifacts/Class/{target_id}"
+            )
             assert response.status_code == 200
 
     def test_design_to_simulation_workflow(self, api_client, sample_class_id):
         """Test design → simulation parameter workflow"""
         # 1. Get class details
-        response = requests.get(f"{api_client['core_url']}/artifacts/Class/{sample_class_id}")
+        response = requests.get(
+            f"{api_client['core_url']}/artifacts/Class/{sample_class_id}"
+        )
         assert response.status_code == 200
         class_data = response.json()
 
@@ -369,7 +391,9 @@ class TestEndToEndWorkflows:
         ]
 
         for format_name, params in formats:
-            response = requests.get(f"{api_client['v1_url']}/export/{format_name}", params=params)
+            response = requests.get(
+                f"{api_client['v1_url']}/export/{format_name}", params=params
+            )
             assert response.status_code == 200, f"{format_name} export failed"
             assert len(response.content) > 0, f"{format_name} export is empty"
 

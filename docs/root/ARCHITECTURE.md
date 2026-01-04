@@ -247,6 +247,7 @@ For a standardized component model and an Azure-aligned “agentic system” dec
 - [docs/azure-ai-baseline/COMPONENT_MODEL.md](docs/azure-ai-baseline/COMPONENT_MODEL.md) - Component boundaries and Azure mapping
 - [docs/azure-ai-baseline/OBSERVABILITY.md](docs/azure-ai-baseline/OBSERVABILITY.md) - Instrumentation guidance
 - [docs/azure-ai-baseline/DEPLOYMENT_REFERENCE.md](docs/azure-ai-baseline/DEPLOYMENT_REFERENCE.md) - Deployment checklist
+- [docs/AZURE_DEVOPS_SETUP.md](docs/AZURE_DEVOPS_SETUP.md) - Azure Repos + Azure Pipelines deployment & configuration
 
 **Implemented Agentic Patterns** (vendor-neutral, Azure-compatible):
 - ✅ **Tool Use**: `src/agentic/tool_registry.py`, `src/agentic/adapters.py` (exposes MBSETools + MCP tools)

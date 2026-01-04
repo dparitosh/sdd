@@ -21,7 +21,9 @@ class _RegisteredTool:
 
 
 class InProcessToolRegistry(ToolRegistry):
-    def __init__(self, tools: Sequence[tuple[ToolSpec, Callable[[Mapping[str, Any]], Any]]]):
+    def __init__(
+        self, tools: Sequence[tuple[ToolSpec, Callable[[Mapping[str, Any]], Any]]]
+    ):
         self._tools: dict[str, _RegisteredTool] = {
             spec.name: _RegisteredTool(spec=spec, func=func) for spec, func in tools
         }

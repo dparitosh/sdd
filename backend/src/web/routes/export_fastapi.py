@@ -47,20 +47,24 @@ class ExportFormat(BaseModel):
 
 @router.get("/graphml")
 async def export_graphml(
-    node_types: Optional[str] = Query(None, description="Comma-separated list of node types to include"),
-    include_properties: bool = Query(True, description="Include node properties in export"),
-    limit: int = Query(10000, ge=1, le=50000, description="Maximum number of nodes")
+    node_types: Optional[str] = Query(
+        None, description="Comma-separated list of node types to include"
+    ),
+    include_properties: bool = Query(
+        True, description="Include node properties in export"
+    ),
+    limit: int = Query(10000, ge=1, le=50000, description="Maximum number of nodes"),
 ):
     """
     Export graph as GraphML XML format
-    
+
     GraphML is an XML-based format for graphs, widely supported by graph visualization tools.
-    
+
     Args:
         node_types: Comma-separated node types to filter (e.g., "Class,Package")
         include_properties: Include node properties in export
         limit: Maximum nodes to export (1-50000)
-        
+
     Returns:
         GraphML XML file as downloadable attachment
     """
@@ -72,7 +76,9 @@ async def export_graphml(
         # Build query
         node_match = "MATCH (n)"
         if node_types_list and node_types_list[0]:
-            labels_filter = " OR ".join([f"'{nt}' IN labels(n)" for nt in node_types_list])
+            labels_filter = " OR ".join(
+                [f"'{nt}' IN labels(n)" for nt in node_types_list]
+            )
             node_match += f" WHERE {labels_filter}"
 
         # Get nodes
@@ -113,7 +119,12 @@ async def export_graphml(
             ET.SubElement(
                 graphml,
                 "key",
-                {"id": "d3", "for": "node", "attr.name": "labels", "attr.type": "string"},
+                {
+                    "id": "d3",
+                    "for": "node",
+                    "attr.name": "labels",
+                    "attr.type": "string",
+                },
             )
 
         graph = ET.SubElement(graphml, "graph", {"id": "G", "edgedefault": "directed"})
@@ -124,13 +135,21 @@ async def export_graphml(
             if include_properties:
                 props = node["props"]
                 if props.get("id"):
-                    ET.SubElement(node_elem, "data", {"key": "d0"}).text = str(props["id"])
+                    ET.SubElement(node_elem, "data", {"key": "d0"}).text = str(
+                        props["id"]
+                    )
                 if props.get("name"):
-                    ET.SubElement(node_elem, "data", {"key": "d1"}).text = str(props["name"])
+                    ET.SubElement(node_elem, "data", {"key": "d1"}).text = str(
+                        props["name"]
+                    )
                 if props.get("type"):
-                    ET.SubElement(node_elem, "data", {"key": "d2"}).text = str(props["type"])
+                    ET.SubElement(node_elem, "data", {"key": "d2"}).text = str(
+                        props["type"]
+                    )
                 if node["labels"]:
-                    ET.SubElement(node_elem, "data", {"key": "d3"}).text = ",".join(node["labels"])
+                    ET.SubElement(node_elem, "data", {"key": "d3"}).text = ",".join(
+                        node["labels"]
+                    )
 
         # Add edges
         for edge_id, rel in enumerate(relationships):
@@ -151,14 +170,16 @@ async def export_graphml(
         return Response(
             content=xml_str,
             media_type="application/xml",
-            headers={"Content-Disposition": "attachment; filename=graph_export.graphml"},
+            headers={
+                "Content-Disposition": "attachment; filename=graph_export.graphml"
+            },
         )
 
     except Exception as e:
         logger.error(f"GraphML export error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export GraphML: {str(e)}"
+            detail=f"Failed to export GraphML: {str(e)}",
         )
 
 
@@ -169,18 +190,20 @@ async def export_graphml(
 
 @router.get("/jsonld")
 async def export_jsonld(
-    node_types: Optional[str] = Query(None, description="Comma-separated list of node types to include"),
-    limit: int = Query(5000, ge=1, le=50000, description="Maximum number of nodes")
+    node_types: Optional[str] = Query(
+        None, description="Comma-separated list of node types to include"
+    ),
+    limit: int = Query(5000, ge=1, le=50000, description="Maximum number of nodes"),
 ):
     """
     Export graph as JSON-LD with semantic annotations
-    
+
     JSON-LD (Linked Data) provides semantic web compatibility with RDF standards.
-    
+
     Args:
         node_types: Comma-separated node types to filter
         limit: Maximum nodes to export (1-50000)
-        
+
     Returns:
         JSON-LD file as downloadable attachment
     """
@@ -191,7 +214,9 @@ async def export_jsonld(
 
         node_match = "MATCH (n)"
         if node_types_list and node_types_list[0]:
-            labels_filter = " OR ".join([f"'{nt}' IN labels(n)" for nt in node_types_list])
+            labels_filter = " OR ".join(
+                [f"'{nt}' IN labels(n)" for nt in node_types_list]
+            )
             node_match += f" WHERE {labels_filter}"
 
         query = f"""
@@ -210,17 +235,21 @@ async def export_jsonld(
             # Convert datetime objects to ISO format strings
             props = {}
             for key, value in r["props"].items():
-                if hasattr(value, 'isoformat'):
+                if hasattr(value, "isoformat"):
                     props[key] = value.isoformat()
                 else:
                     props[key] = value
-            
-            graph_data.append({
-                "@id": f"urn:uuid:{r['id']}",
-                "@type": r["labels"],
-                "properties": props,
-                "relationships": [rel for rel in r["relationships"] if rel.get("target")],
-            })
+
+            graph_data.append(
+                {
+                    "@id": f"urn:uuid:{r['id']}",
+                    "@type": r["labels"],
+                    "properties": props,
+                    "relationships": [
+                        rel for rel in r["relationships"] if rel.get("target")
+                    ],
+                }
+            )
 
         jsonld = {
             "@context": {
@@ -242,7 +271,7 @@ async def export_jsonld(
         logger.error(f"JSON-LD export error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export JSON-LD: {str(e)}"
+            detail=f"Failed to export JSON-LD: {str(e)}",
         )
 
 
@@ -253,23 +282,27 @@ async def export_jsonld(
 
 @router.get("/csv")
 async def export_csv(
-    node_type: Optional[str] = Query(None, description="Node type to export (optional, exports all if not specified)"),
-    properties: Optional[str] = Query(None, description="Comma-separated list of properties to include"),
-    limit: int = Query(10000, ge=1, le=50000, description="Maximum number of nodes")
+    node_type: Optional[str] = Query(
+        None, description="Node type to export (optional, exports all if not specified)"
+    ),
+    properties: Optional[str] = Query(
+        None, description="Comma-separated list of properties to include"
+    ),
+    limit: int = Query(10000, ge=1, le=50000, description="Maximum number of nodes"),
 ):
     """
     Export nodes as CSV
-    
+
     Exports nodes of a specific type as a CSV file in a ZIP archive.
-    
+
     Args:
         node_type: Node type to export (e.g., "Class", "Package")
         properties: Comma-separated properties to include (if not specified, includes all)
         limit: Maximum nodes to export (1-50000)
-        
+
     Returns:
         ZIP file containing CSV as downloadable attachment
-        
+
     Raises:
         HTTPException 404: No nodes of the specified type found
     """
@@ -280,13 +313,12 @@ async def export_csv(
             query = f"MATCH (n:{node_type}) RETURN properties(n) as props, labels(n)[0] as label LIMIT $limit"
         else:
             query = "MATCH (n) RETURN properties(n) as props, labels(n)[0] as label LIMIT $limit"
-        
+
         result = neo4j.execute_query(query, {"limit": limit})
 
         if not result:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No nodes found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"No nodes found"
             )
 
         # Determine columns
@@ -294,7 +326,7 @@ async def export_csv(
         for record in result:
             all_keys.update(record["props"].keys())
         columns = sorted(list(all_keys))
-        
+
         if properties:
             properties_list = properties.split(",")
             columns = [c for c in columns if c in properties_list]
@@ -318,7 +350,9 @@ async def export_csv(
         return Response(
             content=zip_buffer.getvalue(),
             media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={filename_base}_export.zip"},
+            headers={
+                "Content-Disposition": f"attachment; filename={filename_base}_export.zip"
+            },
         )
 
     except HTTPException:
@@ -327,7 +361,7 @@ async def export_csv(
         logger.error(f"CSV export error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export CSV: {str(e)}"
+            detail=f"Failed to export CSV: {str(e)}",
         )
 
 
@@ -338,16 +372,18 @@ async def export_csv(
 
 @router.get("/step")
 async def export_step(
-    limit: int = Query(1000, ge=1, le=10000, description="Maximum number of classes to export")
+    limit: int = Query(
+        1000, ge=1, le=10000, description="Maximum number of classes to export"
+    )
 ):
     """
     Export as STEP AP242 format (ISO 10303-242)
-    
+
     Exports classes with attributes in ISO STEP format for CAD/PLM interoperability.
-    
+
     Args:
         limit: Maximum classes to export (1-10000)
-        
+
     Returns:
         STEP file (.stp) as downloadable attachment
     """
@@ -377,7 +413,9 @@ async def export_step(
         ]
 
         for entity_id, record in enumerate(result, start=1):
-            class_name = (record["class_name"] or "UNNAMED_CLASS").replace(" ", "_").upper()
+            class_name = (
+                (record["class_name"] or "UNNAMED_CLASS").replace(" ", "_").upper()
+            )
             attributes = [attr for attr in record["attributes"] if attr.get("name")]
             attr_values = [f"'{attr['name']}'" for attr in attributes]
             step_lines.append(
@@ -397,5 +435,5 @@ async def export_step(
         logger.error(f"STEP export error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export STEP: {str(e)}"
+            detail=f"Failed to export STEP: {str(e)}",
         )

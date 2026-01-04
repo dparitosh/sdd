@@ -160,19 +160,27 @@ class StatisticsResponse(BaseModel):
 # ============================================================================
 
 
-@router.get("/requirements", response_model=RequirementsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/requirements",
+    response_model=RequirementsResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_requirements(
     type: Optional[str] = Query(None, description="Filter by requirement type"),
-    priority: Optional[str] = Query(None, description="Filter by priority (High, Medium, Low)"),
-    status: Optional[str] = Query(None, description="Filter by status (Draft, Approved, Obsolete)"),
+    priority: Optional[str] = Query(
+        None, description="Filter by priority (High, Medium, Low)"
+    ),
+    status: Optional[str] = Query(
+        None, description="Filter by status (Draft, Approved, Obsolete)"
+    ),
     search: Optional[str] = Query(None, description="Search in name and description"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all requirements with optional filtering and pagination
-    
+
     Args:
         type: Filter by requirement type (Performance, Functional, etc.)
         priority: Filter by priority (High, Medium, Low)
@@ -180,7 +188,7 @@ async def get_requirements(
         search: Text search in name and description
         limit: Maximum number of results (default: 100, max: 500)
         offset: Number of results to skip for pagination
-        
+
     Returns:
         Array of requirement objects with pagination
     """
@@ -208,7 +216,7 @@ async def get_requirements(
             params["search"] = f"(?i).*{search}.*"
 
         where_clause = " AND ".join(filters) if filters else "1=1"
-        
+
         # Add pagination parameters
         params["limit"] = limit
         params["offset"] = offset
@@ -257,17 +265,21 @@ async def get_requirements(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/requirements/{req_id}", response_model=RequirementDetail, response_class=Neo4jJSONResponse)
+@router.get(
+    "/requirements/{req_id}",
+    response_model=RequirementDetail,
+    response_class=Neo4jJSONResponse,
+)
 async def get_requirement_detail(
     req_id: str = Path(..., description="Requirement ID"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get detailed information about a specific requirement
-    
+
     Args:
         req_id: Unique requirement identifier
-        
+
     Returns:
         Requirement with all relationships (versions, analyses, approvals, etc.)
     """
@@ -314,7 +326,9 @@ async def get_requirement_detail(
                     "version": v.get("version"),
                     "description": v.get("description"),
                     "status": v.get("status"),
-                    "created_at": str(v.get("created_at")) if v.get("created_at") else None,
+                    "created_at": (
+                        str(v.get("created_at")) if v.get("created_at") else None
+                    ),
                 }
                 for v in r["versions"]
                 if v.get("version")
@@ -335,17 +349,21 @@ async def get_requirement_detail(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/requirements/{req_id}/traceability", response_model=TraceabilityResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/requirements/{req_id}/traceability",
+    response_model=TraceabilityResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_requirement_traceability(
     req_id: str = Path(..., description="Requirement ID"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get full traceability chain for a requirement (AP239 → AP242 → AP243)
-    
+
     Args:
         req_id: Unique requirement identifier
-        
+
     Returns:
         Tree structure showing how requirement flows through parts to ontologies
     """
@@ -401,21 +419,24 @@ class BulkTraceabilityResponse(BaseModel):
     results: List[BulkTraceabilityItem]
 
 
-@router.post("/requirements/traceability/bulk", response_model=BulkTraceabilityResponse, response_class=Neo4jJSONResponse)
+@router.post(
+    "/requirements/traceability/bulk",
+    response_model=BulkTraceabilityResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_bulk_requirement_traceability(
-    request: BulkTraceabilityRequest,
-    api_key: str = Depends(get_api_key)
+    request: BulkTraceabilityRequest, api_key: str = Depends(get_api_key)
 ):
     """
     Get traceability chains for multiple requirements in a single query (fixes N+1 problem)
-    
+
     Args:
         request: Object with requirement_ids array (max 100 IDs)
         api_key: API key for authentication
-        
+
     Returns:
         Array of traceability results for each requirement
-    
+
     Performance:
         This endpoint resolves the N+1 query problem by fetching all traceability
         data in a single database query instead of one query per requirement.
@@ -451,17 +472,15 @@ async def get_bulk_requirement_traceability(
                 "requirement_id": r["requirement_id"],
                 "requirement_name": r["requirement_name"],
                 "traceability": [
-                    link for link in r["traceability_chain"]
+                    link
+                    for link in r["traceability_chain"]
                     if link.get("part_id")  # Filter out empty links
-                ]
+                ],
             }
             for r in results
         ]
 
-        return {
-            "count": len(bulk_results),
-            "results": bulk_results
-        }
+        return {"count": len(bulk_results), "results": bulk_results}
 
     except Exception as e:
         logger.error(f"Error fetching bulk traceability: {e}")
@@ -473,19 +492,23 @@ async def get_bulk_requirement_traceability(
 # ============================================================================
 
 
-@router.get("/analyses", response_model=AnalysesResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/analyses", response_model=AnalysesResponse, response_class=Neo4jJSONResponse
+)
 async def get_analyses(
     type: Optional[str] = Query(None, description="Filter by analysis type"),
-    status: Optional[str] = Query(None, description="Filter by status (Planned, Running, Completed)"),
-    api_key: str = Depends(get_api_key)
+    status: Optional[str] = Query(
+        None, description="Filter by status (Planned, Running, Completed)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all engineering analyses
-    
+
     Args:
         type: Filter by analysis type (ThermalSimulation, StressAnalysis, etc.)
         status: Filter by status (Planned, Running, Completed)
-        
+
     Returns:
         Array of analysis objects
     """
@@ -530,7 +553,9 @@ async def get_analyses(
                 "method": r["method"],
                 "status": r["status"],
                 "models": [m for m in r["models"] if m],
-                "verifies_requirements": [req for req in r["verifies_requirements"] if req],
+                "verifies_requirements": [
+                    req for req in r["verifies_requirements"] if req
+                ],
                 "geometry_models": [g for g in r["geometry_models"] if g],
             }
             for r in results
@@ -548,17 +573,21 @@ async def get_analyses(
 # ============================================================================
 
 
-@router.get("/approvals", response_model=ApprovalsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/approvals", response_model=ApprovalsResponse, response_class=Neo4jJSONResponse
+)
 async def get_approvals(
-    status: Optional[str] = Query(None, description="Filter by approval status (Pending, Approved, Rejected)"),
-    api_key: str = Depends(get_api_key)
+    status: Optional[str] = Query(
+        None, description="Filter by approval status (Pending, Approved, Rejected)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all design approvals
-    
+
     Args:
         status: Filter by approval status (Pending, Approved, Rejected)
-        
+
     Returns:
         Array of approval objects
     """
@@ -589,9 +618,15 @@ async def get_approvals(
                 "name": r["name"],
                 "status": r["status"],
                 "approved_by": r["approved_by"],
-                "approval_date": str(r["approval_date"]) if r["approval_date"] else None,
-                "approves_requirements": [req for req in r["approves_requirements"] if req],
-                "approved_part_versions": [pv for pv in r["approved_part_versions"] if pv],
+                "approval_date": (
+                    str(r["approval_date"]) if r["approval_date"] else None
+                ),
+                "approves_requirements": [
+                    req for req in r["approves_requirements"] if req
+                ],
+                "approved_part_versions": [
+                    pv for pv in r["approved_part_versions"] if pv
+                ],
             }
             for r in results
         ]
@@ -608,17 +643,21 @@ async def get_approvals(
 # ============================================================================
 
 
-@router.get("/documents", response_model=DocumentsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/documents", response_model=DocumentsResponse, response_class=Neo4jJSONResponse
+)
 async def get_documents(
-    type: Optional[str] = Query(None, description="Filter by document type (Specification, Report, Drawing)"),
-    api_key: str = Depends(get_api_key)
+    type: Optional[str] = Query(
+        None, description="Filter by document type (Specification, Report, Drawing)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all engineering documents
-    
+
     Args:
         type: Filter by document type (Specification, Report, Drawing)
-        
+
     Returns:
         Array of document objects
     """
@@ -648,7 +687,9 @@ async def get_documents(
                 "document_id": r["document_id"],
                 "version": r["version"],
                 "type": r["type"],
-                "documents_requirements": [req for req in r["documents_requirements"] if req],
+                "documents_requirements": [
+                    req for req in r["documents_requirements"] if req
+                ],
             }
             for r in results
         ]
@@ -665,11 +706,13 @@ async def get_documents(
 # ============================================================================
 
 
-@router.get("/statistics", response_model=StatisticsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/statistics", response_model=StatisticsResponse, response_class=Neo4jJSONResponse
+)
 async def get_ap239_statistics(api_key: str = Depends(get_api_key)):
     """
     Get summary statistics for AP239 data
-    
+
     Returns:
         Counts and status breakdown for all AP239 entities
     """

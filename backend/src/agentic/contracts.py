@@ -72,7 +72,9 @@ class ToolRegistry(Protocol):
 class Retriever(Protocol):
     """Retrieval interface for RAG grounding."""
 
-    def retrieve(self, query: str, *, top_k: int = 5, filters: Mapping[str, Any] | None = None) -> Sequence[RetrievedChunk]:
+    def retrieve(
+        self, query: str, *, top_k: int = 5, filters: Mapping[str, Any] | None = None
+    ) -> Sequence[RetrievedChunk]:
         raise NotImplementedError
 
 
@@ -88,7 +90,14 @@ class Planner(Protocol):
 class Reflector(Protocol):
     """Reflection interface (review outcome -> improvements)."""
 
-    def reflect(self, *, goal: str, plan: Plan, results: Sequence[ToolResult], draft_response: str) -> Mapping[str, Any]:
+    def reflect(
+        self,
+        *,
+        goal: str,
+        plan: Plan,
+        results: Sequence[ToolResult],
+        draft_response: str,
+    ) -> Mapping[str, Any]:
         raise NotImplementedError
 
 
@@ -98,7 +107,13 @@ class Agent(Protocol):
 
     name: str
 
-    def run(self, goal: str, *, tool_registry: ToolRegistry, retriever: Retriever | None = None) -> str:
+    def run(
+        self,
+        goal: str,
+        *,
+        tool_registry: ToolRegistry,
+        retriever: Retriever | None = None,
+    ) -> str:
         raise NotImplementedError
 
 

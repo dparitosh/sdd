@@ -36,7 +36,9 @@ class AuthConfig:
 
 def create_access_token(username: str, role: str = "user") -> str:
     """Create JWT access token"""
-    expires_at = datetime.utcnow() + timedelta(minutes=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expires_at = datetime.utcnow() + timedelta(
+        minutes=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
     payload = {
         "sub": username,
@@ -54,9 +56,16 @@ def create_access_token(username: str, role: str = "user") -> str:
 
 def create_refresh_token(username: str) -> str:
     """Create JWT refresh token"""
-    expires_at = datetime.utcnow() + timedelta(days=AuthConfig.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.utcnow() + timedelta(
+        days=AuthConfig.REFRESH_TOKEN_EXPIRE_DAYS
+    )
 
-    payload = {"sub": username, "type": "refresh", "exp": expires_at, "iat": datetime.utcnow()}
+    payload = {
+        "sub": username,
+        "type": "refresh",
+        "exp": expires_at,
+        "iat": datetime.utcnow(),
+    }
 
     token = jwt.encode(payload, AuthConfig.SECRET_KEY, algorithm=AuthConfig.ALGORITHM)
 
@@ -85,7 +94,9 @@ def verify_token(token: str, token_type: str = "access") -> dict:
         jwt.InvalidTokenError: Token is invalid
     """
     try:
-        payload = jwt.decode(token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM])
+        payload = jwt.decode(
+            token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM]
+        )
 
         # Verify token type
         if payload.get("type") != token_type:
@@ -171,7 +182,10 @@ def require_auth(f):
             logger.error(f"Unexpected authentication error: {e}")
             return (
                 jsonify(
-                    {"error": "Authentication failed", "message": "An unexpected error occurred"}
+                    {
+                        "error": "Authentication failed",
+                        "message": "An unexpected error occurred",
+                    }
                 ),
                 500,
             )

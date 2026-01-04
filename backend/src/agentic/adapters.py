@@ -22,35 +22,66 @@ class MBSEToolsAdapter(ToolRegistry):
             ToolSpec(
                 name="search_artifacts",
                 description="Search for artifacts by name/description",
-                input_schema={"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}},
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "limit": {"type": "integer"},
+                    },
+                },
             ),
             ToolSpec(
                 name="get_artifact_details",
                 description="Get detailed information for an artifact",
                 input_schema={
                     "type": "object",
-                    "properties": {"artifact_type": {"type": "string"}, "artifact_id": {"type": "string"}},
+                    "properties": {
+                        "artifact_type": {"type": "string"},
+                        "artifact_id": {"type": "string"},
+                    },
                 },
             ),
             ToolSpec(
                 name="get_traceability",
                 description="Get traceability matrix",
-                input_schema={"type": "object", "properties": {"source_type": {"type": "string"}, "target_type": {"type": "string"}, "depth": {"type": "integer"}}},
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "source_type": {"type": "string"},
+                        "target_type": {"type": "string"},
+                        "depth": {"type": "integer"},
+                    },
+                },
             ),
             ToolSpec(
                 name="get_impact_analysis",
                 description="Analyze impact for a node",
-                input_schema={"type": "object", "properties": {"node_id": {"type": "string"}, "depth": {"type": "integer"}}},
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "node_id": {"type": "string"},
+                        "depth": {"type": "integer"},
+                    },
+                },
             ),
             ToolSpec(
                 name="get_parameters",
                 description="Extract design parameters",
-                input_schema={"type": "object", "properties": {"class_name": {"type": "string"}, "limit": {"type": "integer"}}},
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "class_name": {"type": "string"},
+                        "limit": {"type": "integer"},
+                    },
+                },
             ),
             ToolSpec(
                 name="execute_cypher",
                 description="Execute a Cypher query",
-                input_schema={"type": "object", "properties": {"query": {"type": "string"}}},
+                input_schema={
+                    "type": "object",
+                    "properties": {"query": {"type": "string"}},
+                },
             ),
             ToolSpec(name="get_statistics", description="Get graph statistics"),
         )
@@ -60,11 +91,18 @@ class MBSEToolsAdapter(ToolRegistry):
         args: Mapping[str, Any] = tool_call.arguments
 
         if name == "search_artifacts":
-            return ToolResult(name=name, output=self.tools_api.search_artifacts(args.get("query", ""), limit=int(args.get("limit", 10))))
+            return ToolResult(
+                name=name,
+                output=self.tools_api.search_artifacts(
+                    args.get("query", ""), limit=int(args.get("limit", 10))
+                ),
+            )
         if name == "get_artifact_details":
             return ToolResult(
                 name=name,
-                output=self.tools_api.get_artifact_details(str(args.get("artifact_type", "")), str(args.get("artifact_id", ""))),
+                output=self.tools_api.get_artifact_details(
+                    str(args.get("artifact_type", "")), str(args.get("artifact_id", ""))
+                ),
             )
         if name == "get_traceability":
             return ToolResult(
@@ -76,11 +114,24 @@ class MBSEToolsAdapter(ToolRegistry):
                 ),
             )
         if name == "get_impact_analysis":
-            return ToolResult(name=name, output=self.tools_api.get_impact_analysis(str(args.get("node_id", "")), depth=int(args.get("depth", 3))))
+            return ToolResult(
+                name=name,
+                output=self.tools_api.get_impact_analysis(
+                    str(args.get("node_id", "")), depth=int(args.get("depth", 3))
+                ),
+            )
         if name == "get_parameters":
-            return ToolResult(name=name, output=self.tools_api.get_parameters(class_name=args.get("class_name"), limit=int(args.get("limit", 20))))
+            return ToolResult(
+                name=name,
+                output=self.tools_api.get_parameters(
+                    class_name=args.get("class_name"), limit=int(args.get("limit", 20))
+                ),
+            )
         if name == "execute_cypher":
-            return ToolResult(name=name, output=self.tools_api.execute_cypher(str(args.get("query", ""))))
+            return ToolResult(
+                name=name,
+                output=self.tools_api.execute_cypher(str(args.get("query", ""))),
+            )
         if name == "get_statistics":
             return ToolResult(name=name, output=self.tools_api.get_statistics())
 

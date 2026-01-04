@@ -98,19 +98,23 @@ class StatisticsResponse(BaseModel):
 # ============================================================================
 
 
-@router.get("/ontologies", response_model=OntologiesResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/ontologies", response_model=OntologiesResponse, response_class=Neo4jJSONResponse
+)
 async def get_ontologies(
-    ontology: Optional[str] = Query(None, description="Filter by ontology name (EMMO, QUDT)"),
+    ontology: Optional[str] = Query(
+        None, description="Filter by ontology name (EMMO, QUDT)"
+    ),
     search: Optional[str] = Query(None, description="Search in name and description"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all external ontology classes
-    
+
     Args:
         ontology: Filter by ontology name (EMMO, QUDT, etc.)
         search: Text search in name and description
-        
+
     Returns:
         Array of ontology class objects
     """
@@ -162,17 +166,21 @@ async def get_ontologies(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/ontologies/{ontology_name}", response_model=OntologyDetail, response_class=Neo4jJSONResponse)
+@router.get(
+    "/ontologies/{ontology_name}",
+    response_model=OntologyDetail,
+    response_class=Neo4jJSONResponse,
+)
 async def get_ontology_detail(
     ontology_name: str = Path(..., description="Ontology class name"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get detailed information about a specific ontology class
-    
+
     Args:
         ontology_name: Name of the ontology class
-        
+
     Returns:
         Ontology class with all relationships
     """
@@ -226,15 +234,17 @@ async def get_ontology_detail(
 
 @router.get("/units", response_model=UnitsResponse, response_class=Neo4jJSONResponse)
 async def get_units(
-    type: Optional[str] = Query(None, description="Filter by unit type (Temperature, ThermalConductivity)"),
-    api_key: str = Depends(get_api_key)
+    type: Optional[str] = Query(
+        None, description="Filter by unit type (Temperature, ThermalConductivity)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all standardized units
-    
+
     Args:
         type: Filter by unit type (Temperature, ThermalConductivity, etc.)
-        
+
     Returns:
         Array of unit objects
     """
@@ -267,7 +277,9 @@ async def get_units(
                 "type": r["type"],
                 "si_conversion": r["si_conversion"],
                 "used_in_properties": [p for p in r["used_in_properties"] if p],
-                "used_in_requirements": [req for req in r["used_in_requirements"] if req],
+                "used_in_requirements": [
+                    req for req in r["used_in_requirements"] if req
+                ],
             }
             for r in results
         ]
@@ -284,11 +296,13 @@ async def get_units(
 # ============================================================================
 
 
-@router.get("/value-types", response_model=ValueTypesResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/value-types", response_model=ValueTypesResponse, response_class=Neo4jJSONResponse
+)
 async def get_value_types(api_key: str = Depends(get_api_key)):
     """
     Get all value type definitions
-    
+
     Returns:
         Array of value type objects
     """
@@ -330,17 +344,23 @@ async def get_value_types(api_key: str = Depends(get_api_key)):
 # ============================================================================
 
 
-@router.get("/classifications", response_model=ClassificationsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/classifications",
+    response_model=ClassificationsResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_classifications(
-    system: Optional[str] = Query(None, description="Filter by classification system (ISO 13584-501)"),
-    api_key: str = Depends(get_api_key)
+    system: Optional[str] = Query(
+        None, description="Filter by classification system (ISO 13584-501)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all classification systems
-    
+
     Args:
         system: Filter by classification system (ISO 13584-501, etc.)
-        
+
     Returns:
         Array of classification objects
     """
@@ -385,11 +405,13 @@ async def get_classifications(
 # ============================================================================
 
 
-@router.get("/statistics", response_model=StatisticsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/statistics", response_model=StatisticsResponse, response_class=Neo4jJSONResponse
+)
 async def get_ap243_statistics(api_key: str = Depends(get_api_key)):
     """
     Get summary statistics for AP243 reference data
-    
+
     Returns:
         Counts for all AP243 entities
     """

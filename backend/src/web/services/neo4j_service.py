@@ -16,7 +16,7 @@ class Neo4jService:
     """
     Centralized Neo4j database service with connection pooling and query caching.
     Provides common query patterns and error handling.
-    
+
     Features:
     - Connection pooling (max 50 connections)
     - Redis query result caching with configurable TTL
@@ -25,7 +25,12 @@ class Neo4jService:
     """
 
     def __init__(
-        self, uri: str = None, user: str = None, password: str = None, database: str = None, query_cache=None
+        self,
+        uri: str = None,
+        user: str = None,
+        password: str = None,
+        database: str = None,
+        query_cache=None,
     ):
         """
         Initialize Neo4j service with connection pooling.
@@ -61,7 +66,9 @@ class Neo4jService:
         self._connection_verified = False
         self.query_cache = query_cache  # QueryCache instance
 
-        logger.info(f"Neo4j service configuration: uri={self.uri}, database={self.database}")
+        logger.info(
+            f"Neo4j service configuration: uri={self.uri}, database={self.database}"
+        )
 
         # Eagerly initialize the driver so test fixtures that patch
         # `GraphDatabase.driver` only during construction still take effect.
@@ -73,12 +80,15 @@ class Neo4jService:
         """Lazy driver initialization - creates driver on first access with retry logic"""
         if self._driver is None:
             import time
+
             max_retries = 3
             retry_delay = 2  # seconds
-            
+
             for attempt in range(max_retries):
                 try:
-                    logger.debug(f"Creating Neo4j driver for {self.uri} (attempt {attempt + 1}/{max_retries})")
+                    logger.debug(
+                        f"Creating Neo4j driver for {self.uri} (attempt {attempt + 1}/{max_retries})"
+                    )
                     self._driver = GraphDatabase.driver(
                         self.uri,
                         auth=(self.user, self.password),
@@ -100,8 +110,12 @@ class Neo4jService:
                     if attempt < max_retries - 1:
                         time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                     else:
-                        logger.error(f"Failed to create Neo4j driver after {max_retries} attempts")
-                        raise ServiceUnavailable(f"Cannot connect to Neo4j at {self.uri}: {e}")
+                        logger.error(
+                            f"Failed to create Neo4j driver after {max_retries} attempts"
+                        )
+                        raise ServiceUnavailable(
+                            f"Cannot connect to Neo4j at {self.uri}: {e}"
+                        )
         return self._driver
 
     def verify_connectivity(self) -> bool:
@@ -158,7 +172,12 @@ class Neo4jService:
             logger.info("Neo4j service closed")
 
     def execute_query(
-        self, query: str, parameters: Dict[str, Any] = None, database: str = None, use_cache: bool = True, ttl: int = None
+        self,
+        query: str,
+        parameters: Dict[str, Any] = None,
+        database: str = None,
+        use_cache: bool = True,
+        ttl: int = None,
     ) -> List[Dict[str, Any]]:
         """
         Execute a Cypher query and return results as list of dictionaries.
@@ -193,12 +212,14 @@ class Neo4jService:
                 running_loop = None
 
             if running_loop and running_loop.is_running():
-                logger.debug("Skipping Redis query cache access inside running event loop")
+                logger.debug(
+                    "Skipping Redis query cache access inside running event loop"
+                )
             else:
                 cached_result = asyncio.run(self.query_cache.get(query, parameters, db))
                 if cached_result is not None:
                     return cached_result
-        
+
         # Execute query (cache miss or caching disabled)
         try:
             with self.driver.session(database=db) as session:
@@ -206,7 +227,7 @@ class Neo4jService:
                 # Consume result within context manager to prevent resource leaks
                 records = list(result)
                 result_dicts = [dict(record) for record in records]
-                
+
                 # Cache result if caching enabled (only when safe to do so).
                 if use_cache and self.query_cache and self.query_cache.enabled:
                     import asyncio
@@ -218,13 +239,19 @@ class Neo4jService:
                         running_loop = None
 
                     if running_loop and running_loop.is_running():
-                        logger.debug("Skipping Redis query cache write inside running event loop")
+                        logger.debug(
+                            "Skipping Redis query cache write inside running event loop"
+                        )
                     else:
                         cache_ttl = ttl or QueryCache.TTL_QUERY_SHORT
-                        asyncio.run(self.query_cache.set(query, result_dicts, parameters, db, cache_ttl))
-                
+                        asyncio.run(
+                            self.query_cache.set(
+                                query, result_dicts, parameters, db, cache_ttl
+                            )
+                        )
+
                 return result_dicts
-                
+
         except Neo4jError as e:
             logger.error(f"Neo4j Error: {e.code} - {e.message}")
             logger.error(f"Query: {query}")
@@ -237,7 +264,11 @@ class Neo4jService:
             raise
 
     def execute_write(
-        self, query: str, parameters: Dict[str, Any] = None, database: str = None, invalidate_cache: bool = True
+        self,
+        query: str,
+        parameters: Dict[str, Any] = None,
+        database: str = None,
+        invalidate_cache: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Execute a write transaction (CREATE, UPDATE, DELETE).
@@ -259,9 +290,13 @@ class Neo4jService:
             with self.driver.session(database=db) as session:
                 # neo4j python driver v5 uses `execute_write`; older versions used `write_transaction`.
                 if hasattr(session, "execute_write"):
-                    result = session.execute_write(lambda tx: list(tx.run(query, parameters)))
+                    result = session.execute_write(
+                        lambda tx: list(tx.run(query, parameters))
+                    )
                 else:
-                    result = session.write_transaction(lambda tx: list(tx.run(query, parameters)))
+                    result = session.write_transaction(
+                        lambda tx: list(tx.run(query, parameters))
+                    )
                 result_dicts = [dict(record) for record in result]
 
                 # Invalidate cache after successful write (only when safe to do so).
@@ -274,7 +309,9 @@ class Neo4jService:
                         running_loop = None
 
                     if running_loop and running_loop.is_running():
-                        logger.debug("Skipping Redis cache invalidation inside running event loop")
+                        logger.debug(
+                            "Skipping Redis cache invalidation inside running event loop"
+                        )
                     else:
                         # Clear all cached queries (conservative approach)
                         # Could be optimized to clear only affected node types
@@ -315,7 +352,11 @@ class Neo4jService:
         return None
 
     def list_nodes(
-        self, label: str, limit: int = 100, skip: int = 0, filters: Dict[str, Any] = None
+        self,
+        label: str,
+        limit: int = 100,
+        skip: int = 0,
+        filters: Dict[str, Any] = None,
     ) -> List[Dict[str, Any]]:
         """
         List nodes of a specific type with pagination.
@@ -444,7 +485,11 @@ class Neo4jService:
         return bool(results and results[0].get("deleted", 0) > 0)
 
     def search_nodes(
-        self, label: str, search_term: str = None, fields: List[str] = None, limit: int = 100
+        self,
+        label: str,
+        search_term: str = None,
+        fields: List[str] = None,
+        limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """
         Search nodes by text in specified fields.
@@ -468,7 +513,9 @@ class Neo4jService:
         fields = fields or ["name"]
 
         # Build WHERE clause with OR conditions
-        where_clauses = [f"toLower(n.{field}) CONTAINS toLower($search)" for field in fields]
+        where_clauses = [
+            f"toLower(n.{field}) CONTAINS toLower($search)" for field in fields
+        ]
         where_clause = " OR ".join(where_clauses)
 
         label_clause = f":{label}" if label else ""
@@ -483,7 +530,11 @@ class Neo4jService:
         return [dict(r["node"]) for r in results]
 
     def get_relationships(
-        self, node_label: str, node_uid: str, rel_type: str = None, direction: str = "both"
+        self,
+        node_label: str,
+        node_uid: str,
+        rel_type: str = None,
+        direction: str = "both",
     ) -> List[Dict[str, Any]]:
         """
         Get relationships for a node.
@@ -552,7 +603,7 @@ class Neo4jService:
     def set_cache(self, query_cache):
         """
         Set query cache for this service instance
-        
+
         Args:
             query_cache: QueryCache instance
         """
@@ -596,7 +647,7 @@ def get_neo4j_service() -> Neo4jService:
             # Double-check after acquiring lock
             if _neo4j_service is None:
                 _neo4j_service = Neo4jService()
-                
+
                 # Attach query cache if available
                 try:
                     import asyncio
@@ -619,7 +670,7 @@ def get_neo4j_service() -> Neo4jService:
                             _neo4j_service.set_cache(cache)
                 except Exception as e:
                     logger.warning(f"Failed to attach query cache: {e}")
-                
+
                 logger.info("Neo4j service singleton initialized")
 
     return _neo4j_service
@@ -637,4 +688,3 @@ def reset_neo4j_service():
             _neo4j_service.close()
             _neo4j_service = None
             logger.info("Neo4j service singleton reset")
-

@@ -82,7 +82,9 @@ class RateLimiter:
         self._cleanup_interval = timedelta(minutes=5)
         self._last_cleanup = datetime.now()
 
-    def is_allowed(self, key: str, max_requests: int = 100, window_seconds: int = 60) -> bool:
+    def is_allowed(
+        self, key: str, max_requests: int = 100, window_seconds: int = 60
+    ) -> bool:
         """
         Check if request is allowed under rate limit
 
@@ -186,7 +188,12 @@ def require_api_key(f):
 
         if not api_key:
             return (
-                jsonify({"error": "Missing API key", "message": "Please provide X-API-Key header"}),
+                jsonify(
+                    {
+                        "error": "Missing API key",
+                        "message": "Please provide X-API-Key header",
+                    }
+                ),
                 401,
             )
 
@@ -194,7 +201,9 @@ def require_api_key(f):
         # For now, this is a placeholder
         if not api_key.startswith("mbse_"):
             return (
-                jsonify({"error": "Invalid API key", "message": "API key format is invalid"}),
+                jsonify(
+                    {"error": "Invalid API key", "message": "API key format is invalid"}
+                ),
                 401,
             )
 
@@ -215,7 +224,9 @@ class SecurityHeaders:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
 
         # Remove Flask version header

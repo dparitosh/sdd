@@ -106,10 +106,12 @@ def create_access_token(
     username: str,
     role: str = "user",
     session_id: Optional[str] = None,
-    permissions: Optional[list] = None
+    permissions: Optional[list] = None,
 ) -> str:
     """Create JWT access token with session support"""
-    expires_at = datetime.utcnow() + timedelta(minutes=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expires_at = datetime.utcnow() + timedelta(
+        minutes=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
 
     payload = {
         "sub": username,
@@ -119,10 +121,10 @@ def create_access_token(
         "iat": datetime.utcnow(),
         "jti": uuid4().hex,
     }
-    
+
     if session_id:
         payload["session_id"] = session_id
-    
+
     if permissions:
         payload["permissions"] = permissions
 
@@ -133,7 +135,9 @@ def create_access_token(
 
 def create_refresh_token(username: str) -> str:
     """Create JWT refresh token"""
-    expires_at = datetime.utcnow() + timedelta(days=AuthConfig.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.utcnow() + timedelta(
+        days=AuthConfig.REFRESH_TOKEN_EXPIRE_DAYS
+    )
 
     payload = {
         "sub": username,
@@ -151,14 +155,14 @@ def create_refresh_token(username: str) -> str:
 def verify_token(token: str, token_type: str = "access") -> dict:
     """
     Verify JWT token and return payload
-    
+
     Args:
         token: JWT token string
         token_type: Expected token type ('access' or 'refresh')
-        
+
     Returns:
         dict: Token payload if valid
-        
+
     Raises:
         HTTPException: Token is invalid or expired
     """
@@ -167,16 +171,18 @@ def verify_token(token: str, token_type: str = "access") -> dict:
         if token in TOKEN_BLACKLIST:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked"
+                detail="Token has been revoked",
             )
 
-        payload = jwt.decode(token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM])
+        payload = jwt.decode(
+            token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM]
+        )
 
         # Verify token type
         if payload.get("type") != token_type:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid token type. Expected {token_type}"
+                detail=f"Invalid token type. Expected {token_type}",
             )
 
         logger.debug(f"Token verified for user: {payload.get('sub')}")
@@ -185,32 +191,30 @@ def verify_token(token: str, token_type: str = "access") -> dict:
     except jwt.ExpiredSignatureError:
         logger.warning("Token has expired")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
         )
     except jwt.InvalidTokenError as e:
         logger.warning(f"Invalid token: {e}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}"
         )
 
 
 def authenticate_user(username: str, password: str) -> Optional[dict]:
     """
     Authenticate user credentials
-    
+
     Args:
         username: Username
         password: Password
-        
+
     Returns:
         User dict if authenticated, None otherwise
     """
     # In production: query database with hashed password
     if username == AuthConfig.ADMIN_USERNAME and password == AuthConfig.ADMIN_PASSWORD:
         return {"username": username, "role": "admin"}
-    
+
     # Add more user validation here
     return None
 
@@ -224,13 +228,13 @@ def revoke_token(token: str):
 def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     """
     Dependency to get current authenticated user from Bearer token
-    
+
     Args:
         authorization: Authorization header
-        
+
     Returns:
         User dict from token payload
-        
+
     Raises:
         HTTPException: Missing or invalid token
     """
@@ -238,7 +242,7 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authorization header",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
@@ -247,20 +251,17 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication scheme",
-                headers={"WWW-Authenticate": "Bearer"}
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         payload = verify_token(token, "access")
-        return {
-            "username": payload.get("sub"),
-            "role": payload.get("role", "user")
-        }
+        return {"username": payload.get("sub"), "role": payload.get("role", "user")}
 
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authorization header format",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -273,17 +274,17 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
 async def login(credentials: LoginRequest, request: Request):
     """
     User login endpoint
-    
+
     Authenticate with username and password to receive JWT tokens.
     Creates a managed session with activity tracking.
-    
+
     Args:
         credentials: Login credentials (username and password)
         request: FastAPI request object
-        
+
     Returns:
         Access token, refresh token, and user information
-        
+
     Raises:
         HTTPException 400: Invalid credentials
         HTTPException 401: Authentication failed
@@ -292,7 +293,7 @@ async def login(credentials: LoginRequest, request: Request):
         if not credentials.username or not credentials.password:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Both username and password are required"
+                detail="Both username and password are required",
             )
 
         # Authenticate user
@@ -300,34 +301,33 @@ async def login(credentials: LoginRequest, request: Request):
 
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication failed"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication failed"
             )
 
         # Create session if session manager available
         session_id = None
         session_manager = get_session_manager()
-        
+
         if session_manager:
             client_ip = request.client.host if request.client else "unknown"
             user_agent = request.headers.get("User-Agent", "unknown")
-            
+
             session_id = await session_manager.create_session(
                 username=user["username"],
                 role=user["role"],
                 ip_address=client_ip,
                 user_agent=user_agent,
-                expires_in=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+                expires_in=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             )
-            
+
             # Enforce session limits
-            await session_manager.enforce_session_limit(user["username"], max_sessions=5)
+            await session_manager.enforce_session_limit(
+                user["username"], max_sessions=5
+            )
 
         # Generate tokens with session
         access_token = create_access_token(
-            username=user["username"],
-            role=user["role"],
-            session_id=session_id
+            username=user["username"], role=user["role"], session_id=session_id
         )
         refresh_token = create_refresh_token(user["username"])
 
@@ -347,7 +347,7 @@ async def login(credentials: LoginRequest, request: Request):
         logger.error(f"Login error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during login"
+            detail="An unexpected error occurred during login",
         )
 
 
@@ -355,15 +355,15 @@ async def login(credentials: LoginRequest, request: Request):
 async def refresh_token_endpoint(refresh_request: RefreshRequest):
     """
     Refresh access token using refresh token
-    
+
     Exchange a valid refresh token for a new access token.
-    
+
     Args:
         refresh_request: Refresh token request
-        
+
     Returns:
         New access token
-        
+
     Raises:
         HTTPException 400: Missing refresh token
         HTTPException 401: Invalid or expired refresh token
@@ -372,13 +372,13 @@ async def refresh_token_endpoint(refresh_request: RefreshRequest):
         if not refresh_request.refresh_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="refresh_token is required"
+                detail="refresh_token is required",
             )
 
         # Verify refresh token
         payload = verify_token(refresh_request.refresh_token, "refresh")
         username = payload.get("sub")
-        
+
         # In production: fetch user role from database
         role = "admin" if username == AuthConfig.ADMIN_USERNAME else "user"
 
@@ -399,42 +399,55 @@ async def refresh_token_endpoint(refresh_request: RefreshRequest):
         logger.error(f"Token refresh error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during token refresh"
+            detail="An unexpected error occurred during token refresh",
         )
 
 
-@router.post("/logout", response_model=MessageResponse, response_class=Neo4jJSONResponse)
-async def logout(current_user: dict = Depends(get_current_user), authorization: str = Header(...)):
+@router.post(
+    "/logout", response_model=MessageResponse, response_class=Neo4jJSONResponse
+)
+async def logout(
+    current_user: dict = Depends(get_current_user), authorization: str = Header(...)
+):
     """
     Logout endpoint (revokes current access token and session)
-    
+
     Invalidate the current access token and revoke the session.
-    
+
     Args:
         current_user: Current authenticated user (from dependency)
         authorization: Authorization header with Bearer token
-        
+
     Returns:
         Success message
     """
     try:
         # Extract token from header
         _, token = authorization.split()
-        
+
         # Decode token to get session_id
-        payload = jwt.decode(token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM], options={"verify_signature": False})
+        payload = jwt.decode(
+            token,
+            AuthConfig.SECRET_KEY,
+            algorithms=[AuthConfig.ALGORITHM],
+            options={"verify_signature": False},
+        )
         session_id = payload.get("session_id")
-        
+
         # Revoke token in blacklist
         revoke_token(token)
-        
+
         # Revoke session if session manager available
         session_manager = get_session_manager()
         if session_manager and session_id:
             await session_manager.revoke_session(session_id)
-            await session_manager.blacklist_token(token, AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+            await session_manager.blacklist_token(
+                token, AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            )
 
-        logger.info(f"User logged out: {current_user['username']} (session: {session_id})")
+        logger.info(
+            f"User logged out: {current_user['username']} (session: {session_id})"
+        )
 
         return {"message": "Successfully logged out"}
 
@@ -442,7 +455,7 @@ async def logout(current_user: dict = Depends(get_current_user), authorization: 
         logger.error(f"Logout error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred during logout"
+            detail="An unexpected error occurred during logout",
         )
 
 
@@ -450,35 +463,37 @@ async def logout(current_user: dict = Depends(get_current_user), authorization: 
 async def verify_token_endpoint(current_user: dict = Depends(get_current_user)):
     """
     Verify token validity and return user info
-    
+
     Check if the current access token is valid and retrieve user information.
-    
+
     Args:
         current_user: Current authenticated user (from dependency)
-        
+
     Returns:
         Token validity status and user information
     """
     return {"valid": True, "user": current_user}
 
 
-@router.post("/change-password", response_model=MessageResponse, response_class=Neo4jJSONResponse)
+@router.post(
+    "/change-password", response_model=MessageResponse, response_class=Neo4jJSONResponse
+)
 async def change_password(
     password_request: ChangePasswordRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Change user password
-    
+
     Update the password for the currently authenticated user.
-    
+
     Args:
         password_request: Current and new password
         current_user: Current authenticated user (from dependency)
-        
+
     Returns:
         Success message
-        
+
     Raises:
         HTTPException 400: Invalid password requirements
     """
@@ -486,13 +501,13 @@ async def change_password(
         if not password_request.current_password or not password_request.new_password:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Both current_password and new_password are required"
+                detail="Both current_password and new_password are required",
             )
 
         if len(password_request.new_password) < 8:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="New password must be at least 8 characters long"
+                detail="New password must be at least 8 characters long",
             )
 
         # In production: verify current password, update in database with hashing
@@ -508,5 +523,5 @@ async def change_password(
         logger.error(f"Password change error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
+            detail="An unexpected error occurred",
         )

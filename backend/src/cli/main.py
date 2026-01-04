@@ -29,7 +29,9 @@ def load(input):
 
     config = Config()
 
-    with Neo4jConnection(config.neo4j_uri, config.neo4j_user, config.neo4j_password) as conn:
+    with Neo4jConnection(
+        config.neo4j_uri, config.neo4j_user, config.neo4j_password
+    ) as conn:
         if not conn.verify_connection():
             click.echo("Failed to connect to Neo4j")
             return
@@ -46,7 +48,9 @@ def test_connection():
 
     click.echo(f"Testing connection to {config.neo4j_uri}...")
 
-    with Neo4jConnection(config.neo4j_uri, config.neo4j_user, config.neo4j_password) as conn:
+    with Neo4jConnection(
+        config.neo4j_uri, config.neo4j_user, config.neo4j_password
+    ) as conn:
         if conn.verify_connection():
             click.echo("✓ Connection successful!")
         else:
@@ -60,7 +64,9 @@ def clear_graph():
         return
 
     config = Config()
-    with Neo4jConnection(config.neo4j_uri, config.neo4j_user, config.neo4j_password) as conn:
+    with Neo4jConnection(
+        config.neo4j_uri, config.neo4j_user, config.neo4j_password
+    ) as conn:
         builder = GraphBuilder(conn)
         builder.clear_graph()
         click.echo("Graph cleared!")
@@ -77,7 +83,9 @@ def clear_graph():
         return
 
     config = Config()
-    with Neo4jConnection(config.neo4j_uri, config.neo4j_user, config.neo4j_password) as conn:
+    with Neo4jConnection(
+        config.neo4j_uri, config.neo4j_user, config.neo4j_password
+    ) as conn:
         loader = APOCXMILoader(conn)
         loader.clear_graph()
         click.echo("Graph cleared!")

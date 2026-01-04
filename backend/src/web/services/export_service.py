@@ -150,7 +150,9 @@ class ExportService:
 
             # Add labels
             if node["labels"]:
-                ET.SubElement(node_elem, "data", key="labels").text = ",".join(node["labels"])
+                ET.SubElement(node_elem, "data", key="labels").text = ",".join(
+                    node["labels"]
+                )
 
             # Add properties
             for prop_key, prop_value in (node["properties"] or {}).items():

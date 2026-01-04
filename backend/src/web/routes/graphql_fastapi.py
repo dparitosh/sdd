@@ -42,7 +42,9 @@ class Query:
         return neo4j.get_statistics()
 
     @strawberry.field
-    def cypher_read(self, query: str, params: Optional[JSON] = None, limit: int = 200) -> list[JSON]:
+    def cypher_read(
+        self, query: str, params: Optional[JSON] = None, limit: int = 200
+    ) -> list[JSON]:
         """Execute a read-only Cypher query and return rows as JSON objects.
 
         Notes:

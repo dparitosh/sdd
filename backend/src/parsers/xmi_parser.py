@@ -38,9 +38,15 @@ class XMIParser:
             nodes = self._extract_nodes(root)
             relationships = self._extract_relationships(root)
 
-            logger.info(f"Extracted {len(nodes)} nodes and {len(relationships)} relationships")
+            logger.info(
+                f"Extracted {len(nodes)} nodes and {len(relationships)} relationships"
+            )
 
-            return {"source_file": str(file_path), "nodes": nodes, "relationships": relationships}
+            return {
+                "source_file": str(file_path),
+                "nodes": nodes,
+                "relationships": relationships,
+            }
 
         except Exception as e:
             logger.error(f"Failed to parse XMI file {file_path}: {e}")
@@ -88,7 +94,8 @@ class XMIParser:
             ):
                 node = self._element_to_node(element)
                 if node and not any(
-                    n["properties"].get("id") == node["properties"].get("id") for n in nodes
+                    n["properties"].get("id") == node["properties"].get("id")
+                    for n in nodes
                 ):
                     nodes.append(node)
         except Exception:
@@ -107,9 +114,12 @@ class XMIParser:
             Node dictionary
         """
         # Get element attributes
-        xmi_id = element.get("{http://www.omg.org/spec/XMI/20131001}id") or element.get("id")
+        xmi_id = element.get("{http://www.omg.org/spec/XMI/20131001}id") or element.get(
+            "id"
+        )
         xmi_type = (
-            element.get("{http://www.omg.org/spec/XMI/20131001}type") or element.tag.split("}")[-1]
+            element.get("{http://www.omg.org/spec/XMI/20131001}type")
+            or element.tag.split("}")[-1]
         )
         name = element.get("name", "")
 

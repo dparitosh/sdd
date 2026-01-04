@@ -16,13 +16,42 @@ router = APIRouter()
 
 # Whitelist of allowed node types to prevent Cypher injection
 ALLOWED_NODE_TYPES = {
-    "Requirement", "Part", "Class", "Package", "Property", "Association", "Port",
-    "InstanceSpecification", "Constraint", "Material", "Assembly", "Document",
-    "Person", "ExternalUnit", "Analysis", "AnalysisModel", "Approval",
-    "Classification", "ExternalOwlClass", "GeometricModel", "MaterialProperty",
-    "PartVersion", "RequirementVersion", "ShapeRepresentation", "ValueType",
-    "Activity", "Breakdown", "Component", "ComponentPlacement", "Event",
-    "ExternalPropertyDefinition", "Interface", "Parameter", "System", "Slot", "Comment",
+    "Requirement",
+    "Part",
+    "Class",
+    "Package",
+    "Property",
+    "Association",
+    "Port",
+    "InstanceSpecification",
+    "Constraint",
+    "Material",
+    "Assembly",
+    "Document",
+    "Person",
+    "ExternalUnit",
+    "Analysis",
+    "AnalysisModel",
+    "Approval",
+    "Classification",
+    "ExternalOwlClass",
+    "GeometricModel",
+    "MaterialProperty",
+    "PartVersion",
+    "RequirementVersion",
+    "ShapeRepresentation",
+    "ValueType",
+    "Activity",
+    "Breakdown",
+    "Component",
+    "ComponentPlacement",
+    "Event",
+    "ExternalPropertyDefinition",
+    "Interface",
+    "Parameter",
+    "System",
+    "Slot",
+    "Comment",
 }
 
 
@@ -86,21 +115,23 @@ async def get_graph_data(
     node_types: Optional[str] = Query(None, description="Comma-separated node types"),
     limit: int = Query(500, ge=1, le=1000, description="Maximum nodes to return"),
     depth: int = Query(1, ge=1, le=3, description="Relationship traversal depth"),
-    ap_level: Optional[int] = Query(None, description="Filter by AP level (1=AP239, 2=AP242, 3=AP243)"),
-    api_key: str = Depends(get_api_key)
+    ap_level: Optional[int] = Query(
+        None, description="Filter by AP level (1=AP239, 2=AP242, 3=AP243)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get graph data for visualization (nodes and edges)
-    
+
     Args:
         node_types: Comma-separated list of node types (e.g., 'Requirement,Part,Class')
         limit: Maximum number of nodes (default: 500, max: 1000)
         depth: Relationship traversal depth (default: 1, max: 3)
         ap_level: Filter by AP level (1, 2, or 3)
-        
+
     Returns:
         Graph data with nodes and links arrays for force-graph visualization
-    
+
     Performance:
         Reduced max limit from 2000 to 1000 to prevent browser performance issues
     """
@@ -111,7 +142,7 @@ async def get_graph_data(
         requested_types = []
         if node_types:
             requested_types = [nt.strip() for nt in node_types.split(",") if nt.strip()]
-        
+
         # Filter against whitelist to prevent injection
         validated_types = [nt for nt in requested_types if nt in ALLOWED_NODE_TYPES]
 
@@ -120,7 +151,9 @@ async def get_graph_data(
         params = {"limit": limit}
 
         if validated_types:
-            type_conditions = " OR ".join([f"'{nt}' IN labels(n)" for nt in validated_types])
+            type_conditions = " OR ".join(
+                [f"'{nt}' IN labels(n)" for nt in validated_types]
+            )
             where_clauses.append(f"({type_conditions})")
 
         if ap_level is not None:
@@ -222,14 +255,17 @@ async def get_graph_data(
     except Exception as e:
         logger.error(f"Error fetching graph data: {e}")
         from fastapi import HTTPException
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/node-types", response_model=NodeTypesResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/node-types", response_model=NodeTypesResponse, response_class=Neo4jJSONResponse
+)
 async def get_node_types(api_key: str = Depends(get_api_key)):
     """
     Get list of all node types (labels) in the graph with counts
-    
+
     Returns:
         Array of node types with their counts
     """
@@ -252,22 +288,24 @@ async def get_node_types(api_key: str = Depends(get_api_key)):
 
         node_types = [{"type": r["type"], "count": r["count"]} for r in results]
 
-        return {
-            "node_types": node_types,
-            "total_types": len(node_types)
-        }
+        return {"node_types": node_types, "total_types": len(node_types)}
 
     except Exception as e:
         logger.error(f"Error fetching node types: {e}")
         from fastapi import HTTPException
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/relationship-types", response_model=RelationshipTypesResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/relationship-types",
+    response_model=RelationshipTypesResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_relationship_types(api_key: str = Depends(get_api_key)):
     """
     Get list of all relationship types in the graph with counts
-    
+
     Returns:
         Array of relationship types with their counts
     """
@@ -290,12 +328,10 @@ async def get_relationship_types(api_key: str = Depends(get_api_key)):
 
         rel_types = [{"type": r["type"], "count": r["count"]} for r in results]
 
-        return {
-            "relationship_types": rel_types,
-            "total_types": len(rel_types)
-        }
+        return {"relationship_types": rel_types, "total_types": len(rel_types)}
 
     except Exception as e:
         logger.error(f"Error fetching relationship types: {e}")
         from fastapi import HTTPException
+
         raise HTTPException(status_code=500, detail=str(e))

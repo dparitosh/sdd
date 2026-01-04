@@ -15,6 +15,7 @@ from loguru import logger
 
 try:
     from jsonschema import Draft7Validator
+
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
@@ -38,13 +39,22 @@ class SMRLSchemaValidator:
         self.schema_loaded = False
 
         if not JSONSCHEMA_AVAILABLE:
-            logger.warning("jsonschema package not available. Install with: pip install jsonschema")
+            logger.warning(
+                "jsonschema package not available. Install with: pip install jsonschema"
+            )
             return
 
         # Default schema path
         if schema_path is None:
             project_root = Path(__file__).parent.parent.parent.parent
-            schema_path = str(project_root / "smrlv12" / "data" / "domain_models" / "mossec" / "DomainModel.json")
+            schema_path = str(
+                project_root
+                / "smrlv12"
+                / "data"
+                / "domain_models"
+                / "mossec"
+                / "DomainModel.json"
+            )
 
         self._load_schema(schema_path)
 
@@ -57,7 +67,9 @@ class SMRLSchemaValidator:
             # Extract component schemas
             if "components" in self.schema and "schemas" in self.schema["components"]:
                 self.schemas = self.schema["components"]["schemas"]
-                logger.info(f"Loaded SMRL schema with {len(self.schemas)} resource types")
+                logger.info(
+                    f"Loaded SMRL schema with {len(self.schemas)} resource types"
+                )
 
                 # Pre-compile validators for common types
                 for resource_type in [
@@ -96,8 +108,13 @@ class SMRLSchemaValidator:
             # Some schemas wrap the actual resource under a property named after the resource type.
             ref_path = f"#/components/schemas/{resource_type}"
             resource_schema = self.schemas[resource_type]
-            if "properties" in resource_schema and resource_type in resource_schema["properties"]:
-                ref_path = f"#/components/schemas/{resource_type}/properties/{resource_type}"
+            if (
+                "properties" in resource_schema
+                and resource_type in resource_schema["properties"]
+            ):
+                ref_path = (
+                    f"#/components/schemas/{resource_type}/properties/{resource_type}"
+                )
 
             # Validate against a wrapper schema containing the full components tree.
             # This avoids deprecated RefResolver usage while still resolving $ref across components.
@@ -144,7 +161,9 @@ class SMRLSchemaValidator:
                 return self._basic_validation(resource)
 
             # Validate against schema
-            validation_errors = sorted(validator.iter_errors(resource), key=lambda e: e.path)
+            validation_errors = sorted(
+                validator.iter_errors(resource), key=lambda e: e.path
+            )
 
             for error in validation_errors:
                 # Format error message with path
@@ -176,7 +195,9 @@ class SMRLSchemaValidator:
 
         # Validate href format
         if "href" in resource and not resource["href"].startswith("/api/v1/"):
-            errors.append(f"Invalid href format: {resource['href']} (should start with /api/v1/)")
+            errors.append(
+                f"Invalid href format: {resource['href']} (should start with /api/v1/)"
+            )
 
         # Validate required metadata fields
         if "created_on" not in resource:
@@ -187,9 +208,7 @@ class SMRLSchemaValidator:
 
         return (len(errors) == 0, errors)
 
-    def validate_collection(
-        self, collection: Dict[str, Any]
-    ) -> Tuple[bool, List[str]]:
+    def validate_collection(self, collection: Dict[str, Any]) -> Tuple[bool, List[str]]:
         """
         Validate a SMRL collection response.
 
@@ -295,7 +314,9 @@ def get_smrl_validator() -> SMRLSchemaValidator:
 
 
 # Convenience functions
-def validate_smrl_resource(resource: Dict[str, Any], resource_type: str) -> Tuple[bool, List[str]]:
+def validate_smrl_resource(
+    resource: Dict[str, Any], resource_type: str
+) -> Tuple[bool, List[str]]:
     """
     Validate a SMRL resource.
 

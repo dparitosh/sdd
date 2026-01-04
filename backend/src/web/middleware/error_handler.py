@@ -17,7 +17,9 @@ from werkzeug.exceptions import HTTPException
 class APIError(Exception):
     """Base class for API errors"""
 
-    def __init__(self, message: str, status_code: int = 500, payload: Dict[str, Any] = None):
+    def __init__(
+        self, message: str, status_code: int = 500, payload: Dict[str, Any] = None
+    ):
         super().__init__()
         self.message = message
         self.status_code = status_code
@@ -53,7 +55,9 @@ class ValidationError(APIError):
 class NotFoundError(APIError):
     """Raised when requested resource not found"""
 
-    def __init__(self, resource_type: str = None, resource_id: str = None, message: str = None):
+    def __init__(
+        self, resource_type: str = None, resource_id: str = None, message: str = None
+    ):
         if message is None:
             if resource_type and resource_id:
                 message = f"{resource_type} with ID '{resource_id}' not found"
@@ -75,7 +79,9 @@ class DatabaseError(APIError):
     """Raised when database operation fails"""
 
     def __init__(
-        self, message: str = "Database operation failed", original_error: Exception = None
+        self,
+        message: str = "Database operation failed",
+        original_error: Exception = None,
     ):
         payload = {}
         if original_error:
@@ -165,7 +171,9 @@ def register_error_handlers(app):
             message = "An internal server error occurred"
             error_type = "InternalServerError"
 
-        response = {"error": {"type": error_type, "message": message, "status_code": 500}}
+        response = {
+            "error": {"type": error_type, "message": message, "status_code": 500}
+        }
 
         # Log error with context
         log_error(error, request, 500)
@@ -298,7 +306,9 @@ def log_request_info(app):
     @app.after_request
     def after_request(response):
         """Log outgoing response details"""
-        logger.debug(f"← {request.method} {request.path} | Status: {response.status_code}")
+        logger.debug(
+            f"← {request.method} {request.path} | Status: {response.status_code}"
+        )
         return response
 
     logger.info("Request logging middleware registered")

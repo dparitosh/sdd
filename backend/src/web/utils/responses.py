@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 class Neo4jJSONEncoder(json.JSONEncoder):
     """Custom JSON encoder for Neo4j types"""
+
     def default(self, obj):
         if hasattr(obj, "iso_format"):
             return obj.iso_format()
@@ -20,6 +21,7 @@ class Neo4jJSONEncoder(json.JSONEncoder):
 
 class Neo4jJSONResponse(JSONResponse):
     """Custom JSON response class for Neo4j types"""
+
     def render(self, content: Any) -> bytes:
         return json.dumps(
             content,

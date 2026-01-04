@@ -20,7 +20,14 @@ from src.web.app_fastapi import Neo4jJSONResponse
 router = APIRouter()
 
 # Valid status values
-VALID_STATUSES = {"Released", "Development", "Obsolete", "Draft", "In Review", "Approved"}
+VALID_STATUSES = {
+    "Released",
+    "Development",
+    "Obsolete",
+    "Draft",
+    "In Review",
+    "Approved",
+}
 
 
 # ============================================================================
@@ -174,17 +181,19 @@ class StatisticsResponse(BaseModel):
 
 @router.get("/parts", response_model=PartsResponse, response_class=Neo4jJSONResponse)
 async def get_parts(
-    status: Optional[str] = Query(None, description="Filter by status (Released, Development, Obsolete)"),
+    status: Optional[str] = Query(
+        None, description="Filter by status (Released, Development, Obsolete)"
+    ),
     search: Optional[str] = Query(None, description="Search in name and description"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all parts with optional filtering
-    
+
     Args:
         status: Filter by status (Released, Development, Obsolete)
         search: Text search in name and description
-        
+
     Returns:
         Array of part objects with basic info
     """
@@ -247,17 +256,18 @@ async def get_parts(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/parts/{part_id}", response_model=PartDetail, response_class=Neo4jJSONResponse)
+@router.get(
+    "/parts/{part_id}", response_model=PartDetail, response_class=Neo4jJSONResponse
+)
 async def get_part_detail(
-    part_id: str = Path(..., description="Part ID"),
-    api_key: str = Depends(get_api_key)
+    part_id: str = Path(..., description="Part ID"), api_key: str = Depends(get_api_key)
 ):
     """
     Get detailed information about a specific part
-    
+
     Args:
         part_id: Unique part identifier
-        
+
     Returns:
         Part with all relationships (versions, materials, geometry, etc.)
     """
@@ -295,7 +305,9 @@ async def get_part_detail(
             "description": part.get("description"),
             "part_number": part.get("part_number"),
             "status": part.get("status"),
-            "created_at": str(part.get("created_at")) if part.get("created_at") else None,
+            "created_at": (
+                str(part.get("created_at")) if part.get("created_at") else None
+            ),
             "ap_level": part.get("ap_level"),
             "ap_schema": part.get("ap_schema"),
             "versions": [v for v in r["versions"] if v.get("version")],
@@ -315,17 +327,18 @@ async def get_part_detail(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/parts/{part_id}/bom", response_model=BOMResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/parts/{part_id}/bom", response_model=BOMResponse, response_class=Neo4jJSONResponse
+)
 async def get_part_bom(
-    part_id: str = Path(..., description="Part ID"),
-    api_key: str = Depends(get_api_key)
+    part_id: str = Path(..., description="Part ID"), api_key: str = Depends(get_api_key)
 ):
     """
     Get Bill of Materials (BOM) for a part
-    
+
     Args:
         part_id: Unique part identifier
-        
+
     Returns:
         Tree structure of assembly components
     """
@@ -369,17 +382,21 @@ async def get_part_bom(
 # ============================================================================
 
 
-@router.get("/assemblies", response_model=AssembliesResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/assemblies", response_model=AssembliesResponse, response_class=Neo4jJSONResponse
+)
 async def get_assemblies(
-    type: Optional[str] = Query(None, description="Filter by assembly type (Mechanical, Electrical)"),
-    api_key: str = Depends(get_api_key)
+    type: Optional[str] = Query(
+        None, description="Filter by assembly type (Mechanical, Electrical)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all assemblies
-    
+
     Args:
         type: Filter by assembly type (Mechanical, Electrical, etc.)
-        
+
     Returns:
         Array of assembly objects
     """
@@ -424,19 +441,23 @@ async def get_assemblies(
 # ============================================================================
 
 
-@router.get("/materials", response_model=MaterialsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/materials", response_model=MaterialsResponse, response_class=Neo4jJSONResponse
+)
 async def get_materials(
-    type: Optional[str] = Query(None, description="Filter by material type (Metal, Polymer, Composite)"),
+    type: Optional[str] = Query(
+        None, description="Filter by material type (Metal, Polymer, Composite)"
+    ),
     search: Optional[str] = Query(None, description="Search in name and specification"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all materials with optional filtering
-    
+
     Args:
         type: Filter by material type (Metal, Polymer, Composite, etc.)
         search: Text search in name and specification
-        
+
     Returns:
         Array of material objects
     """
@@ -505,17 +526,21 @@ async def get_materials(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/materials/{material_name}", response_model=MaterialDetail, response_class=Neo4jJSONResponse)
+@router.get(
+    "/materials/{material_name}",
+    response_model=MaterialDetail,
+    response_class=Neo4jJSONResponse,
+)
 async def get_material_detail(
     material_name: str = Path(..., description="Material name"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get detailed information about a specific material
-    
+
     Args:
         material_name: Material name identifier
-        
+
     Returns:
         Material with all properties and relationships
     """
@@ -576,17 +601,21 @@ async def get_material_detail(
 # ============================================================================
 
 
-@router.get("/geometry", response_model=GeometryResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/geometry", response_model=GeometryResponse, response_class=Neo4jJSONResponse
+)
 async def get_geometry_models(
-    type: Optional[str] = Query(None, description="Filter by model type (Solid, Surface, Wireframe)"),
-    api_key: str = Depends(get_api_key)
+    type: Optional[str] = Query(
+        None, description="Filter by model type (Solid, Surface, Wireframe)"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get all CAD geometry models
-    
+
     Args:
         type: Filter by model type (Solid, Surface, Wireframe)
-        
+
     Returns:
         Array of geometric model objects
     """
@@ -637,11 +666,13 @@ async def get_geometry_models(
 # ============================================================================
 
 
-@router.get("/statistics", response_model=StatisticsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/statistics", response_model=StatisticsResponse, response_class=Neo4jJSONResponse
+)
 async def get_ap242_statistics(api_key: str = Depends(get_api_key)):
     """
     Get summary statistics for AP242 data
-    
+
     Returns:
         Counts and type breakdown for all AP242 entities
     """

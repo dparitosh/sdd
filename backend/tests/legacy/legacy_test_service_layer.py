@@ -23,11 +23,14 @@ print()
 print("1. THREAD SAFETY TEST")
 print("-" * 70)
 
+
 def get_service_instance(thread_id):
     """Get service instance from different thread"""
     from src.web.services import get_neo4j_service
+
     service = get_neo4j_service()
     return (thread_id, id(service))
+
 
 print("Testing concurrent access from 10 threads...")
 instances = []
@@ -81,20 +84,20 @@ print("-" * 70)
 try:
     print("Verifying database connectivity...")
     service = get_neo4j_service()
-    
+
     start = time.time()
     service.verify_connectivity()
     latency = (time.time() - start) * 1000
-    
+
     print(f"✓ Connected in {latency:.2f}ms")
-    
+
     # Test query execution
     result = service.execute_query("RETURN 1 as test")
     if result and result[0]["test"] == 1:
         print("✓ Query execution working")
-    
+
     print("✓ PASS: Connection verification successful")
-    
+
 except Exception as e:
     print(f"✗ FAIL: {e}")
 
@@ -126,17 +129,17 @@ print("-" * 70)
 try:
     from src.web.services.neo4j_service import Neo4jService
     from neo4j.exceptions import ServiceUnavailable
-    
+
     print("Testing invalid URI handling...")
     bad_service = Neo4jService(uri="bolt://invalid:9999")
-    
+
     try:
         # This should fail
         bad_service.verify_connectivity()
         print("✗ FAIL: Should have raised exception")
     except (ServiceUnavailable, Exception) as e:
         print(f"✓ PASS: Proper exception raised: {type(e).__name__}")
-        
+
 except Exception as e:
     print(f"Test error: {e}")
 
@@ -146,14 +149,14 @@ print("-" * 70)
 
 try:
     print("Testing context manager...")
-    
+
     with Neo4jService() as svc:
         result = svc.execute_query("RETURN 1 as test")
         if result[0]["test"] == 1:
             print("✓ Query in context manager succeeded")
-    
+
     print("✓ PASS: Context manager working")
-    
+
 except Exception as e:
     print(f"✗ FAIL: {e}")
 
@@ -161,11 +164,13 @@ except Exception as e:
 print("\n\n7. CONCURRENT QUERY TEST")
 print("-" * 70)
 
+
 def execute_query(query_id):
     """Execute query from thread"""
     service = get_neo4j_service()
     result = service.execute_query("RETURN 1 as test")
     return (query_id, result[0]["test"] == 1)
+
 
 print("Running 20 concurrent queries...")
 start_time = time.time()
@@ -198,7 +203,7 @@ tests = [
     ("Service Lifecycle", id1 != id2),
     ("Connection Verification", True),  # Would be False if exception
     ("Lazy Initialization", service is not None),
-    ("Concurrent Queries", successful == len(results))
+    ("Concurrent Queries", successful == len(results)),
 ]
 
 passed = sum(1 for _, result in tests if result)

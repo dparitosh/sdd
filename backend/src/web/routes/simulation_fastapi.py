@@ -72,7 +72,9 @@ class ParameterValueInput(BaseModel):
 
 
 class ValidationRequest(BaseModel):
-    parameters: List[ParameterValueInput] = Field(..., description="Parameters to validate")
+    parameters: List[ParameterValueInput] = Field(
+        ..., description="Parameters to validate"
+    )
 
 
 class ValidationResult(BaseModel):
@@ -127,30 +129,38 @@ class UnitsResponse(BaseModel):
 # ============================================================================
 
 
-@router.get("/parameters", response_model=SimulationParametersResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/parameters",
+    response_model=SimulationParametersResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_simulation_parameters(
     class_name: Optional[str] = Query(None, description="Filter by class name"),
-    property_name: Optional[str] = Query(None, description="Filter by property name (pattern match)"),
+    property_name: Optional[str] = Query(
+        None, description="Filter by property name (pattern match)"
+    ),
     data_type: Optional[str] = Query(None, description="Filter by data type"),
-    include_constraints: bool = Query(True, description="Include constraint definitions"),
-    limit: int = Query(1000, ge=1, le=5000, description="Maximum number of results")
+    include_constraints: bool = Query(
+        True, description="Include constraint definitions"
+    ),
+    limit: int = Query(1000, ge=1, le=5000, description="Maximum number of results"),
 ):
     """
     Extract parameters for simulation with types, defaults, units, and constraints
-    
+
     Retrieves property metadata essential for simulation integration including:
     - Data types and multiplicity
     - Default values
     - Constraints for validation
     - Owner class information
-    
+
     Args:
         class_name: Filter by owning class name
         property_name: Filter by property name (case-insensitive pattern)
         data_type: Filter by data type name
         include_constraints: Include constraint definitions
         limit: Maximum results (1-5000)
-        
+
     Returns:
         List of simulation parameters with full metadata
     """
@@ -258,7 +268,7 @@ async def get_simulation_parameters(
         logger.error(f"Simulation parameters query error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve simulation parameters: {str(e)}"
+            detail=f"Failed to retrieve simulation parameters: {str(e)}",
         )
 
 
@@ -267,19 +277,21 @@ async def get_simulation_parameters(
 # ============================================================================
 
 
-@router.post("/validate", response_model=ValidationResponse, response_class=Neo4jJSONResponse)
+@router.post(
+    "/validate", response_model=ValidationResponse, response_class=Neo4jJSONResponse
+)
 async def validate_simulation_parameters(validation_request: ValidationRequest):
     """
     Validate parameter values against constraints
-    
+
     Checks parameter values against:
     - Multiplicity constraints (lower/upper bounds)
     - Custom constraints (basic validation)
     - Required value checks
-    
+
     Args:
         validation_request: List of parameters with values to validate
-        
+
     Returns:
         Validation results with violations for each parameter
     """
@@ -289,7 +301,7 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
         if not validation_request.parameters:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing parameters in request body"
+                detail="Missing parameters in request body",
             )
 
         parameters = validation_request.parameters
@@ -317,13 +329,15 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
             result = neo4j.execute_query(query, {"param_id": param_id})
 
             if not result:
-                validation_results.append({
-                    "parameter_id": param_id,
-                    "value": param_value,
-                    "valid": False,
-                    "violations": ["Parameter not found"],
-                    "constraints_checked": 0
-                })
+                validation_results.append(
+                    {
+                        "parameter_id": param_id,
+                        "value": param_value,
+                        "valid": False,
+                        "violations": ["Parameter not found"],
+                        "constraints_checked": 0,
+                    }
+                )
                 continue
 
             record = result[0]
@@ -343,7 +357,9 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
                 elif lower_int > 0 and param_value is None:
                     violations.append(f"Value is required (lower bound: {lower_int})")
 
-            if upper is not None and upper != -1 and upper != "-1":  # -1 means unlimited
+            if (
+                upper is not None and upper != -1 and upper != "-1"
+            ):  # -1 means unlimited
                 upper_int = int(upper) if isinstance(upper, str) else upper
                 if isinstance(param_value, list) and len(param_value) > upper_int:
                     violations.append(
@@ -360,14 +376,16 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
                         f"Constraint violation: {constraint['name']} - {body}"
                     )
 
-            validation_results.append({
-                "parameter_id": param_id,
-                "parameter_name": record["name"],
-                "value": param_value,
-                "valid": len(violations) == 0,
-                "violations": violations,
-                "constraints_checked": len(constraints),
-            })
+            validation_results.append(
+                {
+                    "parameter_id": param_id,
+                    "parameter_name": record["name"],
+                    "value": param_value,
+                    "valid": len(violations) == 0,
+                    "violations": violations,
+                    "constraints_checked": len(constraints),
+                }
+            )
 
         return {
             "total_parameters": len(validation_results),
@@ -382,7 +400,7 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
         logger.error(f"Parameter validation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate parameters: {str(e)}"
+            detail=f"Failed to validate parameters: {str(e)}",
         )
 
 
@@ -397,16 +415,16 @@ async def get_units(
 ):
     """
     Extract unit definitions from the model
-    
+
     Returns data types that represent units and their conversion factors if available.
     Includes:
     - DataTypes, Enumerations, PrimitiveTypes
     - Properties with unit-related names
     - Usage counts for each unit type
-    
+
     Args:
         limit: Maximum results (1-5000)
-        
+
     Returns:
         Unit type definitions and unit-related properties
     """
@@ -465,21 +483,26 @@ async def get_units(
         unit_properties = []
         result = neo4j.execute_query(unit_query)
         for record in result:
-            unit_properties.append({
-                "id": record["id"],
-                "name": record["name"],
-                "data_type": record["data_type"],
-                "owner_class": record["owner_class"],
-            })
+            unit_properties.append(
+                {
+                    "id": record["id"],
+                    "name": record["name"],
+                    "data_type": record["data_type"],
+                    "owner_class": record["owner_class"],
+                }
+            )
 
         return {
             "unit_types": {"total": len(units), "types": units},
-            "unit_properties": {"total": len(unit_properties), "properties": unit_properties},
+            "unit_properties": {
+                "total": len(unit_properties),
+                "properties": unit_properties,
+            },
         }
 
     except Exception as e:
         logger.error(f"Units query error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve units: {str(e)}"
+            detail=f"Failed to retrieve units: {str(e)}",
         )

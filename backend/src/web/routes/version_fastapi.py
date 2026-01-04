@@ -115,7 +115,9 @@ class NodeHistory(BaseModel):
 
 class CheckpointRequest(BaseModel):
     name: Optional[str] = None
-    description: Optional[str] = Field("Manual checkpoint", description="Checkpoint description")
+    description: Optional[str] = Field(
+        "Manual checkpoint", description="Checkpoint description"
+    )
 
 
 class CheckpointStatistics(BaseModel):
@@ -138,20 +140,24 @@ class Checkpoint(BaseModel):
 # ============================================================================
 
 
-@router.get("/versions/{node_id}", response_model=NodeVersionInfo, response_class=Neo4jJSONResponse)
+@router.get(
+    "/versions/{node_id}",
+    response_model=NodeVersionInfo,
+    response_class=Neo4jJSONResponse,
+)
 async def get_node_versions(node_id: str):
     """
     Get version history for a specific node
-    
+
     Returns version information including creation/modification timestamps
     and property values.
-    
+
     Args:
         node_id: Unique identifier of the node
-        
+
     Returns:
         Version history with current and historical versions
-        
+
     Raises:
         HTTPException 404: Node not found
     """
@@ -175,7 +181,7 @@ async def get_node_versions(node_id: str):
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Node with ID '{node_id}' not found"
+                detail=f"Node with ID '{node_id}' not found",
             )
 
         node = result[0]
@@ -210,7 +216,7 @@ async def get_node_versions(node_id: str):
         logger.error(f"Version history error for {node_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve version history: {str(e)}"
+            detail=f"Failed to retrieve version history: {str(e)}",
         )
 
 
@@ -223,15 +229,15 @@ async def get_node_versions(node_id: str):
 async def compare_versions(compare_request: CompareRequest):
     """
     Compare two versions of nodes or two different nodes
-    
+
     Performs property-level diff showing added, removed, modified, and unchanged properties.
-    
+
     Args:
         compare_request: Node IDs to compare
-        
+
     Returns:
         Detailed diff with property changes
-        
+
     Raises:
         HTTPException 404: One or both nodes not found
     """
@@ -254,7 +260,7 @@ async def compare_versions(compare_request: CompareRequest):
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="One or both nodes not found"
+                detail="One or both nodes not found",
             )
 
         record = result[0]
@@ -283,8 +289,16 @@ async def compare_versions(compare_request: CompareRequest):
                 unchanged[key] = val1
 
         diff = {
-            "node1": {"id": node1_id, "labels": record["labels1"], "properties": props1},
-            "node2": {"id": node2_id, "labels": record["labels2"], "properties": props2},
+            "node1": {
+                "id": node1_id,
+                "labels": record["labels1"],
+                "properties": props1,
+            },
+            "node2": {
+                "id": node2_id,
+                "labels": record["labels2"],
+                "properties": props2,
+            },
             "differences": {
                 "added_properties": added,
                 "removed_properties": removed,
@@ -307,7 +321,7 @@ async def compare_versions(compare_request: CompareRequest):
         logger.error(f"Version comparison error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to compare versions: {str(e)}"
+            detail=f"Failed to compare versions: {str(e)}",
         )
 
 
@@ -316,19 +330,21 @@ async def compare_versions(compare_request: CompareRequest):
 # ============================================================================
 
 
-@router.get("/history/{node_id}", response_model=NodeHistory, response_class=Neo4jJSONResponse)
+@router.get(
+    "/history/{node_id}", response_model=NodeHistory, response_class=Neo4jJSONResponse
+)
 async def get_node_history(node_id: str):
     """
     Get change history/audit trail for a specific node
-    
+
     Returns timeline of all changes with timestamps, statistics, and current state.
-    
+
     Args:
         node_id: Unique identifier of the node
-        
+
     Returns:
         Complete change history with timeline and statistics
-        
+
     Raises:
         HTTPException 404: Node not found
     """
@@ -354,7 +370,7 @@ async def get_node_history(node_id: str):
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Node with ID '{node_id}' not found"
+                detail=f"Node with ID '{node_id}' not found",
             )
 
         record = result[0]
@@ -363,20 +379,24 @@ async def get_node_history(node_id: str):
         timeline = []
 
         if record["created_at"]:
-            timeline.append({
-                "timestamp": record["created_at"],
-                "event": "created",
-                "version": 1,
-                "description": f"Node created: {record['name']}",
-            })
+            timeline.append(
+                {
+                    "timestamp": record["created_at"],
+                    "event": "created",
+                    "version": 1,
+                    "description": f"Node created: {record['name']}",
+                }
+            )
 
         if record["modified_at"] and record["modified_at"] != record["created_at"]:
-            timeline.append({
-                "timestamp": record["modified_at"],
-                "event": "modified",
-                "version": record["version"] or 1,
-                "description": "Node properties updated",
-            })
+            timeline.append(
+                {
+                    "timestamp": record["modified_at"],
+                    "event": "modified",
+                    "version": record["version"] or 1,
+                    "description": "Node properties updated",
+                }
+            )
 
         history = {
             "node_id": node_id,
@@ -401,7 +421,7 @@ async def get_node_history(node_id: str):
         logger.error(f"History query error for {node_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve history: {str(e)}"
+            detail=f"Failed to retrieve history: {str(e)}",
         )
 
 
@@ -410,24 +430,32 @@ async def get_node_history(node_id: str):
 # ============================================================================
 
 
-@router.post("/checkpoint", response_model=Checkpoint, response_class=Neo4jJSONResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/checkpoint",
+    response_model=Checkpoint,
+    response_class=Neo4jJSONResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_checkpoint(checkpoint_request: CheckpointRequest):
     """
     Create a snapshot/checkpoint of the entire graph
-    
+
     Captures graph statistics and metadata for version tracking.
     Note: Full graph snapshots would require additional storage mechanism.
-    
+
     Args:
         checkpoint_request: Checkpoint name and description
-        
+
     Returns:
         Checkpoint metadata with graph statistics
     """
     try:
         neo4j = get_neo4j_service()
 
-        checkpoint_name = checkpoint_request.name or f'checkpoint_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        checkpoint_name = (
+            checkpoint_request.name
+            or f'checkpoint_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+        )
         description = checkpoint_request.description
 
         # Get graph statistics
@@ -445,7 +473,7 @@ async def create_checkpoint(checkpoint_request: CheckpointRequest):
         if not stats_result:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve graph statistics"
+                detail="Failed to retrieve graph statistics",
             )
 
         stats = stats_result[0]
@@ -457,7 +485,9 @@ async def create_checkpoint(checkpoint_request: CheckpointRequest):
             "statistics": {
                 "nodes": stats["node_count"],
                 "relationships": stats["relationship_count"],
-                "node_labels": [label for sublist in stats["all_labels"] for label in sublist],
+                "node_labels": [
+                    label for sublist in stats["all_labels"] for label in sublist
+                ],
             },
             "status": "created",
             "note": "Checkpoint metadata saved. Full graph snapshot would require additional storage mechanism.",
@@ -471,5 +501,5 @@ async def create_checkpoint(checkpoint_request: CheckpointRequest):
         logger.error(f"Checkpoint creation error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create checkpoint: {str(e)}"
+            detail=f"Failed to create checkpoint: {str(e)}",
         )

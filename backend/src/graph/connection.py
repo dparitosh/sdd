@@ -35,7 +35,9 @@ class Neo4jConnection:
     def connect(self):
         """Establish connection to Neo4j"""
         try:
-            self._driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
+            self._driver = GraphDatabase.driver(
+                self.uri, auth=(self.user, self.password)
+            )
             logger.debug("Neo4j driver created")
         except Exception as e:
             logger.error(f"Failed to create Neo4j driver: {e}")
@@ -63,7 +65,9 @@ class Neo4jConnection:
             logger.error(f"Connection verification failed: {e}")
             return False
 
-    def execute_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict]:
+    def execute_query(
+        self, query: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict]:
         """
         Execute a Cypher query
 
@@ -81,7 +85,9 @@ class Neo4jConnection:
             result = session.run(query, parameters or {})
             return [dict(record) for record in result]
 
-    def execute_write(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> None:
+    def execute_write(
+        self, query: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> None:
         """
         Execute a write transaction
 

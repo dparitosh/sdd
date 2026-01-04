@@ -57,15 +57,17 @@ class TestFavicon:
         response = requests.get(f"{_FRONTEND_URL}/favicon.ico")
         # Vite serves .ico files with image/x-icon content type (standard)
         content_type = response.headers.get("content-type", "").lower()
-        assert "icon" in content_type or "svg" in content_type, \
-            f"Expected icon or SVG content type, got {response.headers.get('content-type')}"
+        assert (
+            "icon" in content_type or "svg" in content_type
+        ), f"Expected icon or SVG content type, got {response.headers.get('content-type')}"
 
     def test_favicon_svg_content_type(self):
         """Test that favicon.svg has correct content type."""
         _require_frontend_server()
         response = requests.get(f"{_FRONTEND_URL}/favicon.svg")
-        assert "svg" in response.headers.get("content-type", "").lower(), \
-            f"Expected SVG content type, got {response.headers.get('content-type')}"
+        assert (
+            "svg" in response.headers.get("content-type", "").lower()
+        ), f"Expected SVG content type, got {response.headers.get('content-type')}"
 
     def test_favicon_ico_is_valid_svg(self):
         """Test that favicon.ico contains valid SVG content."""
@@ -97,10 +99,10 @@ class TestFavicon:
     def test_favicon_files_exist_in_public_dir(self):
         """Test that favicon files exist in the public directory."""
         public_dir = _REPO_ROOT / "frontend" / "public"
-        
+
         favicon_ico = public_dir / "favicon.ico"
         assert favicon_ico.exists(), f"favicon.ico should exist at {favicon_ico}"
-        
+
         favicon_svg = public_dir / "favicon.svg"
         assert favicon_svg.exists(), f"favicon.svg should exist at {favicon_svg}"
 
@@ -108,12 +110,14 @@ class TestFavicon:
         """Test that index.html correctly references the favicon."""
         index_html = _REPO_ROOT / "frontend" / "index.html"
         assert index_html.exists(), "index.html should exist"
-        
+
         content = index_html.read_text()
-        assert 'href="/favicon.svg"' in content, \
-            "index.html should reference /favicon.svg"
-        assert 'type="image/svg+xml"' in content, \
-            "index.html should specify SVG content type"
+        assert (
+            'href="/favicon.svg"' in content
+        ), "index.html should reference /favicon.svg"
+        assert (
+            'type="image/svg+xml"' in content
+        ), "index.html should specify SVG content type"
 
 
 class TestFaviconIntegration:
@@ -124,10 +128,11 @@ class TestFaviconIntegration:
         _require_frontend_server()
         response = requests.get(_FRONTEND_URL)
         assert response.status_code == 200, "Root page should load successfully"
-        
+
         content = response.text
-        assert 'href="/favicon.svg"' in content, \
-            "Root page HTML should include favicon link"
+        assert (
+            'href="/favicon.svg"' in content
+        ), "Root page HTML should include favicon link"
 
     def test_no_404_errors_for_favicon(self):
         """Test that requesting favicon doesn't cause 404 errors."""
@@ -135,7 +140,7 @@ class TestFaviconIntegration:
         # Test both .ico and .svg
         ico_response = requests.get(f"{_FRONTEND_URL}/favicon.ico")
         svg_response = requests.get(f"{_FRONTEND_URL}/favicon.svg")
-        
+
         assert ico_response.status_code != 404, "favicon.ico should not return 404"
         assert svg_response.status_code != 404, "favicon.svg should not return 404"
 

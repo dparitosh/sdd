@@ -16,7 +16,9 @@ def test_connection_initialization():
     password = os.getenv("NEO4J_PASSWORD")
 
     if not uri or not user or not password:
-        pytest.skip("Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in .env or environment to run this test")
+        pytest.skip(
+            "Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in .env or environment to run this test"
+        )
 
     conn = Neo4jConnection(uri, user, password)
     assert conn.uri == uri
@@ -35,7 +37,9 @@ def test_determine_label_from_connection():
         password = os.getenv("NEO4J_PASSWORD")
 
         if not uri or not user or not password:
-            pytest.skip("Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in .env or environment to run this test")
+            pytest.skip(
+                "Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in .env or environment to run this test"
+            )
 
         with Neo4jConnection(uri, user, password) as conn:
             assert conn._driver is not None

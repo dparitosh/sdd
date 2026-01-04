@@ -112,7 +112,9 @@ class TestLogin:
     def test_login_invalid_json(self):
         """Test login failure with invalid JSON"""
         response = requests.post(
-            f"{API_AUTH}/login", data="not valid json", headers={"Content-Type": "application/json"}
+            f"{API_AUTH}/login",
+            data="not valid json",
+            headers={"Content-Type": "application/json"},
         )
 
         assert response.status_code in [400, 500]
@@ -128,7 +130,9 @@ class TestTokenRefresh:
 
     def test_successful_token_refresh(self, refresh_token):
         """Test successful token refresh with valid refresh token"""
-        response = requests.post(f"{API_AUTH}/refresh", json={"refresh_token": refresh_token})
+        response = requests.post(
+            f"{API_AUTH}/refresh", json={"refresh_token": refresh_token}
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -161,7 +165,8 @@ class TestTokenRefresh:
     def test_refresh_with_access_token(self, access_token):
         """Test refresh failure when using access token instead of refresh token"""
         response = requests.post(
-            f"{API_AUTH}/refresh", json={"refresh_token": access_token}  # Wrong token type
+            f"{API_AUTH}/refresh",
+            json={"refresh_token": access_token},  # Wrong token type
         )
 
         # Should fail because token type is 'access' not 'refresh'

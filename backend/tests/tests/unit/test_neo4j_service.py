@@ -28,9 +28,13 @@ class TestNeo4jService:
     @pytest.fixture
     def neo4j_service(self, mock_driver):
         """Create a Neo4jService instance with mocked driver"""
-        with patch("web.services.neo4j_service.GraphDatabase.driver", return_value=mock_driver):
+        with patch(
+            "web.services.neo4j_service.GraphDatabase.driver", return_value=mock_driver
+        ):
             service = Neo4jService(
-                uri="neo4j+s://test.neo4j.io", user="test_user", password="test_password"
+                uri="neo4j+s://test.neo4j.io",
+                user="test_user",
+                password="test_password",
             )
             return service
 
@@ -204,11 +208,17 @@ class TestNeo4jService:
             if call_count[0] == 1:  # total_nodes
                 return [{"count": 3257}]
             elif call_count[0] == 2:  # node_types
-                return [{"label": "Class", "count": 1500}, {"label": "Package", "count": 500}]
+                return [
+                    {"label": "Class", "count": 1500},
+                    {"label": "Package", "count": 500},
+                ]
             elif call_count[0] == 3:  # total_relationships
                 return [{"count": 10027}]
             else:  # relationship_types
-                return [{"type": "CONTAINS", "count": 5000}, {"type": "GENERALIZES", "count": 2000}]
+                return [
+                    {"type": "CONTAINS", "count": 5000},
+                    {"type": "GENERALIZES", "count": 2000},
+                ]
 
         mock_session.run.side_effect = side_effect_run
 

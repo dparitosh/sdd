@@ -93,11 +93,13 @@ async def list_connectors(api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/connectors/{connector_id}/sync", response_class=Neo4jJSONResponse, status_code=202)
+@router.post(
+    "/connectors/{connector_id}/sync", response_class=Neo4jJSONResponse, status_code=202
+)
 async def trigger_sync(
     connector_id: str,
     sync_request: SyncRequest = Body(default=SyncRequest()),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Trigger a synchronization job for the specified PLM connector.
@@ -118,7 +120,9 @@ async def trigger_sync(
     """
     try:
         if connector_id not in ["teamcenter", "windchill"]:
-            raise HTTPException(status_code=404, detail=f"Unknown connector: {connector_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Unknown connector: {connector_id}"
+            )
 
         # Generate job ID
         job_id = f"sync_{connector_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
@@ -145,10 +149,7 @@ async def trigger_sync(
 
 
 @router.get("/connectors/{connector_id}/status", response_class=Neo4jJSONResponse)
-async def get_connector_status(
-    connector_id: str,
-    api_key: str = Depends(get_api_key)
-):
+async def get_connector_status(connector_id: str, api_key: str = Depends(get_api_key)):
     """
     Get detailed status for a specific connector including recent sync history.
 
@@ -171,7 +172,9 @@ async def get_connector_status(
     """
     try:
         if connector_id not in ["teamcenter", "windchill"]:
-            raise HTTPException(status_code=404, detail=f"Unknown connector: {connector_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Unknown connector: {connector_id}"
+            )
 
         connectors = get_available_connectors()
         connector = next((c for c in connectors if c["id"] == connector_id), None)

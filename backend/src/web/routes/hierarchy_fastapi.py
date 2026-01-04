@@ -100,11 +100,15 @@ class ImpactAnalysisResponse(BaseModel):
     affected_nodes: List[ImpactNode]
 
 
-@router.get("/traceability-matrix", response_model=TraceabilityMatrixResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/traceability-matrix",
+    response_model=TraceabilityMatrixResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_traceability_matrix(api_key: str = Depends(get_api_key)):
     """
     Get complete traceability matrix showing relationships across all AP levels
-    
+
     Returns:
         Matrix of requirements → parts → ontologies with relationship chains
     """
@@ -153,23 +157,29 @@ async def get_traceability_matrix(api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/navigate/{node_type}/{node_id}", response_model=NavigationResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/navigate/{node_type}/{node_id}",
+    response_model=NavigationResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def navigate_hierarchy(
     node_type: str,
     node_id: str,
-    direction: DirectionEnum = Query(DirectionEnum.both, description="Navigation direction"),
+    direction: DirectionEnum = Query(
+        DirectionEnum.both, description="Navigation direction"
+    ),
     depth: int = Query(2, ge=1, le=5, description="Maximum traversal depth"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Navigate from any node to see upstream and downstream connections
-    
+
     Args:
         node_type: Type of node (Requirement, Part, Material, etc.)
         node_id: ID or name of the node
         direction: 'upstream' (to higher levels), 'downstream' (to lower levels), or 'both'
         depth: Maximum depth to traverse (1-5, default: 2)
-        
+
     Returns:
         Navigation tree showing related nodes at other levels
     """
@@ -178,11 +188,18 @@ async def navigate_hierarchy(
 
         # Validate node_type
         VALID_NODE_TYPES = {
-            "Requirement", "Part", "Material", "Assembly", "ExternalOwlClass",
-            "Class", "Package",
+            "Requirement",
+            "Part",
+            "Material",
+            "Assembly",
+            "ExternalOwlClass",
+            "Class",
+            "Package",
         }
         if node_type not in VALID_NODE_TYPES:
-            raise HTTPException(status_code=400, detail=f"Invalid node type: {node_type}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid node type: {node_type}"
+            )
 
         # Determine property to match
         id_prop = "id" if node_type in ["Requirement", "Part"] else "name"
@@ -271,19 +288,21 @@ async def navigate_hierarchy(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/search", response_model=CrossLevelSearchResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/search", response_model=CrossLevelSearchResponse, response_class=Neo4jJSONResponse
+)
 async def cross_level_search(
     q: str = Query(..., min_length=1, description="Search query"),
     levels: str = Query("1,2,3", description="Comma-separated AP levels to search"),
-    api_key: str = Depends(get_api_key)
+    api_key: str = Depends(get_api_key),
 ):
     """
     Search across all AP levels simultaneously
-    
+
     Args:
         q: Search query (searches name and description fields)
         levels: Comma-separated AP levels to search (default: "1,2,3")
-        
+
     Returns:
         Search results grouped by AP level
     """
@@ -345,7 +364,7 @@ async def cross_level_search(
 async def get_hierarchy_statistics(api_key: str = Depends(get_api_key)):
     """
     Get statistics about the entire hierarchy structure
-    
+
     Returns:
         Node counts by level, relationship counts, and connectivity metrics
     """
@@ -403,19 +422,21 @@ async def get_hierarchy_statistics(api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/impact/{node_type}/{node_id}", response_model=ImpactAnalysisResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/impact/{node_type}/{node_id}",
+    response_model=ImpactAnalysisResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def analyze_impact(
-    node_type: str,
-    node_id: str,
-    api_key: str = Depends(get_api_key)
+    node_type: str, node_id: str, api_key: str = Depends(get_api_key)
 ):
     """
     Analyze the impact of changes to a specific node across all levels
-    
+
     Args:
         node_type: Type of the source node
         node_id: ID of the source node
-        
+
     Returns:
         All nodes that would be affected by changes to the specified node
     """

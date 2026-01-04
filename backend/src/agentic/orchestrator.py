@@ -14,7 +14,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-from .contracts import Agent, Orchestrator, Plan, Planner, Reflector, Retriever, ToolRegistry, ToolResult
+from .contracts import (
+    Agent,
+    Orchestrator,
+    Plan,
+    Planner,
+    Reflector,
+    Retriever,
+    ToolRegistry,
+    ToolResult,
+)
 
 
 @dataclass
@@ -24,7 +33,13 @@ class SingleToolAgent(Agent):
     name: str
     planner: Planner
 
-    def run(self, goal: str, *, tool_registry: ToolRegistry, retriever: Retriever | None = None) -> str:
+    def run(
+        self,
+        goal: str,
+        *,
+        tool_registry: ToolRegistry,
+        retriever: Retriever | None = None,
+    ) -> str:
         context: dict[str, Any] = {}
         if retriever is not None:
             chunks = retriever.retrieve(goal, top_k=5)
@@ -65,7 +80,9 @@ class BaselineOrchestrator(Orchestrator):
         last_results: list[ToolResult] = []
 
         for attempt in range(self.max_retries + 1):
-            last_response = agent.run(goal, tool_registry=self.tool_registry, retriever=self.retriever)
+            last_response = agent.run(
+                goal, tool_registry=self.tool_registry, retriever=self.retriever
+            )
 
             # Re-plan here to provide reflector inputs.
             last_plan = self.planner.plan(goal, context=None)
@@ -76,7 +93,9 @@ class BaselineOrchestrator(Orchestrator):
                 try:
                     last_results.append(self.tool_registry.call(step.tool_call))
                 except Exception as e:  # noqa: BLE001
-                    last_results.append(ToolResult(name=step.tool_call.name, output=f"Error: {e}"))
+                    last_results.append(
+                        ToolResult(name=step.tool_call.name, output=f"Error: {e}")
+                    )
 
             reflection = self.reflector.reflect(
                 goal=goal,

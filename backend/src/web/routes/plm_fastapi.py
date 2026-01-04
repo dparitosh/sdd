@@ -148,25 +148,31 @@ class ConstraintsResponse(BaseModel):
 # ============================================================================
 
 
-@router.get("/traceability", response_model=TraceabilityResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/traceability",
+    response_model=TraceabilityResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_traceability(
     source_type: Optional[str] = Query(None, description="Filter by source node type"),
     target_type: Optional[str] = Query(None, description="Filter by target node type"),
-    relationship_type: Optional[str] = Query(None, description="Filter by relationship type"),
-    depth: int = Query(2, ge=1, le=10, description="Maximum path depth to traverse")
+    relationship_type: Optional[str] = Query(
+        None, description="Filter by relationship type"
+    ),
+    depth: int = Query(2, ge=1, le=10, description="Maximum path depth to traverse"),
 ):
     """
     Get traceability matrix showing relationships between elements
-    
+
     Trace connections between different types of nodes (Requirements, Classes, etc.)
     across multiple relationship hops.
-    
+
     Args:
         source_type: Filter by source node type (e.g., "Requirement", "Class")
         target_type: Filter by target node type
         relationship_type: Filter by specific relationship type
         depth: Maximum traversal depth (1-10)
-        
+
     Returns:
         Traceability links with source, target, and relationship chains
     """
@@ -247,7 +253,7 @@ async def get_traceability(
         logger.error(f"Traceability query error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve traceability data: {str(e)}"
+            detail=f"Failed to retrieve traceability data: {str(e)}",
         )
 
 
@@ -256,23 +262,27 @@ async def get_traceability(
 # ============================================================================
 
 
-@router.get("/composition/{node_id}", response_model=CompositionResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/composition/{node_id}",
+    response_model=CompositionResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_composition(
     node_id: str,
-    depth: int = Query(10, ge=1, le=20, description="Maximum composition depth")
+    depth: int = Query(10, ge=1, le=20, description="Maximum composition depth"),
 ):
     """
     Get Bill of Materials (BOM) composition hierarchy for a node
-    
+
     Shows complete containment tree with all children at all levels.
-    
+
     Args:
         node_id: ID of the root node
         depth: Maximum depth to traverse (1-20)
-        
+
     Returns:
         Hierarchical composition structure with all child nodes
-        
+
     Raises:
         HTTPException 404: Node not found or has no composition
     """
@@ -301,7 +311,7 @@ async def get_composition(
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Node with ID '{node_id}' not found or has no composition"
+                detail=f"Node with ID '{node_id}' not found or has no composition",
             )
 
         # Build hierarchical tree structure
@@ -311,7 +321,9 @@ async def get_composition(
                 "name": result[0]["root_name"],
                 "type": result[0]["root_type"],
             },
-            "children": [{"path": r["path_nodes"], "depth": r["depth"]} for r in result],
+            "children": [
+                {"path": r["path_nodes"], "depth": r["depth"]} for r in result
+            ],
             "total_children": len(result),
         }
 
@@ -323,7 +335,7 @@ async def get_composition(
         logger.error(f"Composition query error for {node_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve composition data: {str(e)}"
+            detail=f"Failed to retrieve composition data: {str(e)}",
         )
 
 
@@ -332,24 +344,28 @@ async def get_composition(
 # ============================================================================
 
 
-@router.get("/impact/{node_id}", response_model=ImpactAnalysisResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/impact/{node_id}",
+    response_model=ImpactAnalysisResponse,
+    response_class=Neo4jJSONResponse,
+)
 async def get_impact_analysis(
     node_id: str,
-    depth: int = Query(3, ge=1, le=10, description="Maximum analysis depth")
+    depth: int = Query(3, ge=1, le=10, description="Maximum analysis depth"),
 ):
     """
     Analyze change impact for a node
-    
+
     Finds all nodes that would be affected by changes to this node,
     showing both upstream (dependent on this) and downstream (this depends on) dependencies.
-    
+
     Args:
         node_id: ID of the node to analyze
         depth: Maximum depth to analyze (1-10)
-        
+
     Returns:
         Upstream and downstream impact analysis with affected nodes
-        
+
     Raises:
         HTTPException 404: Node not found
     """
@@ -366,7 +382,7 @@ async def get_impact_analysis(
         if not node_info:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Node with ID '{node_id}' not found"
+                detail=f"Node with ID '{node_id}' not found",
             )
 
         # Find upstream impact (who references/depends on this node)
@@ -442,7 +458,7 @@ async def get_impact_analysis(
         logger.error(f"Impact analysis error for {node_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to analyze impact: {str(e)}"
+            detail=f"Failed to analyze impact: {str(e)}",
         )
 
 
@@ -451,21 +467,25 @@ async def get_impact_analysis(
 # ============================================================================
 
 
-@router.get("/parameters", response_model=ParametersResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/parameters", response_model=ParametersResponse, response_class=Neo4jJSONResponse
+)
 async def get_parameters(
-    class_name: Optional[str] = Query(None, alias="class", description="Filter by class name"),
-    limit: int = Query(1000, ge=1, le=5000, description="Maximum number of results")
+    class_name: Optional[str] = Query(
+        None, alias="class", description="Filter by class name"
+    ),
+    limit: int = Query(1000, ge=1, le=5000, description="Maximum number of results"),
 ):
     """
     Get system parameters from Properties
-    
+
     Retrieve properties with their types, multiplicity, and constraints.
     Useful for design/simulation integration.
-    
+
     Args:
         class_name: Filter by owning class name
         limit: Maximum results (1-5000)
-        
+
     Returns:
         List of parameters with type and multiplicity information
     """
@@ -476,7 +496,9 @@ async def get_parameters(
         params = {"limit": limit}
 
         if class_name:
-            query_parts.append("MATCH (c:Class {name: $class_name})-[:HAS_ATTRIBUTE]->(p)")
+            query_parts.append(
+                "MATCH (c:Class {name: $class_name})-[:HAS_ATTRIBUTE]->(p)"
+            )
             params["class_name"] = class_name
 
         query_parts.append(
@@ -533,7 +555,7 @@ async def get_parameters(
         logger.error(f"Parameters query error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve parameters: {str(e)}"
+            detail=f"Failed to retrieve parameters: {str(e)}",
         )
 
 
@@ -542,20 +564,22 @@ async def get_parameters(
 # ============================================================================
 
 
-@router.get("/constraints", response_model=ConstraintsResponse, response_class=Neo4jJSONResponse)
+@router.get(
+    "/constraints", response_model=ConstraintsResponse, response_class=Neo4jJSONResponse
+)
 async def get_constraints(
     element_id: Optional[str] = Query(None, description="Filter by element ID"),
-    limit: int = Query(1000, ge=1, le=5000, description="Maximum number of results")
+    limit: int = Query(1000, ge=1, le=5000, description="Maximum number of results"),
 ):
     """
     Get validation constraints
-    
+
     Retrieve OCL or other constraint specifications for design/simulation validation.
-    
+
     Args:
         element_id: Filter by owning element ID
         limit: Maximum results (1-5000)
-        
+
     Returns:
         List of constraints with bodies and owners
     """
@@ -594,7 +618,11 @@ async def get_constraints(
                 "body": r["body"],
                 "language": r["language"],
                 "owner": (
-                    {"id": r["owner_id"], "name": r["owner_name"], "type": r["owner_type"]}
+                    {
+                        "id": r["owner_id"],
+                        "name": r["owner_name"],
+                        "type": r["owner_type"],
+                    }
                     if r.get("owner_id")
                     else None
                 ),
@@ -612,5 +640,5 @@ async def get_constraints(
         logger.error(f"Constraints query error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve constraints: {str(e)}"
+            detail=f"Failed to retrieve constraints: {str(e)}",
         )

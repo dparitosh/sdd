@@ -24,7 +24,9 @@ class StaticRetriever(Retriever):
 
     chunks: Sequence[RetrievedChunk]
 
-    def retrieve(self, query: str, *, top_k: int = 5, filters: Mapping[str, Any] | None = None) -> Sequence[RetrievedChunk]:
+    def retrieve(
+        self, query: str, *, top_k: int = 5, filters: Mapping[str, Any] | None = None
+    ) -> Sequence[RetrievedChunk]:
         _ = (query, filters)
         return list(self.chunks)[:top_k]
 
@@ -43,7 +45,9 @@ class AzureAISearchRetriever(Retriever):
         self.index_name = index_name
         self.credential = credential
 
-    def retrieve(self, query: str, *, top_k: int = 5, filters: Mapping[str, Any] | None = None) -> Sequence[RetrievedChunk]:
+    def retrieve(
+        self, query: str, *, top_k: int = 5, filters: Mapping[str, Any] | None = None
+    ) -> Sequence[RetrievedChunk]:
         raise NotImplementedError(
             "AzureAISearchRetriever is a placeholder. Provide a deployment-specific implementation "
             "that calls Azure AI Search."

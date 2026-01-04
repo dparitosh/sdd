@@ -31,7 +31,10 @@ class MockToolRegistry(ToolRegistry):
         if tool_call.name == "get_traceability":
             return ToolResult(
                 name="get_traceability",
-                output={"source": "Requirement-001", "targets": ["Design-001", "Design-002"]},
+                output={
+                    "source": "Requirement-001",
+                    "targets": ["Design-001", "Design-002"],
+                },
             )
         if tool_call.name == "search_artifacts":
             return ToolResult(
@@ -80,12 +83,20 @@ def test_reflector_detects_errors():
 
     plan = Plan(
         goal="test",
-        steps=(PlanStep(id="s1", description="test", tool_call=ToolCall(name="test_tool", arguments={})),),
+        steps=(
+            PlanStep(
+                id="s1",
+                description="test",
+                tool_call=ToolCall(name="test_tool", arguments={}),
+            ),
+        ),
     )
 
     results = [ToolResult(name="test_tool", output="Error: something broke")]
 
-    reflection = reflector.reflect(goal="test", plan=plan, results=results, draft_response="")
+    reflection = reflector.reflect(
+        goal="test", plan=plan, results=results, draft_response=""
+    )
 
     assert reflection["recommendation"] == "retry_with_more_context"
     assert len(reflection["errors"]) > 0
@@ -99,12 +110,20 @@ def test_reflector_ok_when_no_errors():
 
     plan = Plan(
         goal="test",
-        steps=(PlanStep(id="s1", description="test", tool_call=ToolCall(name="test_tool", arguments={})),),
+        steps=(
+            PlanStep(
+                id="s1",
+                description="test",
+                tool_call=ToolCall(name="test_tool", arguments={}),
+            ),
+        ),
     )
 
     results = [ToolResult(name="test_tool", output={"status": "success"})]
 
-    reflection = reflector.reflect(goal="test", plan=plan, results=results, draft_response="All good")
+    reflection = reflector.reflect(
+        goal="test", plan=plan, results=results, draft_response="All good"
+    )
 
     assert reflection["recommendation"] == "ok"
     assert len(reflection["errors"]) == 0
@@ -146,7 +165,9 @@ def test_orchestrator_retries_on_error():
         def call(self, tool_call: ToolCall) -> ToolResult:
             self.call_count += 1
             if self.call_count == 1:
-                return ToolResult(name=tool_call.name, output="Error: first attempt failed")
+                return ToolResult(
+                    name=tool_call.name, output="Error: first attempt failed"
+                )
             return ToolResult(name=tool_call.name, output="Success on retry")
 
     mock_registry = ErrorThenSuccessRegistry()

@@ -32,14 +32,20 @@ def is_redis_enabled() -> bool:
     # If no explicit toggle is present, only enable when configuration is set.
     return any(
         os.environ.get(key) is not None
-        for key in ("REDIS_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_DB", "REDIS_PASSWORD")
+        for key in (
+            "REDIS_URL",
+            "REDIS_HOST",
+            "REDIS_PORT",
+            "REDIS_DB",
+            "REDIS_PASSWORD",
+        )
     )
 
 
 class RedisService:
     """
     Async Redis service client with connection pooling
-    
+
     Features:
     - Async/await support
     - Connection pooling
@@ -55,11 +61,11 @@ class RedisService:
         port: int = 6379,
         db: int = 0,
         password: Optional[str] = None,
-        max_connections: int = 50
+        max_connections: int = 50,
     ):
         """
         Initialize Redis service
-        
+
         Args:
             redis_url: Redis URL (redis://host:port/db)
             host: Redis host
@@ -76,7 +82,7 @@ class RedisService:
             parsed = urlparse(redis_url)
             self.host = parsed.hostname or "localhost"
             self.port = parsed.port or 6379
-            self.db = int(parsed.path.lstrip('/')) if parsed.path else 0
+            self.db = int(parsed.path.lstrip("/")) if parsed.path else 0
             self.password = parsed.password or password
         else:
             self.host = host or os.getenv("REDIS_HOST", "localhost")
@@ -103,7 +109,7 @@ class RedisService:
                 decode_responses=False,  # We'll handle decoding manually
                 socket_timeout=5,
                 socket_connect_timeout=5,
-                retry_on_timeout=True
+                retry_on_timeout=True,
             )
 
             # Create Redis client
@@ -116,7 +122,9 @@ class RedisService:
 
         except Exception as e:
             logger.error(f"❌ Failed to connect to Redis: {e}")
-            logger.warning("⚠️  Running without Redis - session management will be limited")
+            logger.warning(
+                "⚠️  Running without Redis - session management will be limited"
+            )
             self.client = None
 
     async def disconnect(self):
@@ -155,18 +163,13 @@ class RedisService:
                 return None
 
             value = await self.client.get(key)
-            return value.decode('utf-8') if value else None
+            return value.decode("utf-8") if value else None
 
         except Exception as e:
             logger.error(f"Redis GET error: {e}")
             return None
 
-    async def set(
-        self,
-        key: str,
-        value: str,
-        expire: Optional[int] = None
-    ) -> bool:
+    async def set(self, key: str, value: str, expire: Optional[int] = None) -> bool:
         """Set key-value pair with optional expiration"""
         try:
             if not self.client:
@@ -310,7 +313,7 @@ class RedisService:
                 return None
 
             value = await self.client.hget(key, field)
-            return value.decode('utf-8') if value else None
+            return value.decode("utf-8") if value else None
 
         except Exception as e:
             logger.error(f"Redis HGET error: {e}")
@@ -323,10 +326,7 @@ class RedisService:
                 return {}
 
             data = await self.client.hgetall(key)
-            return {
-                k.decode('utf-8'): v.decode('utf-8')
-                for k, v in data.items()
-            }
+            return {k.decode("utf-8"): v.decode("utf-8") for k, v in data.items()}
 
         except Exception as e:
             logger.error(f"Redis HGETALL error: {e}")
@@ -349,10 +349,7 @@ class RedisService:
     # =========================================================================
 
     async def scan(
-        self,
-        cursor: int = 0,
-        match: Optional[str] = None,
-        count: int = 100
+        self, cursor: int = 0, match: Optional[str] = None, count: int = 100
     ) -> tuple:
         """Scan keys with pattern matching"""
         try:
@@ -372,7 +369,7 @@ class RedisService:
                 return []
 
             keys = await self.client.keys(pattern)
-            return [k.decode('utf-8') for k in keys]
+            return [k.decode("utf-8") for k in keys]
 
         except Exception as e:
             logger.error(f"Redis KEYS error: {e}")
@@ -398,12 +395,7 @@ class RedisService:
             logger.error(f"Cache GET error: {e}")
             return None
 
-    async def cache_set(
-        self,
-        key: str,
-        value: Any,
-        expire: int = 3600
-    ) -> bool:
+    async def cache_set(self, key: str, value: Any, expire: int = 3600) -> bool:
         """Set cached value (auto-serialize JSON)"""
         import json
 

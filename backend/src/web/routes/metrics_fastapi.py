@@ -131,8 +131,10 @@ async def get_metrics_summary(api_key: str = Depends(get_api_key)):
 @router.get("/history", response_class=Neo4jJSONResponse)
 async def get_metrics_history(
     window: str = Query("1h", description="Time window: 1h, 6h, 24h, 7d, 30d"),
-    metric: str = Query("cpu", description="Metric: cpu, memory, api_requests, cache_hit_rate"),
-    api_key: str = Depends(get_api_key)
+    metric: str = Query(
+        "cpu", description="Metric: cpu, memory, api_requests, cache_hit_rate"
+    ),
+    api_key: str = Depends(get_api_key),
 ):
     """
     Get time-series metrics data for graphing.
@@ -180,7 +182,9 @@ async def get_metrics_history(
             else:
                 value = 0
 
-            datapoints.append({"timestamp": timestamp.isoformat() + "Z", "value": value})
+            datapoints.append(
+                {"timestamp": timestamp.isoformat() + "Z", "value": value}
+            )
 
         datapoints.reverse()  # Oldest to newest
 
@@ -253,5 +257,5 @@ async def health_check():
                 "uptime_seconds": uptime,
                 "error": str(e),
             },
-            status_code=503
+            status_code=503,
         )

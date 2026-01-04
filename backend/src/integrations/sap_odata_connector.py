@@ -69,15 +69,21 @@ class SAPODataConnector(BasePLMConnector):
 
                 if csrf_response.status_code in [200, 201]:
                     self.csrf_token = csrf_response.headers.get("X-CSRF-Token")
-                    logger.info(f"SAP OData authentication successful: {self.config.base_url}")
+                    logger.info(
+                        f"SAP OData authentication successful: {self.config.base_url}"
+                    )
                     return True
                 else:
-                    logger.error(f"SAP authentication failed: {csrf_response.status_code}")
+                    logger.error(
+                        f"SAP authentication failed: {csrf_response.status_code}"
+                    )
                     return False
 
             elif self.config.auth_token:
                 # OAuth2 token authentication
-                self.client.headers.update({"Authorization": f"Bearer {self.config.auth_token}"})
+                self.client.headers.update(
+                    {"Authorization": f"Bearer {self.config.auth_token}"}
+                )
 
                 # Verify token
                 verify_response = await self.client.get(
@@ -155,7 +161,9 @@ class SAPODataConnector(BasePLMConnector):
                     return {}
 
             else:
-                logger.error(f"Failed to get material {part_id}: {response.status_code}")
+                logger.error(
+                    f"Failed to get material {part_id}: {response.status_code}"
+                )
                 return {}
 
         except Exception as e:
@@ -206,18 +214,26 @@ class SAPODataConnector(BasePLMConnector):
                     # Parse BOM items
                     if bom_data.get("d", {}).get("results"):
                         bom_header = bom_data["d"]["results"][0]
-                        bom_items = bom_header.get("to_MaterialBOMItem", {}).get("results", [])
+                        bom_items = bom_header.get("to_MaterialBOMItem", {}).get(
+                            "results", []
+                        )
 
-                        root_item.children = await self._parse_sap_bom_items(bom_items, depth - 1)
+                        root_item.children = await self._parse_sap_bom_items(
+                            bom_items, depth - 1
+                        )
 
             logger.info(f"Retrieved SAP BOM for {part_id}, depth={depth}")
             return root_item
 
         except Exception as e:
             logger.error(f"Error retrieving SAP BOM for {part_id}: {e}")
-            return BOMItem(part_number=part_id, name="", revision="A", quantity=1, unit="EA")
+            return BOMItem(
+                part_number=part_id, name="", revision="A", quantity=1, unit="EA"
+            )
 
-    async def _parse_sap_bom_items(self, items: List[Dict], remaining_depth: int) -> List[BOMItem]:
+    async def _parse_sap_bom_items(
+        self, items: List[Dict], remaining_depth: int
+    ) -> List[BOMItem]:
         """Parse SAP BOM items recursively"""
         bom_items = []
 
@@ -277,7 +293,8 @@ class SAPODataConnector(BasePLMConnector):
                 params["$filter"] = filter_string
 
             response = await self.client.get(
-                f"/sap/opu/odata/sap/API_PRODUCT_SRV/{self.api_version}/A_Product", params=params
+                f"/sap/opu/odata/sap/API_PRODUCT_SRV/{self.api_version}/A_Product",
+                params=params,
             )
 
             if response.status_code == 200:
@@ -307,7 +324,9 @@ class SAPODataConnector(BasePLMConnector):
             logger.error(f"SAP search error: {e}")
             return []
 
-    async def get_change_orders(self, part_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_change_orders(
+        self, part_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get Engineering Change Records (ECR) from SAP
 

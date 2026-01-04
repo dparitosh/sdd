@@ -116,7 +116,9 @@ class GraphUpdateNotifier:
         self.socketio.emit("graph_update", message, room=room)
         logger.debug(f"Broadcasted node_deleted to {room}")
 
-    def notify_relationship_created(self, rel_data: Dict[str, Any], room: str = "default"):
+    def notify_relationship_created(
+        self, rel_data: Dict[str, Any], room: str = "default"
+    ):
         """Notify clients that a relationship was created"""
         message = {
             "event": "relationship_created",
@@ -144,14 +146,22 @@ class GraphUpdateNotifier:
         return {
             "active_connections": len(self._active_connections),
             "total_rooms": len(
-                set(room for conn in self._active_connections.values() for room in conn["rooms"])
+                set(
+                    room
+                    for conn in self._active_connections.values()
+                    for room in conn["rooms"]
+                )
             ),
             "connections": [
                 {
                     "sid": sid,
                     "rooms": conn["rooms"],
-                    "connected_duration": (datetime.now() - conn["connected_at"]).total_seconds(),
-                    "last_activity": (datetime.now() - conn["last_activity"]).total_seconds(),
+                    "connected_duration": (
+                        datetime.now() - conn["connected_at"]
+                    ).total_seconds(),
+                    "last_activity": (
+                        datetime.now() - conn["last_activity"]
+                    ).total_seconds(),
                 }
                 for sid, conn in self._active_connections.items()
             ],

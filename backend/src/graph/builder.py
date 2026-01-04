@@ -73,7 +73,9 @@ class GraphBuilder:
             try:
                 self.conn.create_node(label, properties)
             except Exception as e:
-                logger.error(f"Failed to create node {properties.get('id', 'unknown')}: {e}")
+                logger.error(
+                    f"Failed to create node {properties.get('id', 'unknown')}: {e}"
+                )
 
     def _create_relationships(self, relationships: List[Dict[str, Any]]) -> None:
         """

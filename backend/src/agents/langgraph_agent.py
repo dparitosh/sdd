@@ -368,7 +368,10 @@ Tool Results:
         system_prompt = """You are an expert MBSE assistant. Based on the information gathered, 
 provide a clear, comprehensive answer to the user's question. Include specific details from the data."""
 
-        response_messages = [SystemMessage(content=system_prompt), HumanMessage(content=context)]
+        response_messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=context),
+        ]
 
         response = self.llm.invoke(response_messages)
 
@@ -382,7 +385,9 @@ provide a clear, comprehensive answer to the user's question. Include specific d
         """Run the agent on a user message using the React agent"""
         try:
             # Use the prebuilt React agent
-            result = self.graph.invoke({"messages": [HumanMessage(content=user_message)]})
+            result = self.graph.invoke(
+                {"messages": [HumanMessage(content=user_message)]}
+            )
 
             # Extract the final response
             if "messages" in result and result["messages"]:

@@ -193,12 +193,16 @@ def invalidate_cache(pattern: str = None):
         logger.info("All cache invalidated")
     else:
         # Simple pattern matching
-        keys_to_delete = [key for key in _cache.cache.keys() if pattern.replace("*", "") in key]
+        keys_to_delete = [
+            key for key in _cache.cache.keys() if pattern.replace("*", "") in key
+        ]
 
         for key in keys_to_delete:
             _cache.delete(key)
 
-        logger.info(f"Invalidated {len(keys_to_delete)} cache entries matching '{pattern}'")
+        logger.info(
+            f"Invalidated {len(keys_to_delete)} cache entries matching '{pattern}'"
+        )
 
 
 def invalidate_node_cache(label: str = None, uid: str = None):

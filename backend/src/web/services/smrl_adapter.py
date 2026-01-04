@@ -34,8 +34,12 @@ class SMRLAdapter:
     }
 
     @classmethod
-    def to_smrl_resource(cls, node_data: Dict[str, Any], node_labels: List[str], 
-                        strict_schema: bool = False) -> Dict[str, Any]:
+    def to_smrl_resource(
+        cls,
+        node_data: Dict[str, Any],
+        node_labels: List[str],
+        strict_schema: bool = False,
+    ) -> Dict[str, Any]:
         """
         Convert Neo4j node to SMRL resource format.
 
@@ -48,7 +52,9 @@ class SMRLAdapter:
             SMRL-compliant resource dictionary
         """
         # Get primary label (first non-internal label)
-        primary_label = next((label for label in node_labels if not label.startswith("_")), None)
+        primary_label = next(
+            (label for label in node_labels if not label.startswith("_")), None
+        )
 
         # Get SMRL type
         smrl_type = node_data.get("smrl_type") or cls.SMRL_TYPE_MAPPING.get(
@@ -57,26 +63,31 @@ class SMRLAdapter:
 
         # Get UID
         uid = node_data.get("uid", node_data.get("id", node_data.get("xmi_id")))
-        
+
         # Build SMRL resource with official schema field names
         if strict_schema:
             resource = {
                 "$href": node_data.get("href", f"/api/v1/{smrl_type}/{uid}"),
                 "Identifiers": cls._build_identifiers(node_data, uid),
                 "CreatedOn": cls._format_datetime(node_data.get("created_on", "")),
-                "LastModified": cls._format_datetime(node_data.get("last_modified", "")),
-                "CreatedBy": cls._build_person_reference(node_data.get("created_by", "unknown")),
-                "ModifiedBy": cls._build_person_reference(node_data.get("modified_by", "unknown")),
+                "LastModified": cls._format_datetime(
+                    node_data.get("last_modified", "")
+                ),
+                "CreatedBy": cls._build_person_reference(
+                    node_data.get("created_by", "unknown")
+                ),
+                "ModifiedBy": cls._build_person_reference(
+                    node_data.get("modified_by", "unknown")
+                ),
                 "VersionIdentifiers": cls._build_version_identifiers(node_data),
             }
-            
+
             # Add Names (optional but recommended)
             if "name" in node_data and node_data["name"]:
-                resource["Names"] = [{
-                    "String": node_data["name"],
-                    "Context": "default"
-                }]
-            
+                resource["Names"] = [
+                    {"String": node_data["name"], "Context": "default"}
+                ]
+
             # Add Descriptions (optional)
             descriptions = cls._build_descriptions(node_data)
             if descriptions:
@@ -99,7 +110,9 @@ class SMRLAdapter:
             if "created_on" in node_data:
                 resource["created_on"] = cls._format_datetime(node_data["created_on"])
             if "last_modified" in node_data:
-                resource["last_modified"] = cls._format_datetime(node_data["last_modified"])
+                resource["last_modified"] = cls._format_datetime(
+                    node_data["last_modified"]
+                )
             if "created_by" in node_data:
                 resource["created_by"] = node_data["created_by"]
             if "modified_by" in node_data:
@@ -111,45 +124,40 @@ class SMRLAdapter:
         return resource
 
     @classmethod
-    def _build_identifiers(cls, node_data: Dict[str, Any], uid: str) -> List[Dict[str, str]]:
+    def _build_identifiers(
+        cls, node_data: Dict[str, Any], uid: str
+    ) -> List[Dict[str, str]]:
         """Build SMRL Identifiers array (required field)."""
         identifiers = []
-        
+
         # Primary UID
-        identifiers.append({
-            "String": uid,
-            "Context": "uid"
-        })
-        
+        identifiers.append({"String": uid, "Context": "uid"})
+
         # Add XMI ID if available
         if "xmi_id" in node_data and node_data["xmi_id"]:
-            identifiers.append({
-                "String": node_data["xmi_id"],
-                "Context": "xmi"
-            })
-        
+            identifiers.append({"String": node_data["xmi_id"], "Context": "xmi"})
+
         return identifiers
-    
+
     @classmethod
     def _build_person_reference(cls, person_id: str) -> Dict[str, str]:
         """Build SMRL PersonOrOrganizationItemReference."""
-        return {
-            "$ref": f"/api/v1/Person/{person_id}"
-        }
-    
+        return {"$ref": f"/api/v1/Person/{person_id}"}
+
     @classmethod
-    def _build_version_identifiers(cls, node_data: Dict[str, Any]) -> List[Dict[str, str]]:
+    def _build_version_identifiers(
+        cls, node_data: Dict[str, Any]
+    ) -> List[Dict[str, str]]:
         """Build SMRL VersionIdentifiers array (required field)."""
         # For now, use a simple version identifier
         # In a full implementation, this would link to VersionChain/VersionPoint
         version = node_data.get("version", "1.0")
-        return [{
-            "String": str(version),
-            "Context": "version"
-        }]
+        return [{"String": str(version), "Context": "version"}]
 
     @classmethod
-    def _build_descriptions(cls, node_data: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+    def _build_descriptions(
+        cls, node_data: Dict[str, Any]
+    ) -> Optional[List[Dict[str, Any]]]:
         """Build SMRL descriptions array from various comment/description fields."""
         descriptions = []
 
@@ -176,7 +184,9 @@ class SMRLAdapter:
         return str(dt)
 
     @classmethod
-    def _get_type_specific_fields(cls, node_type: str, node_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_type_specific_fields(
+        cls, node_type: str, node_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Get type-specific SMRL fields."""
         fields = {}
 
@@ -233,7 +243,9 @@ class SMRLAdapter:
             if "status" in node_data:
                 fields["approval_status"] = node_data["status"]
             if "approval_date" in node_data:
-                fields["approval_date"] = cls._format_datetime(node_data["approval_date"])
+                fields["approval_date"] = cls._format_datetime(
+                    node_data["approval_date"]
+                )
             if "comments" in node_data:
                 fields["approval_comments"] = node_data["comments"]
 
@@ -255,13 +267,19 @@ class SMRLAdapter:
         }
 
         for key, value in node_data.items():
-            if key not in excluded_keys and key not in fields and not key.startswith("_"):
+            if (
+                key not in excluded_keys
+                and key not in fields
+                and not key.startswith("_")
+            ):
                 fields[key] = value
 
         return fields
 
     @classmethod
-    def to_smrl_collection(cls, nodes: List[Dict], include_metadata: bool = True) -> Dict[str, Any]:
+    def to_smrl_collection(
+        cls, nodes: List[Dict], include_metadata: bool = True
+    ) -> Dict[str, Any]:
         """
         Convert list of nodes to SMRL collection format.
 
@@ -306,7 +324,9 @@ class SMRLAdapter:
 
         # Validate href format
         if "href" in resource and not resource["href"].startswith("/api/v1/"):
-            errors.append(f"Invalid href format: {resource['href']} (should start with /api/v1/)")
+            errors.append(
+                f"Invalid href format: {resource['href']} (should start with /api/v1/)"
+            )
 
         return (len(errors) == 0, errors)
 

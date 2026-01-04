@@ -49,7 +49,9 @@ class OIDCAuthenticator:
         self.oauth.init_app(app)
 
         # Configure session
-        app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-prod")
+        app.config["SECRET_KEY"] = os.getenv(
+            "FLASK_SECRET_KEY", "dev-secret-key-change-in-prod"
+        )
         app.config["SESSION_TYPE"] = "filesystem"
 
         # Register providers
@@ -138,12 +140,15 @@ class OIDCAuthenticator:
 
             # Get user info
             if provider == "azure":
-                resp = self.providers[provider].get("https://graph.microsoft.com/v1.0/me")
+                resp = self.providers[provider].get(
+                    "https://graph.microsoft.com/v1.0/me"
+                )
                 user_info = resp.json()
 
                 user_data = {
                     "id": user_info.get("id"),
-                    "email": user_info.get("mail") or user_info.get("userPrincipalName"),
+                    "email": user_info.get("mail")
+                    or user_info.get("userPrincipalName"),
                     "name": user_info.get("displayName"),
                     "provider": provider,
                 }

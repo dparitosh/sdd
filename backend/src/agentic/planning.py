@@ -22,11 +22,18 @@ class KeywordPlanner(Planner):
         _ = context
         normalized = goal.lower()
 
-        if any(k in normalized for k in ["traceability", "trace", "requirements to design", "matrix"]):
+        if any(
+            k in normalized
+            for k in ["traceability", "trace", "requirements to design", "matrix"]
+        ):
             return Plan(
                 goal=goal,
                 steps=(
-                    PlanStep(id="s1", description="Get traceability matrix", tool_call=ToolCall(name="get_traceability", arguments={})),
+                    PlanStep(
+                        id="s1",
+                        description="Get traceability matrix",
+                        tool_call=ToolCall(name="get_traceability", arguments={}),
+                    ),
                 ),
             )
 
@@ -38,7 +45,10 @@ class KeywordPlanner(Planner):
                     PlanStep(
                         id="s1",
                         description="Search likely impacted artifacts",
-                        tool_call=ToolCall(name="search_artifacts", arguments={"query": goal, "limit": 5}),
+                        tool_call=ToolCall(
+                            name="search_artifacts",
+                            arguments={"query": goal, "limit": 5},
+                        ),
                     ),
                 ),
             )
@@ -47,7 +57,11 @@ class KeywordPlanner(Planner):
             return Plan(
                 goal=goal,
                 steps=(
-                    PlanStep(id="s1", description="Get graph statistics", tool_call=ToolCall(name="get_statistics", arguments={})),
+                    PlanStep(
+                        id="s1",
+                        description="Get graph statistics",
+                        tool_call=ToolCall(name="get_statistics", arguments={}),
+                    ),
                 ),
             )
 
@@ -58,7 +72,9 @@ class KeywordPlanner(Planner):
                 PlanStep(
                     id="s1",
                     description="Search artifacts relevant to the goal",
-                    tool_call=ToolCall(name="search_artifacts", arguments={"query": goal, "limit": 5}),
+                    tool_call=ToolCall(
+                        name="search_artifacts", arguments={"query": goal, "limit": 5}
+                    ),
                 ),
             ),
         )

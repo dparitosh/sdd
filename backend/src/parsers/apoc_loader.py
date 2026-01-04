@@ -101,7 +101,9 @@ class APOCXMILoader:
                 # Add other scalar attributes
                 for key, value in elem.attrib.items():
                     clean_key = key.split("}")[-1]  # Remove namespace
-                    if clean_key not in ["id", "type", "name"] and isinstance(value, str):
+                    if clean_key not in ["id", "type", "name"] and isinstance(
+                        value, str
+                    ):
                         element_data[clean_key] = value
 
                 elements.append(element_data)
@@ -158,7 +160,9 @@ class APOCXMILoader:
             general_elem = gen.find("general")
             general_id = None
             if general_elem is not None:
-                general_id = general_elem.get("{http://www.omg.org/spec/XMI/20131001}idref")
+                general_id = general_elem.get(
+                    "{http://www.omg.org/spec/XMI/20131001}idref"
+                )
 
             # The specific (child class) is the parent of this generalization element
             parent = gen.getparent()
@@ -192,12 +196,16 @@ class APOCXMILoader:
             if not client_id:
                 client_elem = dep.find("client")
                 if client_elem is not None:
-                    client_id = client_elem.get("{http://www.omg.org/spec/XMI/20131001}idref")
+                    client_id = client_elem.get(
+                        "{http://www.omg.org/spec/XMI/20131001}idref"
+                    )
 
             if not supplier_id:
                 supplier_elem = dep.find("supplier")
                 if supplier_elem is not None:
-                    supplier_id = supplier_elem.get("{http://www.omg.org/spec/XMI/20131001}idref")
+                    supplier_id = supplier_elem.get(
+                        "{http://www.omg.org/spec/XMI/20131001}idref"
+                    )
 
             if dep_id and client_id and supplier_id:
                 relationships.append(
@@ -281,7 +289,9 @@ class APOCXMILoader:
 
                 # Separate id, name, type from other properties
                 properties = {
-                    k: v for k, v in row.items() if k not in ["id", "name", "type"] and pd.notna(v)
+                    k: v
+                    for k, v in row.items()
+                    if k not in ["id", "name", "type"] and pd.notna(v)
                 }
 
                 elements_data.append(

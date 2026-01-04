@@ -35,7 +35,9 @@ class EngineeringState(TypedDict):
 
     # Input
     user_query: str
-    task_type: Literal["traceability", "impact_analysis", "requirement_check", "bom_sync"]
+    task_type: Literal[
+        "traceability", "impact_analysis", "requirement_check", "bom_sync"
+    ]
 
     # MBSE Agent outputs
     requirement_id: str | None
@@ -88,7 +90,11 @@ def mbse_agent_node(state: EngineeringState) -> dict:
         if "requirement" in user_query.lower():
             traceability_data = tools.get_traceability()
 
-        messages = [AIMessage(content=f"MBSE Agent: Found relevant artifacts in knowledge graph")]
+        messages = [
+            AIMessage(
+                content=f"MBSE Agent: Found relevant artifacts in knowledge graph"
+            )
+        ]
 
         return {
             "artifact_details": {"search_results": search_results},
@@ -113,7 +119,9 @@ def plm_agent_node(state: EngineeringState) -> dict:
     """
     logger.info("🔧 PLM Agent: Analyzing BOM and change impact")
 
-    messages = [AIMessage(content="PLM Agent: Analyzing BOM structure and dependencies")]
+    messages = [
+        AIMessage(content="PLM Agent: Analyzing BOM structure and dependencies")
+    ]
 
     try:
         # Placeholder for PLM integration (connectors ready, credentials pending)
@@ -192,7 +200,9 @@ def simulation_agent_node(state: EngineeringState) -> dict:
         logger.error(f"Simulation Agent error: {e}")
         return {
             "error": f"Simulation Agent failed: {str(e)}",
-            "messages": [AIMessage(content=f"Simulation Agent encountered error: {str(e)}")],
+            "messages": [
+                AIMessage(content=f"Simulation Agent encountered error: {str(e)}")
+            ],
             "next_action": "end",
         }
 
@@ -204,7 +214,9 @@ def compliance_agent_node(state: EngineeringState) -> dict:
     """
     logger.info("✅ Compliance Agent: Checking compliance with standards")
 
-    messages = [AIMessage(content="Compliance Agent: Validating against ISO 26262 and DO-178C")]
+    messages = [
+        AIMessage(content="Compliance Agent: Validating against ISO 26262 and DO-178C")
+    ]
 
     try:
         # Placeholder for compliance checking (to be implemented)
@@ -233,7 +245,9 @@ def compliance_agent_node(state: EngineeringState) -> dict:
         logger.error(f"Compliance Agent error: {e}")
         return {
             "error": f"Compliance Agent failed: {str(e)}",
-            "messages": [AIMessage(content=f"Compliance Agent encountered error: {str(e)}")],
+            "messages": [
+                AIMessage(content=f"Compliance Agent encountered error: {str(e)}")
+            ],
             "next_action": "end",
         }
 
@@ -289,7 +303,9 @@ def create_engineering_workflow() -> StateGraph:
 # ============================================================================
 
 
-def execute_engineering_workflow(user_query: str, task_type: str = "impact_analysis") -> dict:
+def execute_engineering_workflow(
+    user_query: str, task_type: str = "impact_analysis"
+) -> dict:
     """
     Execute the engineering workflow for a given query
 

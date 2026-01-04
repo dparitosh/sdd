@@ -2,7 +2,13 @@
 Prometheus metrics for monitoring application performance
 """
 
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    Counter,
+    Histogram,
+    Gauge,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
 from flask import Response
 from functools import wraps
 import time
@@ -15,7 +21,9 @@ REQUEST_COUNT = Counter(
 )
 
 REQUEST_DURATION = Histogram(
-    "mbse_http_request_duration_seconds", "HTTP request duration in seconds", ["method", "endpoint"]
+    "mbse_http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
 )
 
 NEO4J_QUERY_COUNT = Counter(
@@ -23,23 +31,31 @@ NEO4J_QUERY_COUNT = Counter(
 )
 
 NEO4J_QUERY_DURATION = Histogram(
-    "mbse_neo4j_query_duration_seconds", "Neo4j query duration in seconds", ["query_type"]
+    "mbse_neo4j_query_duration_seconds",
+    "Neo4j query duration in seconds",
+    ["query_type"],
 )
 
-ACTIVE_CONNECTIONS = Gauge("mbse_active_connections", "Number of active database connections")
+ACTIVE_CONNECTIONS = Gauge(
+    "mbse_active_connections", "Number of active database connections"
+)
 
 CACHE_HITS = Counter("mbse_cache_hits_total", "Total cache hits", ["cache_type"])
 
 CACHE_MISSES = Counter("mbse_cache_misses_total", "Total cache misses", ["cache_type"])
 
-AGENT_QUERIES = Counter("mbse_agent_queries_total", "Total AI agent queries", ["status"])
+AGENT_QUERIES = Counter(
+    "mbse_agent_queries_total", "Total AI agent queries", ["status"]
+)
 
 AGENT_QUERY_DURATION = Histogram(
     "mbse_agent_query_duration_seconds", "AI agent query duration in seconds"
 )
 
 PLM_SYNC_COUNT = Counter(
-    "mbse_plm_sync_total", "Total PLM synchronizations", ["plm_system", "direction", "status"]
+    "mbse_plm_sync_total",
+    "Total PLM synchronizations",
+    ["plm_system", "direction", "status"],
 )
 
 PLM_SYNC_DURATION = Histogram(
@@ -187,10 +203,14 @@ class MetricsCollector:
         ACTIVE_CONNECTIONS.set(count)
 
     @staticmethod
-    def record_plm_sync(plm_system: str, direction: str, success: bool, duration: float):
+    def record_plm_sync(
+        plm_system: str, direction: str, success: bool, duration: float
+    ):
         """Record PLM synchronization metrics"""
         status = "success" if success else "error"
-        PLM_SYNC_COUNT.labels(plm_system=plm_system, direction=direction, status=status).inc()
+        PLM_SYNC_COUNT.labels(
+            plm_system=plm_system, direction=direction, status=status
+        ).inc()
         PLM_SYNC_DURATION.labels(plm_system=plm_system).observe(duration)
 
 

@@ -65,18 +65,26 @@ class WindchillConnector(BasePLMConnector):
                     self.csrf_token = auth_response.headers.get("X-CSRF-TOKEN")
                     self.session_id = auth_response.cookies.get("JSESSIONID")
 
-                    logger.info(f"Windchill authentication successful: {self.config.base_url}")
+                    logger.info(
+                        f"Windchill authentication successful: {self.config.base_url}"
+                    )
                     return True
                 else:
-                    logger.error(f"Windchill authentication failed: {auth_response.status_code}")
+                    logger.error(
+                        f"Windchill authentication failed: {auth_response.status_code}"
+                    )
                     return False
 
             elif self.config.auth_token:
                 # OAuth2 token authentication
-                self.client.headers.update({"Authorization": f"Bearer {self.config.auth_token}"})
+                self.client.headers.update(
+                    {"Authorization": f"Bearer {self.config.auth_token}"}
+                )
 
                 # Verify token
-                verify_response = await self.client.get("/Windchill/servlet/rest/v2/system/version")
+                verify_response = await self.client.get(
+                    "/Windchill/servlet/rest/v2/system/version"
+                )
 
                 if verify_response.status_code == 200:
                     logger.info("Windchill OAuth2 authentication successful")
@@ -204,7 +212,9 @@ class WindchillConnector(BasePLMConnector):
 
         except Exception as e:
             logger.error(f"Error retrieving Windchill BOM for {part_id}: {e}")
-            return BOMItem(part_number=part_id, name="", revision="", quantity=1, unit="EA")
+            return BOMItem(
+                part_number=part_id, name="", revision="", quantity=1, unit="EA"
+            )
 
     async def _parse_bom_components(
         self, components: List[Dict], remaining_depth: int
@@ -262,7 +272,9 @@ class WindchillConnector(BasePLMConnector):
                 search_params["state"] = criteria["state"]
 
             response = await self.client.get(
-                "/Windchill/servlet/rest/v2/parts", headers=headers, params=search_params
+                "/Windchill/servlet/rest/v2/parts",
+                headers=headers,
+                params=search_params,
             )
 
             if response.status_code == 200:
@@ -292,7 +304,9 @@ class WindchillConnector(BasePLMConnector):
             logger.error(f"Windchill search error: {e}")
             return []
 
-    async def get_change_orders(self, part_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_change_orders(
+        self, part_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Get change requests/notices from Windchill
 

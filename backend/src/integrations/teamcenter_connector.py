@@ -34,7 +34,10 @@ class TeamcenterConnector(BasePLMConnector):
             # Teamcenter REST login endpoint
             auth_url = f"{self.api_url}/authentication/login"
 
-            auth_data = {"username": self.config.username, "password": self.config.password}
+            auth_data = {
+                "username": self.config.username,
+                "password": self.config.password,
+            }
 
             response = await self._client.post(auth_url, json=auth_data)
             response.raise_for_status()
@@ -131,7 +134,11 @@ class TeamcenterConnector(BasePLMConnector):
             # Get BOM structure
             bom_url = f"{self.api_url}/bom/expand"
 
-            bom_request = {"item_id": part_id, "depth": depth, "include_variants": False}
+            bom_request = {
+                "item_id": part_id,
+                "depth": depth,
+                "include_variants": False,
+            }
 
             response = await self._client.post(bom_url, json=bom_request)
             response.raise_for_status()
@@ -142,7 +149,9 @@ class TeamcenterConnector(BasePLMConnector):
             # Convert to BOMItem tree
             bom_tree = self._build_bom_tree(root_data, children_data)
 
-            logger.info(f"Retrieved BOM for {part_id} with {len(children_data)} children")
+            logger.info(
+                f"Retrieved BOM for {part_id} with {len(children_data)} children"
+            )
             return bom_tree
 
         except Exception as e:

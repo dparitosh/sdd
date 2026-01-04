@@ -45,7 +45,9 @@ def main():
                 if mossec_dir.exists():
                     xmi_files = list(mossec_dir.glob("*.xmi"))
                     if xmi_files:
-                        logger.info(f"Found {len(xmi_files)} XMI file(s) in {mossec_dir}")
+                        logger.info(
+                            f"Found {len(xmi_files)} XMI file(s) in {mossec_dir}"
+                        )
                         for xmi_file in xmi_files:
                             logger.info(f"Loading: {xmi_file}")
                             stats = loader.load_xmi_file(xmi_file)
