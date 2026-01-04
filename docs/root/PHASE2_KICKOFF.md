@@ -176,7 +176,7 @@ Container-based deployment has been removed from this repository. Run the backen
 | **Rate Limiting** | Flask-Limiter | 3.5+ | API protection |
 
 ### Infrastructure
-- **CI/CD**: GitHub Actions (ready to configure)
+- **CI/CD**: Not configured (provider TBD)
 - **Monitoring**: Prometheus + Grafana (ready to deploy)
 - **Logging**: Loguru (already implemented)
 

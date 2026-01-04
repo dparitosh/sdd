@@ -109,7 +109,7 @@ Legacy Flask routes/app modules referenced in older plans have been removed as p
 
 #### Remaining Issues ❌
 - **Production Deployment**: Runbook not finalized; K8s manifests pending
-- **CI/CD**: No GitHub Actions workflow
+- **CI/CD**: No CI workflow configured
 - **Security**: Rate limiting partial, no JWT enforcement
 - **Accessibility**: Need WCAG 2.1 AA compliance audit
 
@@ -1512,7 +1512,6 @@ Container-based deployment artifacts have been removed from this repository.
 12. ⚠️ **SHACL validation** - Constraint validation engine
 13. ⚠️ **Graph visualization** - React Flow integration
 14. ⚠️ **Performance optimization** - Code splitting, lazy loading
-15. ⚠️ **CI/CD pipeline** - GitHub Actions
 15. ⚠️ **CI/CD pipeline**
 16. ⚠️ **Accessibility** - WCAG 2.1 AA compliance
 17. ⚠️ **API documentation** - OpenAPI UI improvements

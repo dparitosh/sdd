@@ -382,7 +382,7 @@ Phase 1 ("Foundation & Cleanup") is now **100% complete** with all 11 subsection
 
 8. **Deployment**
    - Kubernetes manifests
-   - CI/CD pipeline (GitHub Actions)
+   - CI/CD pipeline (provider TBD)
 
 ---
 

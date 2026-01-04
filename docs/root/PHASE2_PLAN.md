@@ -151,7 +151,7 @@
 - ✅ Production readiness documentation updated
 - ✅ Production-ready security
 - ✅ Monitoring dashboard
-- ✅ CI/CD pipeline (GitHub Actions)
+- ✅ CI/CD pipeline (provider TBD)
 
 ---
 
@@ -348,7 +348,7 @@ python tests/test_agent_performance.py
 
 ### DevOps
 - [Kubernetes Basics](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
-- GitHub Actions CI/CD Workflows
+- CI/CD workflow guides (provider TBD)
 
 ---
 
