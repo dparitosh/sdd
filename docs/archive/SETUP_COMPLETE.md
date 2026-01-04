@@ -37,11 +37,11 @@ mbse-neo4j-graph-rep/
 pip install -r requirements.txt
 
 # Test connection
-./run.sh test
+python backend\src\cli\main.py test-connection
 
 # Process XMI files
 # 1. Place XMI files in data/raw/
-# 2. Run: ./run.sh main
+# 2. Run: python backend\src\main.py
 ```
 
 ## 🎯 Next Steps

@@ -287,7 +287,7 @@ cp .env.example .env
 python scripts/migrate_phase2.py
 
 # Start services
-./scripts/start_backend.sh
+./scripts/start_backend.ps1
 npm run dev
 ```
 

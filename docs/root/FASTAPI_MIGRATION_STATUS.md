@@ -94,7 +94,7 @@ Status: **✅ 100% COMPLETE** (15/15 routes - ALL MIGRATED)
 
 ### ✅ Updated Configuration Files
 
-- ✅ `start_backend.sh` - Uses uvicorn instead of Flask
+- ✅ `start_backend.ps1` - Uses uvicorn instead of Flask
 - ✅ `README.md` - Startup instructions updated
 - ✅ `QUICKSTART.md` - FastAPI quick start guide
 - ✅ `ARCHITECTURE.md` - Architecture reflects FastAPI
@@ -166,6 +166,7 @@ curl -X POST http://localhost:5000/api/version/checkpoint \
 | Concurrent requests | Max 100 | Max 1000+ | **10x more** |
 | API doc generation | Manual | Auto | **∞ faster** |
 
+
 ## Architecture Changes
 
 ### Before (Flask)
@@ -212,12 +213,12 @@ async def health():
 ## Running FastAPI Server
 
 ### Development
-```bash
+```powershell
 # Using uvicorn directly (RECOMMENDED)
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
-# Or using the startup script
-./scripts/start_backend.sh
+# Or using the PowerShell startup script
+./scripts/start_backend.ps1
 
 # With custom workers (production-like)
 uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --workers 4

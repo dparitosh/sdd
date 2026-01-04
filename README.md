@@ -56,16 +56,16 @@ A distributed collaboration platform for Model-Based Systems Engineering (MBSE) 
 
 ### 1. Start the FastAPI Backend Server
 
-```bash
-cd /workspaces/mbse-neo4j-graph-rep
+```powershell
+# From the repo root
 
 # Using uvicorn directly (recommended for development)
 cd backend
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
-# Or using the startup script
+# Or using the PowerShell startup script
 cd ..
-./scripts/start_backend.sh
+./scripts/start_backend.ps1
 ```
 
 ### 2. Access the Application

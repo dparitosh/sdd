@@ -253,8 +253,7 @@ Follow [Semantic Versioning](https://semver.org/):
 ## Git Hooks
 
 ### Pre-commit
-```bash
-#!/bin/bash
+```text
 # .git/hooks/pre-commit
 
 # Run linting
@@ -266,8 +265,7 @@ mypy src/
 ```
 
 ### Commit-msg
-```bash
-#!/bin/bash
+```text
 # .git/hooks/commit-msg
 
 # Validate commit message format

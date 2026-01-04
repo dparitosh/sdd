@@ -43,12 +43,12 @@ pip list | grep -E "(fastapi|uvicorn|pydantic|PyJWT)"
 
 ### 3. Start FastAPI Server
 
-```bash
+```powershell
 # Using uvicorn directly (recommended for development)
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
 
-# Or using the startup script
-./scripts/start_backend.sh
+# Or using the PowerShell startup script
+./scripts/start_backend.ps1
 ```
 
 Look for:

@@ -6,9 +6,9 @@
 ## 🚀 Starting Services
 
 ### Development Mode
-```bash
+```powershell
 # Backend (FastAPI)
-./scripts/start_backend.sh
+./scripts/start_backend.ps1
 # or (manual)
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000
 
@@ -28,9 +28,9 @@ Container-based deployment has been removed from this repository.
 ## 🤖 AI Agent Usage
 
 ### Interactive Mode
-```bash
+```powershell
 # Set API key
-export OPENAI_API_KEY=your-key-here
+$env:OPENAI_API_KEY = "your-key-here"
 
 # Run agent
 python -m src.agents.langgraph_agent
@@ -292,7 +292,8 @@ kill -9 <PID>
 neo4j-driver-test %NEO4J_URI%
 
 # Check Neo4j status
-systemctl status neo4j  # if running as service
+# If Neo4j is running as a Windows Service, use the Services UI or:
+Get-Service -Name neo4j* | Format-Table -AutoSize
 
 # Neo4j logs
 tail -f /var/log/neo4j/neo4j.log
@@ -307,7 +308,7 @@ tail -f /var/log/neo4j/neo4j.log
 - Frontend UI: http://localhost:3001
 - Neo4j Browser: http://localhost:7474
 - OpenAPI Docs: http://localhost:5000/api/openapi.json
-- Health Check: http://localhost:5000/health
+- Health Check: http://localhost:5000/api/health
 
 ### Documentation
 - Phase 2 Plan: `PHASE2_PLAN.md`
@@ -320,10 +321,10 @@ tail -f /var/log/neo4j/neo4j.log
 ## 🎯 Common Workflows
 
 ### Daily Development
-```bash
+```powershell
 # 1. Start services
-./scripts/start_backend.sh &
-npm run dev &
+./scripts/start_backend.ps1 -Detach
+./scripts/start_ui.ps1 -Detach
 
 # 2. Make changes
 # Edit code...

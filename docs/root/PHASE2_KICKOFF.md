@@ -113,7 +113,7 @@ Container-based deployment has been removed from this repository. Run the backen
 
 2. **Local Smoke Test** (Priority: HIGH)
    ```bash
-   ./scripts/start_backend.sh
+   ./scripts/start_backend.ps1
    npm run dev
 
    curl http://localhost:5000/api/health

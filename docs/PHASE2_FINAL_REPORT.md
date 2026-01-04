@@ -479,7 +479,7 @@ Flask-Limiter>=3.5.0   ✅ API rate limiting
 ## Deployment Instructions
 
 ### Quick Start (Development)
-```bash
+```powershell
 # 1. Clone and setup
 git clone <repo>
 cd mbse-neo4j-graph-rep
@@ -493,8 +493,8 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 
 # 4. Start services
-./scripts/start_backend.sh
-cd frontend && npm run dev
+./scripts/start_backend.ps1
+./scripts/start_ui.ps1
 ```
 
 ### Production Deployment

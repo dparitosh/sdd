@@ -94,12 +94,13 @@ npm run dev
 - `GET /api/hierarchy/*` - Cross-schema navigation & traceability
 
 **How to Start:**
-```bash
-cd /workspaces/mbse-neo4j-graph-rep
-export PYTHONPATH=/workspaces/mbse-neo4j-graph-rep
+```powershell
+# From the repo root
+$env:PYTHONPATH = (Get-Location).Path
 python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
-# OR use the startup script
-./scripts/start_backend.sh
+
+# OR use the PowerShell startup script
+./scripts/start_backend.ps1
 ```
 
 **Environment:**
