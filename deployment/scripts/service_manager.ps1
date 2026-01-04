@@ -56,6 +56,12 @@ function Show-Usage {
     Write-Host "  .\service_manager.ps1 start          # Start all services"
     Write-Host "  .\service_manager.ps1 backend start  # Start backend only"
     Write-Host "  .\service_manager.ps1 status         # Check status"
+    Write-Host ""
+    Write-Host "Manual mode env vars (defaults are localhost-only for safety):"
+    Write-Host "  BACKEND_HOST   (default: 127.0.0.1)"
+    Write-Host "  BACKEND_PORT   (default: 5000)"
+    Write-Host "  FRONTEND_HOST  (default: 127.0.0.1)"
+    Write-Host "  FRONTEND_PORT  (default: 3001)"
 }
 
 function Start-Backend {
@@ -69,8 +75,11 @@ function Start-Backend {
         Write-Host "[WARNING] Created .env from .env.example; review credentials before production use" -ForegroundColor Yellow
     }
     
+        $backendHost = if ([string]::IsNullOrWhiteSpace($env:BACKEND_HOST)) { "127.0.0.1" } else { $env:BACKEND_HOST }
+        $backendPort = if ([string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) { "5000" } else { $env:BACKEND_PORT }
+
         $pythonExe = Get-PythonExe
-        $process = Start-Process -FilePath $pythonExe -ArgumentList "-m", "uvicorn", "src.web.app_fastapi:app", "--host", "127.0.0.1", "--port", "5000" `
+        $process = Start-Process -FilePath $pythonExe -ArgumentList "-m", "uvicorn", "src.web.app_fastapi:app", "--host", $backendHost, "--port", $backendPort `
             -RedirectStandardOutput "$env:TEMP\mbse-backend.log" `
             -RedirectStandardError "$env:TEMP\mbse-backend-error.log" `
             -PassThru -WindowStyle Hidden
@@ -134,7 +143,10 @@ function Start-Frontend {
             & $npmExe install
         }
         
-        $process = Start-Process -FilePath $npmExe -ArgumentList "run", "dev", "--", "--host", "0.0.0.0", "--port", "3001" `
+        $frontendHost = if ([string]::IsNullOrWhiteSpace($env:FRONTEND_HOST)) { "127.0.0.1" } else { $env:FRONTEND_HOST }
+        $frontendPort = if ([string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { "3001" } else { $env:FRONTEND_PORT }
+
+        $process = Start-Process -FilePath $npmExe -ArgumentList "run", "dev", "--", "--host", $frontendHost, "--port", $frontendPort `
             -RedirectStandardOutput "$env:TEMP\mbse-frontend.log" `
             -RedirectStandardError "$env:TEMP\mbse-frontend-error.log" `
             -PassThru -WindowStyle Hidden

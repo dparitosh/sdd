@@ -37,6 +37,12 @@ echo Examples:
 echo   %~nx0 start          # Start all services
 echo   %~nx0 backend start  # Start backend only
 echo   %~nx0 status         # Check status
+echo.
+echo Manual mode env vars (defaults are localhost-only for safety):
+echo   BACKEND_HOST   (default: 127.0.0.1)
+echo   BACKEND_PORT   (default: 5000)
+echo   FRONTEND_HOST  (default: 127.0.0.1)
+echo   FRONTEND_PORT  (default: 3001)
 goto :eof
 
 :start
@@ -153,7 +159,10 @@ set PYTHONPATH=%CD%
 set "PYTHON_EXE=python"
 if exist "%PROJECT_ROOT%\.venv\Scripts\python.exe" set "PYTHON_EXE=%PROJECT_ROOT%\.venv\Scripts\python.exe"
 
-for /f %%a in ('powershell -NoProfile -Command "$pythonExe='%PYTHON_EXE%'; $p=Start-Process -FilePath $pythonExe -ArgumentList @('-m','uvicorn','src.web.app_fastapi:app','--host','127.0.0.1','--port','5000') -RedirectStandardOutput '%TEMP%\mbse-backend.log' -RedirectStandardError '%TEMP%\mbse-backend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
+if "%BACKEND_HOST%"=="" set "BACKEND_HOST=127.0.0.1"
+if "%BACKEND_PORT%"=="" set "BACKEND_PORT=5000"
+
+for /f %%a in ('powershell -NoProfile -Command "$pythonExe='%PYTHON_EXE%'; $p=Start-Process -FilePath $pythonExe -ArgumentList @('-m','uvicorn','src.web.app_fastapi:app','--host','%BACKEND_HOST%','--port','%BACKEND_PORT%') -RedirectStandardOutput '%TEMP%\mbse-backend.log' -RedirectStandardError '%TEMP%\mbse-backend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\backend.pid"
 )
 if exist "%PID_DIR%\backend.pid" (
@@ -179,6 +188,10 @@ goto :eof
 :start_frontend
 echo Starting frontend...
 cd /d "%FRONTEND_DIR%"
+
+if "%FRONTEND_HOST%"=="" set "FRONTEND_HOST=127.0.0.1"
+if "%FRONTEND_PORT%"=="" set "FRONTEND_PORT=3001"
+
 for /f %%a in ('powershell -NoProfile -Command "$p=Start-Process -FilePath npm -ArgumentList @('run','dev','--','--host','127.0.0.1','--port','3001') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\frontend.pid"
 )
