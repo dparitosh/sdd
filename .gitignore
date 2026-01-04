@@ -89,6 +89,9 @@ node_modules/
 dist/
 *.local
 
+# Windows cleanup artifacts
+node_modules_old_*/
+
 # Monorepo / subprojects
 **/node_modules/
 **/dist/
