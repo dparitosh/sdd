@@ -3,7 +3,8 @@
 ## ✅ Completed Components
 
 ### 1. CI/CD Pipeline with Git Integration
-**File**: `.github/workflows/ci-cd.yml`
+CI/CD configuration is intentionally not included in this repository.
+Set up these checks in your chosen CI provider.
 
 - ✅ Git workflow validation job
   - Branch naming convention enforcement
@@ -17,7 +18,7 @@
   - Pull requests to `main` and `develop`
   - Git tags (`v*.*.*`)
   - Manual workflow dispatch
-  - GitHub releases
+   - Releases (if supported by your CI provider)
 
 - ✅ Automated checks:
   - Linting (Black, Flake8, mypy)
@@ -208,12 +209,11 @@ git push -u origin release/v1.0.0
 
 ## 📚 Documentation Files Created
 
-1. ✅ `.github/workflows/ci-cd.yml` - Complete CI/CD pipeline
-2. ✅ `.github/pull_request_template.md` - PR template
-3. ✅ `.github/ISSUE_TEMPLATE/bug_report.yml` - Bug report form
-4. ✅ `.github/ISSUE_TEMPLATE/feature_request.yml` - Feature request form
-5. ✅ `.github/GIT_WORKFLOW.md` - Comprehensive Git guide
-6. ✅ `.github/BRANCH_PROTECTION.md` - Protection configuration guide
+1. ✅ `.github/pull_request_template.md` - PR template
+2. ✅ `.github/ISSUE_TEMPLATE/bug_report.yml` - Bug report form
+3. ✅ `.github/ISSUE_TEMPLATE/feature_request.yml` - Feature request form
+4. ✅ `.github/GIT_WORKFLOW.md` - Comprehensive Git guide
+5. ✅ `.github/BRANCH_PROTECTION.md` - Protection configuration guide
 
 ---
 

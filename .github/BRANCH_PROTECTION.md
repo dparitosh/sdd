@@ -248,7 +248,7 @@ Enable auto-merge for dependabot PRs:
 1. Navigate to: **Settings → Code security and analysis**
 2. Enable: **Dependabot alerts**
 3. Enable: **Dependabot security updates**
-4. Configure auto-merge rules in `.github/workflows/auto-merge-dependabot.yml`
+4. Configure auto-merge rules using your platform/CI provider's settings (no workflow file is tracked in this repo)
 
 ---
 
