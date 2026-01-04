@@ -1500,17 +1500,8 @@ class AnsysConnector:
 **Goal:** Full CI/CD pipeline for MBSE workflows
 
 #### Week 13-14: CI/CD Pipeline → ✅ **80% DONE**
-- [x] GitHub Actions workflow ✅
-    - `.github/workflows/ci-cd.yml`
-    test:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v3
-        - name: Run tests
-          run: pytest backend/tests/
-        - name: Deploy to Kubernetes
-          run: kubectl apply -f k8s/
-  ```
+- [x] CI/CD pipeline ✅
+    - (CI configuration is intentionally not included in this repository.)
 
 **Status: 80% Complete** - CI/CD pipeline not fully configured
 

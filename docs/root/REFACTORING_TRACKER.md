@@ -1460,26 +1460,7 @@ Container-based deployment artifacts have been removed from this repository.
   - Accessibility tests (axe)
 
 - [ ] **CI/CD pipeline** (Priority: HIGH)
-  ```yaml
-  # .github/workflows/ci.yml
-  name: CI/CD
-  on: [push, pull_request]
-  jobs:
-    test:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v3
-        - name: Run tests
-          run: |
-            pip install -r requirements.txt
-            pytest --cov=src tests/
-        - name: Frontend tests
-          run: |
-            cd frontend
-            npm install
-            npm test
-            npm run build
-  ```
+  (CI configuration is intentionally not included in this repository.)
 
 **Deliverables**:
 - 90%+ test coverage
@@ -1532,6 +1513,7 @@ Container-based deployment artifacts have been removed from this repository.
 13. ⚠️ **Graph visualization** - React Flow integration
 14. ⚠️ **Performance optimization** - Code splitting, lazy loading
 15. ⚠️ **CI/CD pipeline** - GitHub Actions
+15. ⚠️ **CI/CD pipeline**
 16. ⚠️ **Accessibility** - WCAG 2.1 AA compliance
 17. ⚠️ **API documentation** - OpenAPI UI improvements
 18. ⚠️ **Containerization** - removed from repository
