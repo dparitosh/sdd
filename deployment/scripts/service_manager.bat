@@ -192,7 +192,7 @@ cd /d "%FRONTEND_DIR%"
 if "%FRONTEND_HOST%"=="" set "FRONTEND_HOST=127.0.0.1"
 if "%FRONTEND_PORT%"=="" set "FRONTEND_PORT=3001"
 
-for /f %%a in ('powershell -NoProfile -Command "$p=Start-Process -FilePath npm -ArgumentList @('run','dev','--','--host','127.0.0.1','--port','3001') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
+for /f %%a in ('powershell -NoProfile -Command "$p=Start-Process -FilePath npm -ArgumentList @('run','dev','--','--host','%FRONTEND_HOST%','--port','%FRONTEND_PORT%') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\frontend.pid"
 )
 if exist "%PID_DIR%\frontend.pid" (
