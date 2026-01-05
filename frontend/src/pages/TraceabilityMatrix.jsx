@@ -270,7 +270,7 @@ export default function TraceabilityMatrix() {
                           key={`${link.target.uid}-${link.relationship}`}
                           className={`flex items-center gap-2 p-2 rounded-md text-xs ${TRACE_STATUS_COLORS[status]}`}
                         >
-                          <StatusIcon className="h-3 w-3 flex-shrink-0" />
+                          <StatusIcon className="h-3 w-3 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium truncate">{link.target.name}</div>
                             <div className="text-xs opacity-75">

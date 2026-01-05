@@ -5,7 +5,7 @@ ISO 10303-4443 SMRL Compliant - FastAPI Implementation
 
 from contextlib import asynccontextmanager
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,8 +27,8 @@ from src.web.middleware.session_manager import SessionManager
 from src.web.routes.auth_fastapi import set_session_manager
 from src.web.utils.responses import Neo4jJSONResponse
 
-# Load environment variables
-load_dotenv()
+# Load environment variables (searches current directory and parents for .env)
+load_dotenv(find_dotenv(usecwd=True))
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)

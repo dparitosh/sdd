@@ -59,9 +59,13 @@ A distributed collaboration platform for Model-Based Systems Engineering (MBSE) 
 ```powershell
 # From the repo root
 
-# Using uvicorn directly (recommended for development)
+# Using uvicorn directly
 cd backend
-python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload
+python -m uvicorn src.web.app_fastapi:app --host 127.0.0.1 --port 5000 --reload
+
+# If you explicitly need remote access, set BACKEND_HOST (e.g. 0.0.0.0)
+# $env:BACKEND_HOST = "0.0.0.0"
+# python -m uvicorn src.web.app_fastapi:app --host $env:BACKEND_HOST --port 5000 --reload
 
 # Or using the PowerShell startup script
 cd ..
@@ -70,7 +74,7 @@ cd ..
 
 ### 2. Access the Application
 
-- **Web UI (React):** http://localhost:3001 (start with `cd frontend && npm run dev`)
+- **Web UI (React):** http://localhost:3001 (start with `npm run dev`)
 - **REST API:** http://localhost:5000/api/
 - **SMRL v1 API:** http://localhost:5000/api/v1/ ✨
 - **Health Check:** http://localhost:5000/api/health

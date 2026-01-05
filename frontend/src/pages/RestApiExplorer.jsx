@@ -337,6 +337,14 @@ export default function RestApiExplorer() {
       body
     }) => {
       const startTime = Date.now();
+      // apiClient is configured with baseURL='/api'. The endpoint catalog in this page
+      // includes '/api/...' paths for readability, so strip that prefix to avoid '/api/api/...'.
+      if (url?.startsWith('/api/')) {
+        url = url.slice(4);
+      } else if (url === '/api') {
+        url = '/';
+      }
+
       let result;
       switch (method) {
         case 'GET':

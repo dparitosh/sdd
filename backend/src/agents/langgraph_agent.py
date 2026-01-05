@@ -5,21 +5,27 @@ Implements reasoning, tool-use, and orchestration capabilities
 
 import json
 import operator
-from typing import Annotated, Literal, Sequence, TypedDict
+import os
+from typing import Annotated, Any, Literal, Optional, TypedDict
 
 import requests
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
-    FunctionMessage,
     HumanMessage,
     SystemMessage,
 )
 from langchain_core.tools import Tool
 from langchain_openai import ChatOpenAI
-from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import create_react_agent
 from loguru import logger
+from pydantic import SecretStr
+
+
+def _content_to_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    return json.dumps(content, ensure_ascii=False, default=str)
 
 # ============================================================================
 # STATE DEFINITION
@@ -29,12 +35,12 @@ from loguru import logger
 class AgentState(TypedDict):
     """State for the agent graph"""
 
-    messages: Annotated[Sequence[BaseMessage], operator.add]
+    messages: Annotated[list[BaseMessage], operator.add]
     current_task: str
     reasoning_steps: list[str]
     tool_results: dict
     next_action: str
-    error: str | None
+    error: Optional[str]
 
 
 # ============================================================================
@@ -45,12 +51,23 @@ class AgentState(TypedDict):
 class MBSETools:
     """Tools for interacting with MBSE Knowledge Graph API"""
 
-    def __init__(self, base_url: str = None, api_key: str | None = None):
-        import os
+    def __init__(self, base_url: Optional[str] = None, api_key: Optional[str] = None):
+        env_base_url = os.getenv("API_BASE_URL") or os.getenv("VITE_API_BASE_URL")
+        backend_host = os.getenv("BACKEND_HOST")
+        backend_port = os.getenv("BACKEND_PORT")
 
-        self.base_url = base_url or os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
-        self.api_v1 = f"{self.base_url}/api/v1"
-        self.api_core = f"{self.base_url}/api"
+        if not base_url and not env_base_url and backend_host and backend_port:
+            env_base_url = f"http://{backend_host}:{backend_port}"
+
+        resolved_base_url = base_url or env_base_url
+        if not resolved_base_url:
+            raise ValueError(
+                "Missing API base URL configuration. Set API_BASE_URL in .env (recommended) "
+                "or set BACKEND_HOST and BACKEND_PORT."
+            )
+        self.base_url = resolved_base_url
+        self.api_v1 = f"{resolved_base_url}/api/v1"
+        self.api_core = f"{resolved_base_url}/api"
 
         # FastAPI protects most endpoints via X-API-Key when API_KEY is configured.
         # Default to env API_KEY so agents work in secured deployments.
@@ -67,7 +84,7 @@ class MBSETools:
             )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error searching artifacts: {str(e)}"
 
     def get_artifact_details(self, artifact_type: str, artifact_id: str) -> str:
@@ -78,15 +95,18 @@ class MBSETools:
             )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error getting artifact details: {str(e)}"
 
     def get_traceability(
-        self, source_type: str = None, target_type: str = None, depth: int = 2
+        self,
+        source_type: Optional[str] = None,
+        target_type: Optional[str] = None,
+        depth: int = 2,
     ) -> str:
         """Get traceability matrix between artifacts"""
         try:
-            params = {"depth": depth}
+            params: dict[str, Any] = {"depth": depth}
             if source_type:
                 params["source_type"] = source_type
             if target_type:
@@ -94,7 +114,7 @@ class MBSETools:
             response = self.session.get(f"{self.api_v1}/traceability", params=params)
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error getting traceability: {str(e)}"
 
     def get_impact_analysis(self, node_id: str, depth: int = 3) -> str:
@@ -105,19 +125,19 @@ class MBSETools:
             )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error analyzing impact: {str(e)}"
 
-    def get_parameters(self, class_name: str = None, limit: int = 20) -> str:
+    def get_parameters(self, class_name: Optional[str] = None, limit: int = 20) -> str:
         """Extract design parameters"""
         try:
-            params = {"limit": limit}
+            params: dict[str, Any] = {"limit": limit}
             if class_name:
                 params["class"] = class_name
             response = self.session.get(f"{self.api_v1}/parameters", params=params)
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error getting parameters: {str(e)}"
 
     def execute_cypher(self, query: str) -> str:
@@ -128,7 +148,7 @@ class MBSETools:
             )
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error executing Cypher: {str(e)}"
 
     def get_statistics(self) -> str:
@@ -137,7 +157,7 @@ class MBSETools:
             response = self.session.get(f"{self.api_core}/stats")
             response.raise_for_status()
             return json.dumps(response.json(), indent=2)
-        except Exception as e:
+        except requests.RequestException as e:
             return f"Error getting statistics: {str(e)}"
 
 
@@ -149,12 +169,23 @@ class MBSETools:
 class MBSEAgent:
     """LangGraph-based MBSE reasoning agent"""
 
-    def __init__(self, api_key: str = None, base_url: str = None):
-        import os
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        env_base_url = os.getenv("API_BASE_URL") or os.getenv("VITE_API_BASE_URL")
+        backend_host = os.getenv("BACKEND_HOST")
+        backend_port = os.getenv("BACKEND_PORT")
+        if not base_url and not env_base_url and backend_host and backend_port:
+            env_base_url = f"http://{backend_host}:{backend_port}"
 
-        base_url = base_url or os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
-        self.tools_api = MBSETools(base_url)
-        self.llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=api_key)
+        resolved_base_url = base_url or env_base_url
+        if not resolved_base_url:
+            raise ValueError(
+                "Missing API base URL configuration. Set API_BASE_URL in .env (recommended) "
+                "or set BACKEND_HOST and BACKEND_PORT."
+            )
+
+        self.tools_api = MBSETools(resolved_base_url)
+        secret_api_key = SecretStr(api_key) if api_key else None
+        self.llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=secret_api_key)
 
         # Create LangChain tools
         self.tools = [
@@ -201,7 +232,7 @@ class MBSEAgent:
     def _understand_task(self, state: AgentState) -> AgentState:
         """Understand and categorize the user's task"""
         messages = state["messages"]
-        last_message = messages[-1].content if messages else ""
+        last_message = _content_to_text(messages[-1].content) if messages else ""
 
         # Use LLM to understand task category
         system_prompt = """You are an MBSE (Model-Based Systems Engineering) expert assistant.
@@ -223,17 +254,18 @@ Respond with just the category and a brief explanation."""
 
         response = self.llm.invoke(understanding_messages)
 
-        logger.info(f"Task understanding: {response.content}")
+        response_text = _content_to_text(response.content)
+
+        logger.info(f"Task understanding: {response_text}")
 
         return {
             **state,
-            "current_task": response.content,
-            "reasoning_steps": [f"Understanding: {response.content}"],
+            "current_task": response_text,
+            "reasoning_steps": [f"Understanding: {response_text}"],
         }
 
     def _plan_steps(self, state: AgentState) -> AgentState:
         """Plan the steps needed to complete the task"""
-        messages = state["messages"]
         task = state["current_task"]
 
         # Use LLM with ReAct pattern to plan
@@ -255,7 +287,7 @@ Based on the task, decide which tool to use next. If you have enough information
         ]
 
         response = self.llm.invoke(planning_messages)
-        next_action = response.content
+        next_action = _content_to_text(response.content)
 
         logger.info(f"Planning: {next_action}")
 
@@ -307,7 +339,7 @@ Based on the task, decide which tool to use next. If you have enough information
             )
 
             logger.info(f"Tool execution: {tool_name} succeeded")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             state["error"] = str(e)
             logger.error(f"Tool execution failed: {e}")
 
@@ -356,7 +388,7 @@ Decide if you have enough information to answer the user's question, or if you n
 
         # Create comprehensive context for response
         context = f"""
-User Question: {messages[-1].content if messages else ""}
+    User Question: {_content_to_text(messages[-1].content) if messages else ""}
 
 Reasoning Steps:
 {chr(10).join(f"- {step}" for step in reasoning_steps)}
@@ -375,7 +407,7 @@ provide a clear, comprehensive answer to the user's question. Include specific d
 
         response = self.llm.invoke(response_messages)
 
-        state["messages"].append(AIMessage(content=response.content))
+        state["messages"].append(AIMessage(content=_content_to_text(response.content)))
 
         logger.info("Generated final response")
 
@@ -397,7 +429,7 @@ provide a clear, comprehensive answer to the user's question. Include specific d
                 return str(last_message)
 
             return "I apologize, but I couldn't generate a response."
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Agent execution failed: {e}")
             return f"An error occurred: {str(e)}"
 
@@ -407,15 +439,13 @@ provide a clear, comprehensive answer to the user's question. Include specific d
 # ============================================================================
 
 if __name__ == "__main__":
-    import os
-
     # Initialize agent (requires OpenAI API key)
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
         print("ERROR: OPENAI_API_KEY environment variable not set")
         exit(1)
 
-    agent = MBSEAgent(api_key=api_key)
+    agent = MBSEAgent(api_key=openai_api_key)
 
     # Example queries
     queries = [
@@ -429,8 +459,8 @@ if __name__ == "__main__":
     print("MBSE AI Agent - LangGraph Framework")
     print("=" * 60)
 
-    for i, query in enumerate(queries, 1):
-        print(f"\n\n[Query {i}]: {query}")
+    for i, example_query in enumerate(queries, 1):
+        print(f"\n\n[Query {i}]: {example_query}")
         print("-" * 60)
-        response = agent.run(query)
-        print(f"\n[Response]: {response}")
+        agent_response = agent.run(example_query)
+        print(f"\n[Response]: {agent_response}")

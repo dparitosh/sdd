@@ -5,9 +5,22 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory
-  const env = loadEnv(mode, process.cwd(), '')
-  const API_BASE_URL = env.API_BASE_URL || 'http://127.0.0.1:5000'
-  const VITE_PORT = parseInt(env.VITE_PORT || '3001')
+  const repoRoot = path.resolve(__dirname, '..')
+  const env = loadEnv(mode, repoRoot, '')
+  const API_BASE_URL = env.API_BASE_URL || env.VITE_API_BASE_URL
+  const PORT_RAW = env.FRONTEND_PORT || env.VITE_PORT
+
+  if (!API_BASE_URL) {
+    throw new Error('Missing API_BASE_URL (or VITE_API_BASE_URL) in environment (.env).')
+  }
+  if (!PORT_RAW) {
+    throw new Error('Missing FRONTEND_PORT (or VITE_PORT) in environment (.env).')
+  }
+
+  const VITE_PORT = parseInt(PORT_RAW, 10)
+  if (Number.isNaN(VITE_PORT)) {
+    throw new Error(`Invalid FRONTEND_PORT/VITE_PORT value: ${PORT_RAW}`)
+  }
 
   return {
     plugins: [react()],

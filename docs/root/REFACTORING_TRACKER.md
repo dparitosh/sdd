@@ -28,6 +28,13 @@
 - ✅ **WebSockets Opt-in**: Reduced dev-mode console noise by making WebSockets explicitly opt-in via `VITE_ENABLE_WEBSOCKETS=true`.
 - ✅ **Metrics Client Consistency**: Fixed frontend metrics service to match the API client wrapper contract (wrapper returns data directly).
 - ✅ **React Key Warnings**: Added stable `key` props to list renders in Parts Explorer and Query Editor to eliminate React warnings.
+- ✅ **Tailwind v4 Entry Point**: Updated CSS entry to Tailwind v4 style (`@import "tailwindcss";`) to reduce styling/tooling mismatches.
+- ✅ **Simulation Engineering UI (Partial)**: Wired Workflow Studio validation to real backend endpoints and improved interactivity (run dialog, parameter fetch, validation call).
+
+### Open Items (January 2026)
+- ⏳ **Simulation Engineering UI (Complete Integration)**: Replace remaining mock/static data in Simulation pages with live API calls (Model Repository + Results Analysis) once endpoint contracts are confirmed.
+- ⏳ **Workflow Studio Execution**: Implement true workflow execution (“Run”) beyond validation once the backend execution endpoint and payload are finalized.
+- ⏳ **Tailwind v4 Cleanup**: Remove remaining legacy utilities (e.g., `bg-gradient-to-*`, `flex-shrink-0`) across the frontend to eliminate warnings and ensure consistent styling.
 
 ### ISO 10303-4443 SMRL Compliance Status
 **Current Alignment**: 100% (Dec 7, 2025) ✅
@@ -1943,6 +1950,7 @@ Current development model is split processes: Vite frontend (typically :3001) + 
 | 1.0 | Dec 8, 2025 | Phase 0 & 1 complete - SMRL compliance + Foundation cleanup | System |
 | 1.1 | Dec 8, 2025 | Single UI deployment (historical transition note) | System |
 | 2.0 | Dec 13, 2025 | Phase 2 complete - React frontend live + FastAPI backend | System |
+| 2.1 | Jan 4, 2026 | Simulation UI interactivity + Tailwind v4 alignment (partial), tracker updates | System |
 | 3.0 | TBD | Phase 3 complete - Semantic web integrated | TBD |
 | 4.0 | TBD | Phase 4 complete - Production ready | TBD |
 

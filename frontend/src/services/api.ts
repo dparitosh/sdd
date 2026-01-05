@@ -361,8 +361,26 @@ export const apiService = {
 
   // Simulation Operations - Updated to match actual backend implementation
   simulation: {
-    getParameters: (params?: { owner_type?: string; data_type?: string }) =>
-      apiClient.get<any>('/simulation/parameters', { params }),
+    getModels: (params?: { limit?: number }) =>
+      apiClient.get<any>('/simulation/models', { params }),
+    getResults: (params?: { limit?: number }) =>
+      apiClient.get<any>('/simulation/results', { params }),
+    getParameters: (params?: {
+      class_name?: string;
+      property_name?: string;
+      data_type?: string;
+      include_constraints?: boolean;
+      limit?: number;
+      // Back-compat: older caller names
+      owner_type?: string;
+    }) => {
+      const normalizedParams = { ...params };
+      if (!normalizedParams.class_name && normalizedParams.owner_type) {
+        normalizedParams.class_name = normalizedParams.owner_type;
+        delete (normalizedParams as any).owner_type;
+      }
+      return apiClient.get<any>('/simulation/parameters', { params: normalizedParams });
+    },
     validateParameters: (parameters: Array<{ id: string; value: any }>) =>
       apiClient.post<any>('/simulation/validate', { parameters }),
     getUnits: () =>

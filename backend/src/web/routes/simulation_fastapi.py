@@ -124,6 +124,34 @@ class UnitsResponse(BaseModel):
     unit_properties: UnitPropertiesInfo
 
 
+class SimulationModelSummary(BaseModel):
+    id: str
+    name: str
+    parameter_count: int
+    constraint_count: int
+
+
+class SimulationModelsResponse(BaseModel):
+    total: int
+    models: List[SimulationModelSummary]
+
+
+class SimulationResultSummary(BaseModel):
+    id: str
+    name: Optional[str] = None
+    status: Optional[str] = None
+    created_on: Optional[str] = None
+    last_modified: Optional[str] = None
+    model_id: Optional[str] = None
+    metrics: Optional[Any] = None
+    parameters: Optional[Any] = None
+
+
+class SimulationResultsResponse(BaseModel):
+    total: int
+    results: List[SimulationResultSummary]
+
+
 # ============================================================================
 # SIMULATION PARAMETERS ENDPOINT
 # ============================================================================
@@ -177,7 +205,7 @@ async def get_simulation_parameters(
 
         # Add filters
         where_clauses = []
-        params = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
 
         if class_name:
             where_clauses.append("owner.name = $class_name")
@@ -269,7 +297,7 @@ async def get_simulation_parameters(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve simulation parameters: {str(e)}",
-        )
+        ) from e
 
 
 # ============================================================================
@@ -401,7 +429,121 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to validate parameters: {str(e)}",
-        )
+        ) from e
+
+
+# ============================================================================
+# SIMULATION MODELS ENDPOINT
+# ============================================================================
+
+
+@router.get(
+    "/models",
+    response_model=SimulationModelsResponse,
+    response_class=Neo4jJSONResponse,
+)
+async def get_simulation_models(
+    limit: int = Query(200, ge=1, le=2000, description="Maximum number of results"),
+):
+    """List simulation model candidates derived from the graph.
+
+    A "model" here is an owning Class that has Property nodes (simulation parameters).
+    """
+    try:
+        neo4j = get_neo4j_service()
+
+        query = """
+        MATCH (c:Class)-[:HAS_ATTRIBUTE]->(p:Property)
+        OPTIONAL MATCH (p)-[:HAS_RULE]->(constraint:Constraint)
+        RETURN coalesce(c.id, c.uid, toString(id(c))) as id,
+               c.name as name,
+               count(DISTINCT p) as parameter_count,
+               count(DISTINCT constraint) as constraint_count
+        ORDER BY c.name
+        LIMIT $limit
+        """
+
+        rows = neo4j.execute_query(query, {"limit": limit})
+        models = [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "parameter_count": int(r["parameter_count"] or 0),
+                "constraint_count": int(r["constraint_count"] or 0),
+            }
+            for r in rows
+            if r.get("id") and r.get("name")
+        ]
+
+        return {"total": len(models), "models": models}
+
+    except Exception as e:
+        logger.error(f"Simulation models query error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve simulation models: {str(e)}",
+        ) from e
+
+
+# ============================================================================
+# SIMULATION RESULTS ENDPOINT
+# ============================================================================
+
+
+@router.get(
+    "/results",
+    response_model=SimulationResultsResponse,
+    response_class=Neo4jJSONResponse,
+)
+async def get_simulation_results(
+    limit: int = Query(100, ge=1, le=2000, description="Maximum number of results"),
+):
+    """List stored simulation results (if present in the graph).
+
+    This endpoint is intentionally tolerant: if no `SimulationResult` nodes exist,
+    it returns an empty list.
+    """
+    try:
+        neo4j = get_neo4j_service()
+
+        query = """
+        MATCH (r:SimulationResult)
+        RETURN coalesce(r.id, r.uid, toString(id(r))) as id,
+               r.name as name,
+               r.status as status,
+               toString(r.created_on) as created_on,
+               toString(r.last_modified) as last_modified,
+               r.model_id as model_id,
+               r.metrics as metrics,
+               r.parameters as parameters
+        ORDER BY coalesce(r.last_modified, r.created_on) DESC
+        LIMIT $limit
+        """
+
+        rows = neo4j.execute_query(query, {"limit": limit})
+        results = [
+            {
+                "id": r["id"],
+                "name": r.get("name"),
+                "status": r.get("status"),
+                "created_on": r.get("created_on"),
+                "last_modified": r.get("last_modified"),
+                "model_id": r.get("model_id"),
+                "metrics": r.get("metrics"),
+                "parameters": r.get("parameters"),
+            }
+            for r in rows
+            if r.get("id")
+        ]
+
+        return {"total": len(results), "results": results}
+
+    except Exception as e:
+        logger.error(f"Simulation results query error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve simulation results: {str(e)}",
+        ) from e
 
 
 # ============================================================================
@@ -505,4 +647,4 @@ async def get_units(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve units: {str(e)}",
-        )
+        ) from e

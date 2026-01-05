@@ -38,11 +38,12 @@ echo   %~nx0 start          # Start all services
 echo   %~nx0 backend start  # Start backend only
 echo   %~nx0 status         # Check status
 echo.
-echo Manual mode env vars (defaults are localhost-only for safety):
-echo   BACKEND_HOST   (default: 127.0.0.1)
-echo   BACKEND_PORT   (default: 5000)
-echo   FRONTEND_HOST  (default: 127.0.0.1)
-echo   FRONTEND_PORT  (default: 3001)
+echo Manual mode env vars (must be set in .env):
+echo   BACKEND_HOST
+echo   BACKEND_PORT
+echo   FRONTEND_HOST
+echo   FRONTEND_PORT
+echo   API_BASE_URL
 goto :eof
 
 :start
@@ -156,11 +157,16 @@ echo Starting backend...
 cd /d "%PROJECT_ROOT%"
 set PYTHONPATH=%CD%
 
+call :load_env
+
 set "PYTHON_EXE=python"
 if exist "%PROJECT_ROOT%\.venv\Scripts\python.exe" set "PYTHON_EXE=%PROJECT_ROOT%\.venv\Scripts\python.exe"
 
-if "%BACKEND_HOST%"=="" set "BACKEND_HOST=127.0.0.1"
-if "%BACKEND_PORT%"=="" set "BACKEND_PORT=5000"
+if "%NEO4J_URI%"=="" (echo [ERROR] Missing NEO4J_URI in .env & goto :eof)
+if "%NEO4J_USER%"=="" (echo [ERROR] Missing NEO4J_USER in .env & goto :eof)
+if "%NEO4J_PASSWORD%"=="" (echo [ERROR] Missing NEO4J_PASSWORD in .env & goto :eof)
+if "%BACKEND_HOST%"=="" (echo [ERROR] Missing BACKEND_HOST in .env & goto :eof)
+if "%BACKEND_PORT%"=="" (echo [ERROR] Missing BACKEND_PORT in .env & goto :eof)
 
 for /f %%a in ('powershell -NoProfile -Command "$pythonExe='%PYTHON_EXE%'; $p=Start-Process -FilePath $pythonExe -ArgumentList @('-m','uvicorn','src.web.app_fastapi:app','--host','%BACKEND_HOST%','--port','%BACKEND_PORT%') -RedirectStandardOutput '%TEMP%\mbse-backend.log' -RedirectStandardError '%TEMP%\mbse-backend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\backend.pid"
@@ -187,10 +193,13 @@ goto :eof
 
 :start_frontend
 echo Starting frontend...
-cd /d "%FRONTEND_DIR%"
+cd /d "%PROJECT_ROOT%"
 
-if "%FRONTEND_HOST%"=="" set "FRONTEND_HOST=127.0.0.1"
-if "%FRONTEND_PORT%"=="" set "FRONTEND_PORT=3001"
+call :load_env
+
+if "%FRONTEND_HOST%"=="" (echo [ERROR] Missing FRONTEND_HOST in .env & goto :eof)
+if "%FRONTEND_PORT%"=="" (echo [ERROR] Missing FRONTEND_PORT in .env & goto :eof)
+if "%API_BASE_URL%"=="" (echo [ERROR] Missing API_BASE_URL in .env & goto :eof)
 
 for /f %%a in ('powershell -NoProfile -Command "$p=Start-Process -FilePath npm -ArgumentList @('run','dev','--','--host','%FRONTEND_HOST%','--port','%FRONTEND_PORT%') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\frontend.pid"
@@ -216,3 +225,17 @@ if exist "%PID_DIR%\frontend.pid" (
 goto :eof
 
 endlocal
+
+goto :eof
+
+:load_env
+REM Load variables from .env at project root (does not override existing vars)
+if not exist "%PROJECT_ROOT%\.env" goto :eof
+for /f "usebackq eol=# tokens=1* delims==" %%A in ("%PROJECT_ROOT%\.env") do (
+    if "%%A"=="" (
+        REM skip
+    ) else (
+        if "!%%A!"=="" set "%%A=%%B"
+    )
+)
+goto :eof
