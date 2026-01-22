@@ -16,6 +16,7 @@ from src.web.services import get_neo4j_service
 from src.web.dependencies import get_api_key
 from src.web.app_fastapi import Neo4jJSONResponse
 from src.web.services.smrl_adapter import SMRLAdapter, neo4j_list_to_smrl, neo4j_to_smrl
+from src.web.services.oslc_trs_service import OSLCTRSService
 
 router = APIRouter()
 
@@ -373,6 +374,15 @@ async def create_resource(
         node_labels = list(result[0]["n"].labels)
         resource = neo4j_to_smrl(node_data, node_labels)
 
+        # OSLC TRS Notification
+        try:
+            trs = OSLCTRSService()
+            # Construct absolute URI (Mocking host for now, should use config)
+            res_uri = f"http://localhost:8000{href}"
+            await trs.publish_event(res_uri, "create")
+        except Exception as e:
+            logger.warning(f"Failed to publish TRS event: {e}")
+
         return resource
 
     except Exception as e:
@@ -445,6 +455,14 @@ async def replace_resource(
         node_labels = list(result[0]["n"].labels)
         resource = neo4j_to_smrl(node_data, node_labels)
 
+        # OSLC TRS Notification
+        try:
+            trs = OSLCTRSService()
+            res_uri = f"http://localhost:8000/api/v1/{resource_type}/{uid}"
+            await trs.publish_event(res_uri, "update")
+        except Exception as e:
+            logger.warning(f"Failed to publish TRS event: {e}")
+
         return resource
 
     except HTTPException:
@@ -511,6 +529,14 @@ async def update_resource(
         node_data = dict(result[0]["n"])
         node_labels = list(result[0]["n"].labels)
         resource = neo4j_to_smrl(node_data, node_labels)
+
+        # OSLC TRS Notification
+        try:
+            trs = OSLCTRSService()
+            res_uri = f"http://localhost:8000/api/v1/{resource_type}/{uid}"
+            await trs.publish_event(res_uri, "update")
+        except Exception as e:
+            logger.warning(f"Failed to publish TRS event: {e}")
 
         return resource
 

@@ -49,7 +49,170 @@ function AppContent() {
       logger.log('✓ WebSocket connected - real-time updates enabled');
     }
   }, [connected]);
-  return <Router><Routes><Route path="/login" element={<Login />} /><Route path="/auth/callback" element={<AuthCallback />} /><Route path="/*" element={<ProtectedRoute><Layout><Routes><Route path="/" element={<Navigate to="/dashboard" replace />} /><Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} /><Route path="/search" element={<ErrorBoundary><AdvancedSearch /></ErrorBoundary>} /><Route path="/api-explorer" element={<ErrorBoundary><RestApiExplorer /></ErrorBoundary>} /><Route path="/query-editor" element={<ErrorBoundary><QueryEditor /></ErrorBoundary>} /><Route path="/requirements" element={<ErrorBoundary><RequirementsManager /></ErrorBoundary>} /><Route path="/traceability" element={<ErrorBoundary><TraceabilityMatrix /></ErrorBoundary>} /><Route path="/plm" element={<ErrorBoundary><PLMIntegration /></ErrorBoundary>} /><Route path="/monitoring" element={<ErrorBoundary><SystemMonitoring /></ErrorBoundary>} /><Route path="/ap239/requirements" element={<ErrorBoundary><RequirementsDashboard /></ErrorBoundary>} /><Route path="/ap242/parts" element={<ErrorBoundary><PartsExplorer /></ErrorBoundary>} /><Route path="/graph" element={<ErrorBoundary><GraphBrowser /></ErrorBoundary>} /><Route path="/import" element={<ErrorBoundary><DataImport /></ErrorBoundary>} /><Route path="/ai/insights" element={<ErrorBoundary><AIInsights /></ErrorBoundary>} /><Route path="/ai/analysis" element={<ErrorBoundary><SmartAnalysis /></ErrorBoundary>} /><Route path="/ai/chat" element={<ErrorBoundary><ModelChat /></ErrorBoundary>} /><Route path="/simulation/models" element={<ErrorBoundary><ModelRepository /></ErrorBoundary>} /><Route path="/simulation/workflows" element={<ErrorBoundary><WorkflowStudio /></ErrorBoundary>} /><Route path="/simulation/results" element={<ErrorBoundary><ResultsAnalysis /></ErrorBoundary>} /></Routes></Layout></ProtectedRoute>} /></Routes></Router>;
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ErrorBoundary>
+                        <Dashboard />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/search"
+                    element={
+                      <ErrorBoundary>
+                        <AdvancedSearch />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/api-explorer"
+                    element={
+                      <ErrorBoundary>
+                        <RestApiExplorer />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/query-editor"
+                    element={
+                      <ErrorBoundary>
+                        <QueryEditor />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/requirements"
+                    element={
+                      <ErrorBoundary>
+                        <RequirementsManager />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/traceability"
+                    element={
+                      <ErrorBoundary>
+                        <TraceabilityMatrix />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/plm"
+                    element={
+                      <ErrorBoundary>
+                        <PLMIntegration />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/monitoring"
+                    element={
+                      <ErrorBoundary>
+                        <SystemMonitoring />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/ap239/requirements"
+                    element={
+                      <ErrorBoundary>
+                        <RequirementsDashboard />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/ap242/parts"
+                    element={
+                      <ErrorBoundary>
+                        <PartsExplorer />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/graph"
+                    element={
+                      <ErrorBoundary>
+                        <GraphBrowser />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/import"
+                    element={
+                      <ErrorBoundary>
+                        <DataImport />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/ai/insights"
+                    element={
+                      <ErrorBoundary>
+                        <AIInsights />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/ai/analysis"
+                    element={
+                      <ErrorBoundary>
+                        <SmartAnalysis />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/ai/chat"
+                    element={
+                      <ErrorBoundary>
+                        <ModelChat />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/simulation/models"
+                    element={
+                      <ErrorBoundary>
+                        <ModelRepository />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/simulation/workflows"
+                    element={
+                      <ErrorBoundary>
+                        <WorkflowStudio />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/simulation/results"
+                    element={
+                      <ErrorBoundary>
+                        <ResultsAnalysis />
+                      </ErrorBoundary>
+                    }
+                  />
+                </Routes>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
+  );
 }
 function App() {
   return <ErrorBoundary><HelmetProvider><ThemeProvider defaultTheme="system" storageKey="mbse-ui-theme"><QueryClientProvider client={queryClient}><AppContent /><Toaster /></QueryClientProvider></ThemeProvider></HelmetProvider></ErrorBoundary>;

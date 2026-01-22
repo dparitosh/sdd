@@ -48,6 +48,24 @@ xmlschema>=3.0.0
 pyodata>=1.2.0
 
 # ============================================================================
+# Semantic Web & OSLC (Phase 2 Core)
+# ============================================================================
+rdflib>=7.0.0          # RDF parsing and serialization (Turtle, JSON-LD, RDF/XML)
+owlrl>=6.0.2           # RDFS/OWL Semantic Reasoning (Inference)
+pyshacl>=0.25.0        # SHACL validation for MoSSEC/Ontology data shapes
+skosprovider>=1.2.0    # Managing Vocabularies/Thesauri (SKOS)
+isodate>=0.6.1         # ISO 8601 date parsing (Essential for OSLC date properties)
+requests-oauthlib>=1.3.1 # OAuth 1.0a/2.0 support for OSLC Client Authentication
+pyoslc>=0.1.0          # (Placeholder) or custom implementation for OSLC headers
+
+# ============================================================================
+# Simulation & SPDM Support
+# ============================================================================
+h5py>=3.10.0           # For reading HDF5 simulation results (Industry Standard)
+meshio>=5.3.0          # For reading/converting mesh and simulation data
+numpy>=1.26.0          # Essential for numerical analysis of simulation results
+
+# ============================================================================
 # Advanced Visualization
 # ============================================================================
 # WebSocket support
@@ -58,7 +76,6 @@ python-socketio>=5.10.0
 # Data export enhancements
 openpyxl>=3.1.0  # Excel
 reportlab>=4.0.0  # PDF
-rdflib>=7.0.0  # RDF/OSLC
 
 # ============================================================================
 # Testing & Quality

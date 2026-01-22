@@ -5,26 +5,28 @@ import { Badge } from '@ui/badge';
 import { Button } from '@ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ui/tabs';
-import { TrendingUp, Download, Share2, BarChart3, LineChart, PieChart } from 'lucide-react';
+import { TrendingUp, Download, Share2, BarChart3, LineChart, PieChart, Activity as ActivityIcon } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiService } from '@/services/api';
+import { Separator } from '@ui/separator';
+
 export default function ResultsAnalysis() {
   const [selectedResult, setSelectedResult] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const {
-    data: resultsResponse,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  // Queries
+  const resultsQuery = useQuery({
     queryKey: ['simulation-results'],
     queryFn: () => apiService.simulation.getResults({ limit: 100 }),
   });
 
+  const trsQuery = useQuery({
+    queryKey: ['oslc-trs-changelog'],
+    queryFn: () => apiService.trs.getChangeLog(),
+  });
+
   const results = useMemo(() => {
-    const raw = resultsResponse?.results ?? [];
+    const raw = resultsQuery.data?.results ?? [];
     return raw.map(r => {
       const ts = r.last_modified || r.created_on || '—';
       const status = r.status || 'unknown';
@@ -50,7 +52,16 @@ export default function ResultsAnalysis() {
         raw: r,
       };
     });
-  }, [resultsResponse]);
+  }, [resultsQuery.data]);
+
+  const changeLog = useMemo(() => {
+    const raw = trsQuery.data ?? [];
+    // Assuming JSON-LD or Turtle content, we might need a parser in production
+    // For now, if the response is JSON, we try to extract events
+    // If text/turtle, we might display raw or need parsing logic
+    return Array.isArray(raw) ? raw : [];
+  }, [trsQuery.data]);
+
 
   const openDetails = (result) => {
     setSelectedResult(result);
@@ -85,6 +96,30 @@ export default function ResultsAnalysis() {
 
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardContent className="pt-6"><div className="text-2xl font-bold">{totalRuns}</div><p className="text-sm text-muted-foreground">Total Runs</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-500">{successRate}%</div><p className="text-sm text-muted-foreground">Success Rate</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-500">—</div><p className="text-sm text-muted-foreground">Data Stored</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-500">—</div><p className="text-sm text-muted-foreground">Avg Runtime</p></CardContent></Card></div>
 
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ActivityIcon className="h-5 w-5 text-primary" />
+          Live OSLC Change Log
+        </CardTitle>
+        <CardDescription>Real-time tracked resource set events</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {trsQuery.isLoading ? (
+          <div className="text-sm text-muted-foreground p-4 text-center">Loading ChangeLog...</div>
+        ) : trsQuery.isError ? (
+          <div className="text-sm text-destructive p-4">Failed to load ChangeLog</div>
+        ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              <div className="text-xs text-muted-foreground mb-2">Displaying raw RDF/Turtle response from /oslc/trs/changelog</div>
+              <pre className="text-xs font-mono bg-muted p-2 rounded whitespace-pre-wrap">
+                {typeof trsQuery.data === 'string' ? trsQuery.data : JSON.stringify(trsQuery.data, null, 2)}
+              </pre>
+            </div>
+        )}
+      </CardContent>
+    </Card>
+
     <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -116,9 +151,7 @@ export default function ResultsAnalysis() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-            Close
-          </Button>
+            <Button onClick={() => setIsDetailsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

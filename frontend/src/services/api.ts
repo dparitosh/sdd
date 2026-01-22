@@ -386,4 +386,22 @@ export const apiService = {
     getUnits: () =>
       apiClient.get<any>('/simulation/units'),
   },
+
+  // AI Agents & Orchestration
+  agents: {
+    runOrchestrator: (query: string, task_type: string = 'impact_analysis') =>
+      apiClient.post<{ status: string; messages: any[]; final_state: any }>('/agents/orchestrator/run', {
+        query,
+        task_type
+      }),
+  },
+
+  // OSLC TRS
+  trs: {
+    getTRS: () => apiClient.get<any>('/oslc/trs'),
+    getBase: (page: number = 1) => apiClient.get<any>(`/oslc/trs/base?page=${page}`),
+    getChangeLog: () => apiClient.get<any>('/oslc/trs/changelog'),
+  }
 };
+
+export default apiClient;

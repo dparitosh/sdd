@@ -21,6 +21,8 @@ export default function WorkflowStudio() {
   const [parameterInputs, setParameterInputs] = useState([]);
   const [validationResults, setValidationResults] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionResults, setExecutionResults] = useState(null);
 
   const workflows = [
     {
@@ -90,7 +92,9 @@ export default function WorkflowStudio() {
     setParameterValueText('');
     setParameterInputs([]);
     setValidationResults(null);
+    setExecutionResults(null);
     setIsValidating(false);
+    setIsExecuting(false);
   };
 
   const openRunDialog = async (workflow) => {
@@ -162,11 +166,39 @@ export default function WorkflowStudio() {
   };
 
   const runWorkflow = async () => {
+    // Phase 1: validate parameters logic (legacy)
     const response = await validateInputs();
     if (!response || response?.invalid_count > 0) return;
-    toast.success('Workflow submitted', {
-      description: `${selectedWorkflow?.name || 'Workflow'} queued for execution (validation only in MVP).`,
-    });
+    
+    // Phase 2: Execute Multi-Agent Orchestrator
+    setIsExecuting(true);
+    setExecutionResults(null);
+    try {
+      // Construct a natural language query from the workflow context
+      const query = `Execute ${selectedWorkflow?.name || 'simulation workflow'} with parameters: ${parameterInputs.map(p => `${p.name}=${p.valueText}`).join(', ')}`;
+      
+      toast.info('Starting Multi-Agent Orchestration', {
+        description: 'MBSE, PLM, and Simulation agents are collaborating...',
+      });
+
+      const result = await apiService.agents.runOrchestrator(query, 'impact_analysis');
+      setExecutionResults(result);
+      
+      if (result.status === 'success') {
+        toast.success('Workflow Execution Complete', {
+          description: 'Agents successfully coordinated the task.',
+        });
+      } else {
+        toast.error('Workflow Execution Failed', {
+          description: result.error || 'Unknown error occurred',
+        });
+      }
+    } catch (error) {
+       console.error(error);
+       toast.error('Execution Error', { description: error.message });
+    } finally {
+       setIsExecuting(false);
+    }
   };
 
   return (
@@ -468,17 +500,44 @@ export default function WorkflowStudio() {
                 </div>
               </div>
             )}
+            {executionResults && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold flex items-center gap-2">
+                    <Workflow className="h-4 w-4 text-blue-500" />
+                    Agent Orchestration
+                  </div>
+                  <Badge variant={executionResults.status === 'success' ? 'default' : 'destructive'}>
+                    {executionResults.status.toUpperCase()}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                  {executionResults.messages?.map((msg, idx) => (
+                    <div key={idx} className={`flex gap-3 text-sm ${msg.role === 'ai' ? 'bg-background p-2 rounded-lg border' : 'pl-4'}`}>
+                      <div className={`mt-0.5 shrink-0 ${msg.role === 'ai' ? 'text-blue-500' : 'text-muted-foreground'}`}>
+                        {msg.role === 'ai' ? '🤖' : '👤'}
+                      </div>
+                      <div className="space-y-1">
+                         <div className="font-medium text-xs text-muted-foreground uppercase">{msg.type?.replace('Message', '') || msg.role}</div>
+                         <div className="whitespace-pre-wrap">{msg.content}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRunOpen(false)}>
               Close
             </Button>
-            <Button variant="outline" onClick={validateInputs} disabled={isValidating || parametersLoading}>
+            <Button variant="outline" onClick={validateInputs} disabled={isValidating || isExecuting || parametersLoading}>
               {isValidating ? 'Validating…' : 'Validate'}
             </Button>
-            <Button onClick={runWorkflow} disabled={isValidating || parametersLoading}>
-              Run
+            <Button onClick={runWorkflow} disabled={isValidating || isExecuting || parametersLoading}>
+              {isExecuting ? 'Running Agents...' : 'Run Agents'}
             </Button>
           </DialogFooter>
         </DialogContent>

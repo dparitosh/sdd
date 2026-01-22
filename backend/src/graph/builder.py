@@ -59,45 +59,105 @@ class GraphBuilder:
 
     def _create_nodes(self, nodes: List[Dict[str, Any]]) -> None:
         """
-        Create nodes in the graph
+        Create nodes in the graph using batched operations
 
         Args:
             nodes: List of node definitions
         """
         logger.info(f"Creating {len(nodes)} nodes...")
 
+        # Group nodes by label
+        nodes_by_label = {}
         for node in nodes:
             label = node.get("label", "Node")
             properties = node.get("properties", {})
+            if label not in nodes_by_label:
+                nodes_by_label[label] = []
+            nodes_by_label[label].append(properties)
 
+        # Batch create nodes for each label
+        for label, props_list in nodes_by_label.items():
             try:
-                self.conn.create_node(label, properties)
+                query = f"""
+                UNWIND $props AS properties
+                CREATE (n:{label})
+                SET n = properties
+                """
+                self.conn.execute_write(query, {"props": props_list})
+                logger.debug(f"Created {len(props_list)} nodes of type {label}")
             except Exception as e:
-                logger.error(
-                    f"Failed to create node {properties.get('id', 'unknown')}: {e}"
-                )
+                logger.error(f"Failed to create nodes of type {label}: {e}")
 
     def _create_relationships(self, relationships: List[Dict[str, Any]]) -> None:
         """
-        Create relationships in the graph
+        Create relationships in the graph using batched operations
 
         Args:
             relationships: List of relationship definitions
         """
         logger.info(f"Creating {len(relationships)} relationships...")
 
+        # Group relationships by (from_label, rel_type, to_label)
+        rels_by_type = {}
         for rel in relationships:
+            key = (rel["from_label"], rel["type"], rel["to_label"])
+            if key not in rels_by_type:
+                rels_by_type[key] = []
+            
+            # Prepare relationship data
+            rel_data = {
+                "from_props": rel["from_props"],
+                "to_props": rel["to_props"],
+                "rel_props": rel.get("properties", {})
+            }
+            rels_by_type[key].append(rel_data)
+
+        # Batch create relationships
+        for (from_label, rel_type, to_label), rels_list in rels_by_type.items():
             try:
-                self.conn.create_relationship(
-                    from_label=rel["from_label"],
-                    from_props=rel["from_props"],
-                    rel_type=rel["type"],
-                    to_label=rel["to_label"],
-                    to_props=rel["to_props"],
-                    rel_props=rel.get("properties"),
-                )
+                # Assuming 'id' is the key for matching nodes. 
+                # If matching logic is complex, this generic batching might need adjustment.
+                # Here we match on ALL properties provided in from_props/to_props which is safer but dynamic.
+                
+                # For simplified batching, we assume from_props and to_props have 'id'.
+                # But to remain generic like the original code, we must construct the match clause dynamically or use APOC.
+                # To keep it standard Cypher, we'll iterate efficiently or use a more complex UNWIND.
+                
+                # Let's use a simpler approach: 
+                # We assume nodes are identified by 'id' property strictly for this batch optimization 
+                # OR we fallback to generic UNWIND if the data structure supports it.
+                
+                # Efficient Strategy: match by ID if available, otherwise flexible match is hard to batch without APOC.
+                # Given MBSE context, 'id' is standard.
+                
+                query = f"""
+                UNWIND $rels AS rel
+                MATCH (from:{from_label})
+                WHERE from.id = rel.from_props.id
+                MATCH (to:{to_label})
+                WHERE to.id = rel.to_props.id
+                CREATE (from)-[r:{rel_type}]->(to)
+                SET r += rel.rel_props
+                """
+                
+                self.conn.execute_write(query, {"rels": rels_list})
+                logger.debug(f"Created {len(rels_list)} relationships of type {rel_type}")
+                
             except Exception as e:
-                logger.error(f"Failed to create relationship: {e}")
+                logger.error(f"Failed to batch create relationships, falling back to sequential: {e}")
+                # Fallback to sequential for this batch if it fails (e.g. missing 'id' property)
+                for rel_data in rels_list:
+                    try:
+                        self.conn.create_relationship(
+                            from_label=from_label,
+                            from_props=rel_data["from_props"],
+                            rel_type=rel_type,
+                            to_label=to_label,
+                            to_props=rel_data["to_props"],
+                            rel_props=rel_data["rel_props"],
+                        )
+                    except Exception as inner_e:
+                        logger.error(f"Failed to create relationship: {inner_e}")
 
     def clear_graph(self) -> None:
         """Clear all nodes and relationships from the graph"""

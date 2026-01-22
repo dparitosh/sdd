@@ -20,6 +20,8 @@ from ..agentic import (
 )
 from ..agentic.adapters import MBSEToolsAdapter
 from .langgraph_agent import MBSETools
+from .plm_agent import PLMAgent
+from .simulation_agent import SimulationAgent
 
 
 # ============================================================================
@@ -70,7 +72,7 @@ class EngineeringState(TypedDict):
 # ============================================================================
 
 
-def mbse_agent_node(state: EngineeringState) -> dict:
+async def mbse_agent_node(state: EngineeringState) -> dict:
     """
     MBSE Agent: Query requirements, artifacts, and traceability
     Uses MBSETools to interact with Neo4j knowledge graph
@@ -88,7 +90,11 @@ def mbse_agent_node(state: EngineeringState) -> dict:
         # Get traceability if requirement found
         traceability_data = None
         if "requirement" in user_query.lower():
-            traceability_data = tools.get_traceability()
+            try:
+                # get_traceability might fail if not fully implemented in tools, wrap safely
+                traceability_data = tools.get_traceability(source_type="Requirement")
+            except:
+                traceability_data = {"note": "Traceability fetch failed or not applicable"}
 
         messages = [
             AIMessage(
@@ -96,11 +102,19 @@ def mbse_agent_node(state: EngineeringState) -> dict:
             )
         ]
 
+        # Determine next step based on task type
+        task = state.get("task_type", "traceability")
+        next_step = END
+        if task == "impact_analysis" or task == "bom_sync":
+            next_step = "plm_agent"
+        elif task == "requirement_check":
+            next_step = "simulation_agent"
+
         return {
             "artifact_details": {"search_results": search_results},
             "traceability_data": traceability_data,
             "messages": messages,
-            "next_action": "plm_agent",
+            "next_action": next_step,
         }
 
     except Exception as e:
@@ -108,282 +122,122 @@ def mbse_agent_node(state: EngineeringState) -> dict:
         return {
             "error": f"MBSE Agent failed: {str(e)}",
             "messages": [AIMessage(content=f"MBSE Agent encountered error: {str(e)}")],
-            "next_action": "end",
+            "next_action": END
         }
 
 
-def plm_agent_node(state: EngineeringState) -> dict:
-    """
-    PLM Agent: Analyze BOM structure and change impact
-    Would connect to Teamcenter/Windchill/SAP (credentials pending)
-    """
-    logger.info("🔧 PLM Agent: Analyzing BOM and change impact")
-
-    messages = [
-        AIMessage(content="PLM Agent: Analyzing BOM structure and dependencies")
-    ]
-
+async def plm_agent_node(state: EngineeringState) -> dict:
+    """PLM Agent: Interact with Teamcenter/Windchill"""
+    logger.info("⚙️ PLM Agent: Checking component status and BOM")
+    
+    agent = PLMAgent(system_type="teamcenter")
+    
     try:
-        # Placeholder for PLM integration (connectors ready, credentials pending)
-        # In production: Use TeamcenterConnector, WindchillConnector, or SAPODataConnector
-
-        affected_parts = [
-            {"part_id": "PART-001", "name": "Brake Caliper", "impact_level": "high"},
-            {
-                "part_id": "PART-002",
-                "name": "Brake Rotor",
-                "impact_level": "medium",
-                "reason": "Connected to modified caliper",
-            },
-        ]
-
-        change_impact = {
-            "direct_dependencies": 2,
-            "indirect_dependencies": 5,
-            "estimated_cost": "$15,000",
-            "estimated_time": "2 weeks",
-        }
-
+        # Extract IDs from state['artifact_details'] if available, else mock
+        part_ids = ["000123", "000456"] 
+        
+        # Async call to agent
+        availability = await agent.check_part_availability(part_ids)
+        
+        messages = [AIMessage(content=f"PLM Agent: Checked part status in Teamcenter. Results: {len(availability)} parts.")]
+        
         return {
-            "affected_parts": affected_parts,
-            "change_impact": change_impact,
+            "affected_parts": [{"id": pid, "status": "Released"} for pid in part_ids], # partial mock for now
             "messages": messages,
-            "next_action": "simulation_agent",
+            "next_action": END
         }
-
     except Exception as e:
-        logger.error(f"PLM Agent error: {e}")
-        return {
-            "error": f"PLM Agent failed: {str(e)}",
-            "messages": [AIMessage(content=f"PLM Agent encountered error: {str(e)}")],
-            "next_action": "end",
-        }
+        return {"error": str(e), "next_action": END}
 
 
-def simulation_agent_node(state: EngineeringState) -> dict:
-    """
-    Simulation Agent: Extract parameters and validate design
-    Uses simulation API endpoints for parameter extraction
-    """
-    logger.info("🧪 Simulation Agent: Extracting parameters and running validation")
-
-    tools = MBSETools()
-    messages = [AIMessage(content="Simulation Agent: Validating design parameters")]
-
-    try:
-        # Extract simulation parameters using existing API
-        parameters = tools.get_parameters(limit=20)
-
-        # Placeholder for simulation execution (connectors not yet implemented)
-        validation_results = {
-            "status": "success",
-            "parameters_validated": 15,
-            "constraints_checked": 8,
-            "violations": 0,
-        }
-
-        simulation_summary = {
-            "total_parameters": 15,
-            "ready_for_simulation": True,
-            "recommended_tool": "MATLAB/Simulink",
-        }
-
-        return {
-            "simulation_parameters": {"parameters": parameters},
-            "validation_results": validation_results,
-            "simulation_summary": simulation_summary,
-            "messages": messages,
-            "next_action": "compliance_agent",
-        }
-
-    except Exception as e:
-        logger.error(f"Simulation Agent error: {e}")
-        return {
-            "error": f"Simulation Agent failed: {str(e)}",
-            "messages": [
-                AIMessage(content=f"Simulation Agent encountered error: {str(e)}")
-            ],
-            "next_action": "end",
-        }
-
-
-def compliance_agent_node(state: EngineeringState) -> dict:
-    """
-    Compliance Agent: Check design against standards
-    Validates ISO 26262, DO-178C, and other compliance requirements
-    """
-    logger.info("✅ Compliance Agent: Checking compliance with standards")
-
-    messages = [
-        AIMessage(content="Compliance Agent: Validating against ISO 26262 and DO-178C")
-    ]
-
-    try:
-        # Placeholder for compliance checking (to be implemented)
-        violations = []
-        compliance_status = {
-            "iso_26262": {"compliant": True, "asil_level": "B"},
-            "do_178c": {"compliant": True, "dal_level": "C"},
-            "aspice": {"compliant": True, "level": 3},
-        }
-
-        recommendations = [
-            "Document design rationale for brake caliper material change",
-            "Update FMEA analysis for new material properties",
-            "Schedule verification tests for thermal cycling",
-        ]
-
-        return {
-            "compliance_status": compliance_status,
-            "violations": violations,
-            "recommendations": recommendations,
-            "messages": messages,
-            "next_action": "end",
-        }
-
-    except Exception as e:
-        logger.error(f"Compliance Agent error: {e}")
-        return {
-            "error": f"Compliance Agent failed: {str(e)}",
-            "messages": [
-                AIMessage(content=f"Compliance Agent encountered error: {str(e)}")
-            ],
-            "next_action": "end",
-        }
-
-
-def should_continue(state: EngineeringState) -> Literal["continue", "end"]:
-    """
-    Routing function to determine next step in workflow
-    """
-    if state.get("error"):
-        return "end"
-
-    next_action = state.get("next_action", "end")
-    if next_action == "end":
-        return "end"
-
-    return "continue"
+async def simulation_agent_node(state: EngineeringState) -> dict:
+    """Simulation Agent: Run analysis"""
+    logger.info("🧪 Simulation Agent: Validating requirements")
+    
+    agent = SimulationAgent()
+    params = agent.get_simulation_parameters("Model-X")
+    
+    # Run simulation (Fea)
+    result = await agent.run_simulation("fea", params)
+    
+    return {
+        "simulation_parameters": params,
+        "simulation_summary": result,
+        "messages": [AIMessage(content=f"Simulation Agent: Simulation complete. Status: {result.get('status')}")],
+        "next_action": END
+    }
 
 
 # ============================================================================
-# WORKFLOW GRAPH CONSTRUCTION
+# GRAPH CONSTRUCTION
 # ============================================================================
 
-
-def create_engineering_workflow() -> StateGraph:
-    """
-    Create the multi-agent engineering workflow graph
-
-    Workflow: User Query → MBSE → PLM → Simulation → Compliance → End
-    """
-    logger.info("🏗️ Creating multi-agent engineering workflow")
-
+def create_engineering_workflow():
+    """Create the multi-agent workflow graph"""
     workflow = StateGraph(EngineeringState)
 
-    # Add agent nodes
+    # Add nodes
     workflow.add_node("mbse_agent", mbse_agent_node)
     workflow.add_node("plm_agent", plm_agent_node)
     workflow.add_node("simulation_agent", simulation_agent_node)
-    workflow.add_node("compliance_agent", compliance_agent_node)
 
-    # Define workflow edges
+    # set entry point
     workflow.set_entry_point("mbse_agent")
-    workflow.add_edge("mbse_agent", "plm_agent")
-    workflow.add_edge("plm_agent", "simulation_agent")
-    workflow.add_edge("simulation_agent", "compliance_agent")
-    workflow.add_edge("compliance_agent", END)
 
-    logger.info("✓ Multi-agent workflow created successfully")
-    return workflow
+    # Add conditional edges based on next_action
+    def router(state):
+        return state["next_action"]
+
+    workflow.add_conditional_edges(
+        "mbse_agent",
+        router,
+        {
+            "plm_agent": "plm_agent",
+            "simulation_agent": "simulation_agent",
+            END: END
+        }
+    )
+    
+    workflow.add_edge("plm_agent", END)
+    workflow.add_edge("simulation_agent", END)
+
+    return workflow.compile()
 
 
-# ============================================================================
-# WORKFLOW EXECUTION
-# ============================================================================
-
-
-def execute_engineering_workflow(
-    user_query: str, task_type: str = "impact_analysis"
-) -> dict:
-    """
-    Execute the engineering workflow for a given query
-
-    Args:
-        user_query: Natural language query from user
-        task_type: Type of task (traceability, impact_analysis, requirement_check, bom_sync)
-
-    Returns:
-        Final state with all agent outputs
-    """
-    logger.info(f"🚀 Executing engineering workflow for: {user_query}")
-
-    # Create workflow
+async def execute_engineering_workflow(user_query: str, task_type: str = "impact_analysis") -> dict:
+    """Execute the multi-agent workflow"""
     workflow = create_engineering_workflow()
-    app = workflow.compile()
-
-    # Initialize state
-    initial_state: EngineeringState = {
+    
+    initial_state = {
         "user_query": user_query,
         "task_type": task_type,
-        "requirement_id": None,
-        "artifact_details": None,
-        "traceability_data": None,
-        "affected_parts": [],
-        "bom_data": None,
-        "change_impact": None,
-        "simulation_parameters": None,
-        "validation_results": None,
-        "simulation_summary": None,
-        "compliance_status": None,
-        "violations": [],
-        "recommendations": [],
         "messages": [HumanMessage(content=user_query)],
         "next_action": "mbse_agent",
-        "error": None,
+        
+        # Initialize other fields to None/Empty
+        "requirement_id": None, "artifact_details": None, "traceability_data": None,
+        "affected_parts": [], "bom_data": None, "change_impact": None,
+        "simulation_parameters": None, "validation_results": None, "simulation_summary": None,
+        "compliance_status": None, "violations": [], "recommendations": [],
+        "error": None
     }
-
-    # Execute workflow
-    try:
-        result = app.invoke(initial_state)
-        logger.info("✓ Engineering workflow completed successfully")
-        return result
-
-    except Exception as e:
-        logger.error(f"Workflow execution failed: {e}")
-        return {
-            **initial_state,
-            "error": str(e),
-            "messages": initial_state["messages"]
-            + [AIMessage(content=f"Workflow failed: {str(e)}")],
-        }
+    
+    app = workflow.compile()
+    result = await app.ainvoke(initial_state)
+    return result
 
 
 # ============================================================================
 # BASELINE ORCHESTRATOR (AZURE AI PATTERN)
 # ============================================================================
 
-
 def create_baseline_orchestrator() -> BaselineOrchestrator:
-    """
-    Create a baseline orchestrator aligned with Azure AI agentic patterns.
-
-    Demonstrates:
-    - Tool Use (via MBSEToolsAdapter + ToolRegistry)
-    - Planning (via KeywordPlanner)
-    - Reflection (via SimpleReflector)
-    - Multi-Agent (via SingleToolAgent workers)
-    - Orchestrator-Agent (via BaselineOrchestrator)
-
-    No hard Azure dependencies; runs locally.
-    """
+    """Create a baseline orchestrator aligned with Azure AI agentic patterns."""
     tools = MBSETools()
     tool_registry = MBSEToolsAdapter(tools_api=tools)
     planner = KeywordPlanner()
     reflector = SimpleReflector()
 
-    # Multi-agent: one worker per domain (MBSE, PLM, Simulation, Compliance)
-    # For now we use a single agent; full multi-agent routing is a straightforward extension.
     mbse_agent = SingleToolAgent(name="mbse_worker", planner=planner)
 
     orchestrator = BaselineOrchestrator(
@@ -391,27 +245,13 @@ def create_baseline_orchestrator() -> BaselineOrchestrator:
         planner=planner,
         reflector=reflector,
         agents=[mbse_agent],
-        retriever=None,  # Optional: add AzureAISearchRetriever or StaticRetriever
         max_retries=1,
     )
-
-    logger.info("✓ Baseline orchestrator created (Azure AI pattern, vendor-neutral)")
     return orchestrator
 
 
 def execute_baseline_workflow(user_query: str) -> str:
-    """
-    Execute a goal using the baseline orchestrator.
-
-    This is a simpler, vendor-neutral alternative to the full LangGraph workflow.
-    It explicitly demonstrates Tool Use / Planning / Reflection / Orchestrator patterns.
-
-    Args:
-        user_query: Natural language goal
-
-    Returns:
-        Response string
-    """
+    """Execute a goal using the baseline orchestrator."""
     logger.info(f"🚀 Executing baseline orchestrator workflow for: {user_query}")
     orchestrator = create_baseline_orchestrator()
 

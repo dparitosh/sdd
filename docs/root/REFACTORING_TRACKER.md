@@ -30,10 +30,19 @@
 - ✅ **React Key Warnings**: Added stable `key` props to list renders in Parts Explorer and Query Editor to eliminate React warnings.
 - ✅ **Tailwind v4 Entry Point**: Updated CSS entry to Tailwind v4 style (`@import "tailwindcss";`) to reduce styling/tooling mismatches.
 - ✅ **Simulation Engineering UI (Partial)**: Wired Workflow Studio validation to real backend endpoints and improved interactivity (run dialog, parameter fetch, validation call).
+- ✅ **Multi-Agent Orchestration (Backend)**: Implemented LangGraph workflow, specialized agents (PLM, Simulation), and FastAPI endpoint (`/api/agents/orchestrator/run`) for complex engineering task delegation.
+- ✅ **Workflow Studio Execution (Frontend)**: Connected the "Run" action to the Multi-Agent Orchestration endpoint (`/api/agents/orchestrator/run`), displaying real-time agent conversation and task results in the UI.
+
+### Semantic Web & OSLC - Phase 2 (Late Jan 2026)
+- ✅ **OSLC Core Server**: Implemented Service Provider Catalog, Service Provider, and RootServices (`/oslc` endpoints).
+- ✅ **SHACL Validation**: Integrated `pyshacl` with SHACL 1.2 shapes for AP239 Requirements and AP242 Parts.
+- ✅ **SMRL Ingestion**: Created `scripts/ingest_smrl.py` to convert raw SMRL schemas into a proper Semantic TBox (Ontology).
+- ✅ **OSLC TRS (Smart Linking)**: Implemented Tracked Resource Set (TRS) protocol with Redis-backed ChangeLog (`/oslc/trs/*`).
+- ✅ **TRS Integration**: Wired SMRL REST API (`POST`, `PUT`, `PATCH`) to automatically publish `oslc:Creation` and `oslc:Update` events to the TRS ChangeLog.
+- ✅ **MoSSEC Agents**: Refactored `SimulationAgent` and `Orchestrator` to be async and create `MoSSEC_Activity` and `MoSSEC_Study` nodes, enabling ISO 10303-243 compliant process logging.
 
 ### Open Items (January 2026)
 - ⏳ **Simulation Engineering UI (Complete Integration)**: Replace remaining mock/static data in Simulation pages with live API calls (Model Repository + Results Analysis) once endpoint contracts are confirmed.
-- ⏳ **Workflow Studio Execution**: Implement true workflow execution (“Run”) beyond validation once the backend execution endpoint and payload are finalized.
 - ⏳ **Tailwind v4 Cleanup**: Remove remaining legacy utilities (e.g., `bg-gradient-to-*`, `flex-shrink-0`) across the frontend to eliminate warnings and ensure consistent styling.
 
 ### ISO 10303-4443 SMRL Compliance Status
@@ -988,116 +997,75 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
 
 ---
 
-#### 3.2 SHACL Validation
-- [ ] **Define SHACL shapes** (Priority: MEDIUM)
-  ```turtle
-  # shapes/mbse_shapes.ttl
-  @prefix sh: <http://www.w3.org/ns/shacl#> .
-  @prefix mbse: <http://mbse.example.org/ontology#> .
-  
-  mbse:ClassShape
-      a sh:NodeShape ;
-      sh:targetClass mbse:Class ;
-      sh:property [
-          sh:path mbse:name ;
-          sh:minCount 1 ;
-          sh:datatype xsd:string ;
-      ] ;
-      sh:property [
-          sh:path mbse:hasProperty ;
-          sh:minCount 0 ;
-          sh:class mbse:Property ;
-      ] .
-  
-  mbse:CircularInheritanceShape
-      a sh:NodeShape ;
-      sh:targetClass mbse:Class ;
-      sh:sparql [
-          sh:message "Circular inheritance detected" ;
-          sh:select """
-              SELECT ?this
-              WHERE {
-                  ?this mbse:extends+ ?this .
-              }
-          """ ;
-      ] .
-  ```
+#### 3.2 SHACL Validation (SHACL 1.2) - In Progress
+- [x] **Architecture Planning**
+  - Created `docs/root/SHACL_IMPLEMENTATION_PLAN.md`
+  - Defined validation strategy for AP239 and AP242 domains
 
-- [ ] **Create validator service** (Priority: MEDIUM)
-  ```python
-  # services/shacl_validator.py
-  from pyshacl import validate
-  from rdflib import Graph
-  
-  class SHACLValidator:
-      def __init__(self, shapes_file):
-          self.shapes_graph = Graph().parse(shapes_file)
-          
-      def validate_model(self, data_graph):
-          conforms, results_graph, results_text = validate(
-              data_graph,
-              shacl_graph=self.shapes_graph,
-              inference='rdfs',
-              abort_on_first=False
-          )
-          return {
-              'conforms': conforms,
-              'violations': self.parse_violations(results_graph)
-          }
-  ```
+- [x] **Define SHACL Shapes (v1.2)** (Priority: HIGH)
+  - [x] **AP239 Requirements Shape**
+    Created `backend/src/models/shapes/ap239_requirement.ttl`
+    - Enforced ID patterns (REQ-XXXX)
+    - Mandatory creationDate
+  - [x] **AP242 Part Shape**
+    Created `backend/src/models/shapes/ap242_part.ttl`
+    - Lifecycle state constraints (IN_WORK, RELEASED, OBSOLETE)
+    - Physical property constraints (non-negative Mass)
 
-- [ ] **Add validation endpoint** (Priority: MEDIUM)
-  ```python
-  @app.route('/api/validate/shacl', methods=['POST'])
-  def validate_shacl():
-      validator = SHACLValidator('shapes/mbse_shapes.ttl')
-      builder = MBSEOntologyBuilder(get_connection())
-      data_graph = builder.build_rdf_graph()
-      results = validator.validate_model(data_graph)
-      return jsonify(results)
-  ```
+- [x] **Create validator service** (Priority: HIGH)
+  Created `backend/src/web/services/shacl_validator.py`
+  - Implemented `SHACLValidator` class
+  - Added `validate_graph()` method using `pyshacl`
+  - Configured for RDFS inference
 
-**Deliverables**:
-- SHACL shape definitions for MBSE models
-- Validation service
-- REST API for validation
+- [ ] **Data Dictionary Integration (SMRL)** (Priority: HIGH)
+  - [x] **Ingest Pipeline**
+    Created `scripts/ingest_smrl.py`
+    - Parses `smrlv12` schema directories
+    - Generates OWL Ontology & SKOS Vocabulary
+  - [ ] **Agents Vocabulary Awareness** (Backend)
+    - Integrate SKOS lookup in Agent `search` tools
+  - [ ] **Frontend Vocabulary Picker** (Frontend)
+    - Component to browse SKOS concepts during data entry
 
 ---
 
-#### 3.3 OSLC Integration (Option: Python)
-- [ ] **Install OSLC library** (Priority: LOW)
-  ```bash
-  pip install pyoslc2
-  ```
+#### 3.3 OSLC Integration & Semantic Services (Phase 2)
+- [x] **Architecture Analysis**
+  - Created `docs/root/OSLC_SEMANTIC_ARCHITECTURE.md`
+  - Created `docs/root/MOSSEC_SPDM_ANALYSIS.md` (Agents as MoSSEC Actors)
+  - Created `docs/root/SMRL_SEMANTIC_FOUNDATION.md` (Ontology strategy)
 
-- [ ] **Create OSLC provider** (Priority: LOW)
-  ```python
-  # services/oslc_provider.py
-  from pyoslc2.service_provider import ServiceProvider
-  
-  class MBSEOSLCProvider(ServiceProvider):
-      def __init__(self, neo4j_conn):
-          super().__init__(
-              title="MBSE Knowledge Graph",
-              description="OSLC provider for MBSE models"
-          )
-          self.conn = neo4j_conn
-          
-      def get_requirements(self):
-          """Return requirements as OSLC resources"""
-          query = "MATCH (r:Requirement) RETURN r"
-          return self.conn.execute_query(query)
-  ```
+- [x] **OSLC Core Services (Backend)**
+  - [x] **Service Foundation** `backend/src/web/services/oslc_service.py`
+    - Service Provider Catalog Generation
+    - RDF/XML/JSON-LD Content Negotiation
+  - [x] **API Endpoints** `backend/src/web/routes/oslc_fastapi.py`
+    - `/oslc/rootservices`: Entry point
+    - `/oslc/catalog`: Provider listing
+    - `/oslc/sp/{id}`: Service capabilities
+  - [x] **FastAPI Registration**: Connected to main app
 
-- [ ] **Add OSLC endpoints** (Priority: LOW)
-  - `/oslc/rootservices` - Service provider catalog
-  - `/oslc/requirements` - Requirements resources
-  - `/oslc/classes` - Class resources
-  - `/oslc/query` - OSLC query capability
+- [ ] **Smart Linking (OSLC TRS) (Backend)**
+  - [x] Refactored `link_ap_hierarchy.py` for semantic logic mapping
+  - [ ] Implement TRS ChangeLog Endpoint
+  - [ ] Implement TRS Base Endpoint
+
+- [ ] **Frontend OSLC Components (Frontend)**
+  - [ ] **Delegated UI**: React components for "Selection Dialog"
+  - [ ] **Creation Dialog**: React form for "Creation Dialog"
+  - [ ] **Resource Preview**: OSLC Compact Resource rendering (UI Preview)
+
+- [ ] **Agent Enhancement (SPDM/MoSSEC) (Backend)**
+  - [ ] Refactor `SimulationAgent` to use `h5py` for result parsing
+  - [ ] Implement "Agent as Adapter" pattern (Wrapper)
+  - [ ] Create `MoSSEC_Activity` and `MoSSEC_Context` nodes for traceability
+
 
 **Deliverables**:
-- OSLC service provider implementation
-- Integration with IBM DOORS / Polarion ready
+- Fully compliant OSLC Server & Client
+- SHACL 1.2 Validated Data Pipeline
+- SMRL-aware MoSSEC Agents
 
 ---
 

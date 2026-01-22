@@ -1,0 +1,33 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix oslo: <https://standards.iso.org/iso/10303/-239/ed-3/tech/ontology#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+oslo:RequirementShape
+    a sh:NodeShape ;
+    sh:targetClass oslo:Requirement ;
+    sh:property [
+        sh:path oslo:id ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern "^REQ-[0-9]+" ;
+        sh:message "Requirement ID must maintain 'REQ-XXXX' format." ;
+    ] ;
+    sh:property [
+        sh:path oslo:name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxLength 255 ;
+    ] ;
+    sh:property [
+        sh:path oslo:description ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path oslo:creationDate ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:message "Requirement must have a creation timestamp." ;
+    ] .

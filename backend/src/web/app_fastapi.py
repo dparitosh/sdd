@@ -498,6 +498,14 @@ except ImportError as e:
     logger.warning(f"Cache routes not available: {e}")
 
 try:
+    from src.web.routes.agents_fastapi import router as agents_router
+
+    app.include_router(agents_router, prefix="/api", tags=["AI Agents & Orchestration"])
+    logger.info("✓ Registered AI Agents routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"AI Agents routes not available: {e}")
+
+try:
     from src.web.routes.upload_fastapi import router as upload_router
 
     app.include_router(upload_router, tags=["File Upload"])
@@ -512,6 +520,21 @@ try:
     logger.info("✓ Registered GraphQL routes (FastAPI)")
 except ImportError as e:
     logger.warning(f"GraphQL routes not available: {e}")
+
+try:
+    from src.web.routes.oslc_fastapi import router as oslc_router
+    # OSLC routes are typically mapped to /oslc/* not /api/oslc/* to comply with standard discovery patterns
+    app.include_router(oslc_router, tags=["OSLC Semantic Web"])
+    logger.info("✓ Registered OSLC routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"OSLC routes not available: {e}")
+
+try:
+    from src.web.routes.trs_fastapi import router as trs_router
+    app.include_router(trs_router, tags=["OSLC Tracked Resource Set"])
+    logger.info("✓ Registered OSLC TRS routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"OSLC TRS routes not available: {e}")
 
 logger.info("=" * 60)
 logger.info("🎉 100% FastAPI Migration Complete - All Routes Converted!")

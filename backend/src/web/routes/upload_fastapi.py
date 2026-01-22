@@ -4,12 +4,15 @@ File Upload API for XMI, XML, and CSV ingestion
 
 import os
 import shutil
+import uuid
+import pandas as pd
 from pathlib import Path
 from typing import Optional
 import tempfile
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks, status
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -140,10 +143,37 @@ async def process_csv_file(file_path: Path, job_id: str) -> dict:
             {"status": "processing", "progress": 10, "message": "Reading CSV file..."},
         )
 
-        # TODO: Implement CSV parsing and Neo4j import
-        # For now, just copy to raw data directory
+        def _process_csv_sync():
+            df = pd.read_csv(file_path)
+            # Infer label
+            label = file_path.stem
+            # Sanitize label (basic)
+            label = "".join(x for x in label if x.isalnum() or x in "_")
 
-        await job_store.update(job_id, {"progress": 50, "message": "Importing data..."})
+            if "id" not in df.columns:
+                df["id"] = [str(uuid.uuid4()) for _ in range(len(df))]
+
+            # Convert to list of dicts, replacing NaN with None
+            records = df.where(pd.notnull(df), None).to_dict("records")
+
+            neo4j_service = get_neo4j_service()
+
+            query = f"""
+            UNWIND $batch AS row
+            MERGE (n:`{label}` {{id: row.id}})
+            SET n += row
+            RETURN count(n) as count
+            """
+
+            result = neo4j_service.execute_query(query, {"batch": records})
+            count = result[0]["count"] if result else 0
+            return {"nodes_created": count, "label": label}
+
+        stats = await run_in_threadpool(_process_csv_sync)
+
+        await job_store.update(
+            job_id, {"progress": 90, "message": "Importing data..."}
+        )
 
         destination = RAW_DATA_DIR / file_path.name
         shutil.copy(file_path, destination)
@@ -153,15 +183,12 @@ async def process_csv_file(file_path: Path, job_id: str) -> dict:
             {
                 "status": "completed",
                 "progress": 100,
-                "message": f"Successfully uploaded {file_path.name}",
-                "stats": {
-                    "message": "CSV import not yet implemented, file saved for manual processing"
-                },
+                "message": f"Successfully imported {file_path.name}",
+                "stats": stats,
             },
         )
-
-        logger.info(f"✓ Uploaded CSV file: {file_path.name}")
-        return {"rows_imported": 0, "message": "CSV import coming soon"}
+        logger.success(f"✓ Processed CSV file: {file_path.name} - {stats}")
+        return stats
 
     except Exception as e:
         await job_store.update(
