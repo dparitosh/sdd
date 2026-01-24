@@ -117,4 +117,134 @@ For more granular control, use the Service Manager:
 .\deployment\scripts\service_manager.ps1 status
 .\deployment\scripts\service_manager.ps1 stop
 .\deployment\scripts\service_manager.ps1 backend restart
+.\deployment\scripts\service_manager.ps1 logs backend    # View backend logs
+.\deployment\scripts\service_manager.ps1 logs frontend   # View frontend logs
 ```
+
+## 9. Health Check
+
+After starting services, validate the deployment:
+
+```powershell
+.\deployment\diagnostics\health_check.ps1
+```
+
+This checks:
+1. Backend health endpoint
+2. API documentation availability
+3. Graph data endpoints
+4. Frontend accessibility
+5. Database connectivity
+
+For remote VMs, specify the URLs:
+```powershell
+.\deployment\diagnostics\health_check.ps1 -BackendUrl "http://<your-ip>:5000" -FrontendUrl "http://<your-ip>:3001"
+```
+
+---
+
+## 10. Azure VM Deployment
+
+When deploying to an Azure Windows VM, additional configuration is required.
+
+### 10.1 Network Security Group (NSG) Rules
+
+Allow inbound traffic on the required ports:
+
+| Priority | Name          | Port | Protocol | Source    | Action |
+|----------|---------------|------|----------|-----------|--------|
+| 100      | AllowBackend  | 5000 | TCP      | Any       | Allow  |
+| 110      | AllowFrontend | 3001 | TCP      | Any       | Allow  |
+
+**Azure CLI command:**
+```bash
+# Replace <resource-group> and <nsg-name> with your values
+az network nsg rule create \
+  --resource-group <resource-group> \
+  --nsg-name <nsg-name> \
+  --name AllowBackend \
+  --priority 100 \
+  --direction Inbound \
+  --access Allow \
+  --protocol Tcp \
+  --destination-port-range 5000
+
+az network nsg rule create \
+  --resource-group <resource-group> \
+  --nsg-name <nsg-name> \
+  --name AllowFrontend \
+  --priority 110 \
+  --direction Inbound \
+  --access Allow \
+  --protocol Tcp \
+  --destination-port-range 3001
+```
+
+### 10.2 Windows Firewall Rules
+
+On the VM itself, allow the ports through Windows Firewall:
+
+```powershell
+# Run as Administrator
+New-NetFirewallRule -DisplayName "MBSE Backend" -Direction Inbound -Protocol TCP -LocalPort 5000 -Action Allow
+New-NetFirewallRule -DisplayName "MBSE Frontend" -Direction Inbound -Protocol TCP -LocalPort 3001 -Action Allow
+```
+
+### 10.3 Environment Configuration
+
+Ensure `.env` uses `0.0.0.0` for host bindings (this is the default in `.env.example`):
+
+```dotenv
+BACKEND_HOST=0.0.0.0
+FRONTEND_HOST=0.0.0.0
+```
+
+For `API_BASE_URL`, you have two options:
+
+1. **If accessing from the same VM's browser**: Use `http://localhost:5000`
+2. **If frontend will be accessed externally**: Use the public IP: `http://<public-ip>:5000`
+
+### 10.4 Accessing the Application
+
+After starting services and configuring firewall rules:
+
+- **Frontend UI**: `http://<public-ip>:3001`
+- **Backend API**: `http://<public-ip>:5000`
+- **API Docs**: `http://<public-ip>:5000/docs`
+
+### 10.5 Production Considerations
+
+For production deployments, consider:
+
+1. **Use a reverse proxy** (IIS or nginx) for SSL termination
+2. **Enable HTTPS** with a proper SSL certificate
+3. **Restrict NSG rules** to specific IP ranges
+4. **Use Azure Key Vault** for secrets management
+5. **Enable Azure Monitor** for logging and alerting
+
+---
+
+## Troubleshooting
+
+### Backend won't start
+- Check `.venv` exists: `Test-Path .\.venv\Scripts\python.exe`
+- Check Python version: `.\.venv\Scripts\python.exe --version`
+- Verify requirements: `.\.venv\Scripts\pip.exe list`
+
+### Frontend won't start
+- Check Node version: `node --version` (should be 20+)
+- Reinstall dependencies: `npm ci`
+
+### Cannot connect to Neo4j
+- Verify `.env` credentials are correct
+- Test with the connectivity diagnostic
+- Check Neo4j is running and accessible
+
+### Graph is empty
+- Run the reload script (Section 6)
+- Check `data/raw/Domain_model.xmi` exists
+
+### Cannot access from external network
+- Verify NSG rules allow inbound on ports 5000 and 3001
+- Verify Windows Firewall rules are created
+- Verify hosts are bound to `0.0.0.0` in `.env`
