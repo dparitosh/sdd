@@ -1,43 +1,35 @@
 ###############################################################################
-# MBSE Knowledge Graph - Service Management Script (Windows PowerShell)
-# Purpose: Start, stop, restart, and monitor services
-# Usage: .\service_manager.ps1 [start|stop|restart|status|logs]
+# MBSE Knowledge Graph - Service Manager (DEPRECATED LOCATION)
+# This script has been moved to scripts/service_manager.ps1
+# This wrapper forwards to the new location for backward compatibility.
 ###############################################################################
 
 param(
     [Parameter(Position=0)]
-    [ValidateSet('start', 'stop', 'restart', 'status', 'logs', 'backend', 'frontend', 'help')]
     [string]$Command = 'help',
     
     [Parameter(Position=1)]
-    [ValidateSet('start', 'stop', 'restart')]
     [string]$SubCommand
 )
 
+Write-Host "[NOTE] This script location is deprecated." -ForegroundColor Yellow
+Write-Host "       Please use: .\scripts\service_manager.ps1" -ForegroundColor Yellow
+Write-Host ""
+
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Get-Item "$ScriptDir\..\..\").FullName
-$ProcessIdDir = "$env:TEMP\mbse-pids"
+$NewScript = Join-Path $ProjectRoot "scripts\service_manager.ps1"
 
-function Get-PythonExe {
-    $venvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
-    if (Test-Path $venvPython) {
-        return $venvPython
+if (Test-Path $NewScript) {
+    if ($SubCommand) {
+        & $NewScript $Command $SubCommand
+    } else {
+        & $NewScript $Command
     }
-    return "python"
-}
-
-function Get-NpmExe {
-    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
-    if ($npmCmd -and $npmCmd.Source) {
-        return $npmCmd.Source
-    }
-
-    # Fallback for PATH edge-cases
-    return "npm"
-}
-
-if (-not (Test-Path $ProcessIdDir)) {
-    New-Item -ItemType Directory -Path $ProcessIdDir -Force | Out-Null
+    exit $LASTEXITCODE
+} else {
+    Write-Host "[ERROR] Could not find $NewScript" -ForegroundColor Red
+    exit 1
 }
 
 function Show-Usage {

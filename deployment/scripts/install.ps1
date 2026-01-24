@@ -1,32 +1,23 @@
 ###############################################################################
-# MBSE Knowledge Graph - Installation Script for Windows (PowerShell)
-# Purpose: Automated installation on Windows systems
-# Usage: .\install.ps1 (Run as Administrator)
-# Note: This script requires Administrator privileges
+# MBSE Knowledge Graph - Installation Script (DEPRECATED LOCATION)
+# This script has been moved to scripts/install.ps1
+# This wrapper forwards to the new location for backward compatibility.
 ###############################################################################
 
-#Requires -RunAsAdministrator
-
-Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "MBSE Knowledge Graph - Installation" -ForegroundColor Cyan
-Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "[NOTE] This script location is deprecated." -ForegroundColor Yellow
+Write-Host "       Please use: .\scripts\install.ps1" -ForegroundColor Yellow
 Write-Host ""
 
-$PythonVersion = "3.12"
-$NodeVersion = "20"
-$InstallDir = "C:\MBSE\mbse-neo4j-graph-rep"
-$LogDir = "C:\MBSE\logs"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = (Get-Item "$ScriptDir\..\..\").FullName
+$NewScript = Join-Path $ProjectRoot "scripts\install.ps1"
 
-Write-Host "This script will install:" -ForegroundColor Yellow
-Write-Host "  - Python $PythonVersion and dependencies"
-Write-Host "  - Node.js $NodeVersion and npm"
-Write-Host "  - MBSE Knowledge Graph application"
-Write-Host ""
-
-$response = Read-Host "Continue with installation? (y/N)"
-if ($response -ne 'y' -and $response -ne 'Y') {
-    Write-Host "Installation cancelled." -ForegroundColor Yellow
-    exit 0
+if (Test-Path $NewScript) {
+    & $NewScript @args
+    exit $LASTEXITCODE
+} else {
+    Write-Host "[ERROR] Could not find $NewScript" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""

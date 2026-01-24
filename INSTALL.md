@@ -1,14 +1,14 @@
 # Installation Guide - MBSE Knowledge Graph
 
-This guide provides step-by-step instructions for installing and configuring the MBSE Knowledge Graph application in a new Windows environment.
+This guide provides step-by-step instructions for installing and configuring the MBSE Knowledge Graph application on Windows systems.
 
 ## 1. Prerequisites
 
-Before starting, ensuring the following software is installed:
+Before starting, ensure the following software is installed:
 
 - **Windows 10/11 or Windows Server**
-- **Python 3.12** (available on PATH)
-- **Node.js 20** + **npm** (available on PATH)
+- **Python 3.10+** (available on PATH)
+- **Node.js 18+** with **npm** (available on PATH)
 - **Git**
 - **Neo4j Database**:
   - Can be a local Desktop instance or an AuraDB cloud instance.
@@ -16,35 +16,32 @@ Before starting, ensuring the following software is installed:
 
 ## 2. Installation Folder Setup
 
-You can deploy the application anywhere on your system (e.g., `C:\MBSE\mbse-neo4j-graph-rep`).
-
-1. **Clone or Copy** the repository to your machine.
-2. Open **PowerShell As Administrator**.
+1. **Clone or Copy** the repository to your machine (e.g., `C:\MBSE\mbse-neo4j-graph-rep`).
+2. Open **PowerShell** (standard user, no admin required).
 3. Navigate to the repository root.
 
-## 3. Automated Installation and Dependency Check
+## 3. Automated Installation
 
-The provided scripts automate the setup of Python environments and Node.js dependencies.
+The provided script automates the setup of Python environments and Node.js dependencies.
 
 Run the installer:
 ```powershell
-powershell -ExecutionPolicy Bypass -File deployment\scripts\install.ps1
+.\scripts\install.ps1
 ```
 
 **What this does:**
 - Validates Python and Node versions.
-- Creates a target directory (if installing away from the repo) or sets up the local environment.
 - Creates a Python Virtual Environment (`.venv`) for isolated dependencies.
 - Installs Python libraries from `backend/requirements.txt`.
 - Installs Node.js packages and builds the Frontend.
 - Copies the reference dataset (`Domain_model.xmi`) to `data/raw/` for initial loading.
-- Generates `start_all.ps1` and `.env` template.
+- Creates a `.env` template if not present.
 
 ## 4. Configuration
 
-After installation, you must configure your database credentials.
+After installation, configure your database credentials.
 
-1. Open the `.env` file created in the installation directory.
+1. Open the `.env` file in the installation directory.
 2. Update the Neo4j settings:
 
 ```dotenv
@@ -53,7 +50,7 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=<your-password>
 ```
 
-3. Ensure other settings are correct:
+3. Verify other settings:
 ```dotenv
 LOG_LEVEL=INFO
 DATA_DIR=./data
@@ -67,28 +64,53 @@ API_BASE_URL=http://localhost:5000
 
 ## 5. Starting the Services
 
-You can start both Backend and Frontend services using the generated script:
+Start both Backend and Frontend services using the service manager:
 
 ```powershell
-& '.\start_all.ps1'
+.\scripts\service_manager.ps1 start
 ```
 
-This will launch two new windows: one for the FastAPI backend and one for the Vite frontend server.
+This will launch both services in the background.
 
 - **Frontend UI**: [http://localhost:3001](http://localhost:3001)
 - **Backend API Docs**: [http://localhost:5000/docs](http://localhost:5000/docs)
 
-## 6. Data Loading (If starting fresh)
+### Service Management Commands
 
-The application comes with scripts to populate the graph from the included ISO 10303-4443 reference data.
+```powershell
+# Start all services
+.\scripts\service_manager.ps1 start
+
+# Stop all services
+.\scripts\service_manager.ps1 stop
+
+# Restart all services
+.\scripts\service_manager.ps1 restart
+
+# Check service status
+.\scripts\service_manager.ps1 status
+
+# Manage individual services
+.\scripts\service_manager.ps1 backend start
+.\scripts\service_manager.ps1 backend stop
+.\scripts\service_manager.ps1 frontend restart
+
+# View logs
+.\scripts\service_manager.ps1 logs backend
+.\scripts\service_manager.ps1 logs frontend
+
+# Show help
+.\scripts\service_manager.ps1 help
+```
+
+## 6. Data Loading
+
+The application comes with scripts to populate the graph from included ISO 10303-4443 reference data.
 
 To reload the database:
 
-1. Ensure the services are running (or at least the `.venv` is available).
-2. Run the reload script using the virtual environment python:
-
 ```powershell
-$env:PYTHONPATH="backend"; .\.venv\Scripts\python.exe backend/scripts/reload_database.py
+.\.venv\Scripts\python.exe scripts\reload_database.py
 ```
 
 This will:
@@ -98,35 +120,17 @@ This will:
 
 ## 7. Diagnostics
 
-If you encounter issues, use the diagnostics tools located in `deployment/diagnostics/`:
+If you encounter issues, use these diagnostic tools in the `scripts/` folder:
 
-- **Connectivity Check**:
-  ```powershell
-  $env:PYTHONPATH="backend"; .\.venv\Scripts\python.exe deployment/diagnostics/verify_connectivity.py
-  ```
-- **Duplicate Check**:
-  ```powershell
-  $env:PYTHONPATH="backend"; .\.venv\Scripts\python.exe deployment/diagnostics/check_duplicates.py
-  ```
-
-## 8. Service Management
-
-For more granular control, use the Service Manager:
-
+### Health Check
+Validate the entire deployment:
 ```powershell
-.\deployment\scripts\service_manager.ps1 status
-.\deployment\scripts\service_manager.ps1 stop
-.\deployment\scripts\service_manager.ps1 backend restart
-.\deployment\scripts\service_manager.ps1 logs backend    # View backend logs
-.\deployment\scripts\service_manager.ps1 logs frontend   # View frontend logs
+.\scripts\health_check.ps1
 ```
 
-## 9. Health Check
-
-After starting services, validate the deployment:
-
+For remote VMs, specify the URLs:
 ```powershell
-.\deployment\diagnostics\health_check.ps1
+.\scripts\health_check.ps1 -BackendUrl "http://<your-ip>:5000" -FrontendUrl "http://<your-ip>:3001"
 ```
 
 This checks:
@@ -136,18 +140,51 @@ This checks:
 4. Frontend accessibility
 5. Database connectivity
 
-For remote VMs, specify the URLs:
+### Connectivity Check
+Verify Neo4j connection and inspect graph structure:
 ```powershell
-.\deployment\diagnostics\health_check.ps1 -BackendUrl "http://<your-ip>:5000" -FrontendUrl "http://<your-ip>:3001"
+.\.venv\Scripts\python.exe scripts\verify_connectivity.py
 ```
+
+### Duplicate Check
+Check for duplicate nodes and relationships:
+```powershell
+.\.venv\Scripts\python.exe scripts\check_duplicates.py
+```
+
+### Cleanup
+Remove temporary files and caches:
+```powershell
+.\scripts\cleanup.ps1
+
+# Include node_modules removal
+.\scripts\cleanup.ps1 -IncludeNodeModules
+```
+
+## 8. Scripts Reference
+
+All scripts are located in the `scripts/` folder:
+
+| Script | Purpose |
+|--------|---------|
+| `install.ps1` | Automated installation and setup |
+| `service_manager.ps1` | Start, stop, restart, and monitor services |
+| `health_check.ps1` | Validate deployment health |
+| `cleanup.ps1` | Remove temporary files and caches |
+| `reload_database.py` | Clear and reload database from XMI |
+| `verify_connectivity.py` | Verify Neo4j connection and graph stats |
+| `check_duplicates.py` | Check for duplicate nodes/relationships |
+| `start_backend.ps1` | Start backend directly (interactive) |
+| `start_ui.ps1` | Start frontend directly (interactive) |
+| `stop_all.ps1` | Stop all services |
 
 ---
 
-## 10. Azure VM Deployment
+## 9. Azure VM Deployment
 
 When deploying to an Azure Windows VM, additional configuration is required.
 
-### 10.1 Network Security Group (NSG) Rules
+### 9.1 Network Security Group (NSG) Rules
 
 Allow inbound traffic on the required ports:
 
@@ -180,9 +217,9 @@ az network nsg rule create \
   --destination-port-range 3001
 ```
 
-### 10.2 Windows Firewall Rules
+### 9.2 Windows Firewall Rules
 
-On the VM itself, allow the ports through Windows Firewall:
+On the VM itself, allow the ports through Windows Firewall (requires Administrator):
 
 ```powershell
 # Run as Administrator
@@ -190,21 +227,20 @@ New-NetFirewallRule -DisplayName "MBSE Backend" -Direction Inbound -Protocol TCP
 New-NetFirewallRule -DisplayName "MBSE Frontend" -Direction Inbound -Protocol TCP -LocalPort 3001 -Action Allow
 ```
 
-### 10.3 Environment Configuration
+### 9.3 Environment Configuration
 
-Ensure `.env` uses `0.0.0.0` for host bindings (this is the default in `.env.example`):
+Ensure `.env` uses `0.0.0.0` for host bindings (this is the default):
 
 ```dotenv
 BACKEND_HOST=0.0.0.0
 FRONTEND_HOST=0.0.0.0
 ```
 
-For `API_BASE_URL`, you have two options:
+For `API_BASE_URL`:
+- **If accessing from the same VM's browser**: Use `http://localhost:5000`
+- **If frontend will be accessed externally**: Use the public IP: `http://<public-ip>:5000`
 
-1. **If accessing from the same VM's browser**: Use `http://localhost:5000`
-2. **If frontend will be accessed externally**: Use the public IP: `http://<public-ip>:5000`
-
-### 10.4 Accessing the Application
+### 9.4 Accessing the Application
 
 After starting services and configuring firewall rules:
 
@@ -212,7 +248,7 @@ After starting services and configuring firewall rules:
 - **Backend API**: `http://<public-ip>:5000`
 - **API Docs**: `http://<public-ip>:5000/docs`
 
-### 10.5 Production Considerations
+### 9.5 Production Considerations
 
 For production deployments, consider:
 
@@ -230,18 +266,20 @@ For production deployments, consider:
 - Check `.venv` exists: `Test-Path .\.venv\Scripts\python.exe`
 - Check Python version: `.\.venv\Scripts\python.exe --version`
 - Verify requirements: `.\.venv\Scripts\pip.exe list`
+- Check logs: `.\scripts\service_manager.ps1 logs backend`
 
 ### Frontend won't start
-- Check Node version: `node --version` (should be 20+)
+- Check Node version: `node --version` (should be 18+)
 - Reinstall dependencies: `npm ci`
+- Check logs: `.\scripts\service_manager.ps1 logs frontend`
 
 ### Cannot connect to Neo4j
 - Verify `.env` credentials are correct
-- Test with the connectivity diagnostic
+- Run: `.\.venv\Scripts\python.exe scripts\verify_connectivity.py`
 - Check Neo4j is running and accessible
 
 ### Graph is empty
-- Run the reload script (Section 6)
+- Run the reload script: `.\.venv\Scripts\python.exe scripts\reload_database.py`
 - Check `data/raw/Domain_model.xmi` exists
 
 ### Cannot access from external network

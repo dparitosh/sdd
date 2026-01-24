@@ -1,7 +1,7 @@
 ###############################################################################
-# MBSE Knowledge Graph - Health Check (DEPRECATED LOCATION)
-# This script has been moved to scripts/health_check.ps1
-# This wrapper forwards to the new location for backward compatibility.
+# MBSE Knowledge Graph - Health Check Script (Windows PowerShell)
+# Purpose: Validate that the deployment is working correctly
+# Usage: .\scripts\health_check.ps1 [-BackendUrl <url>] [-FrontendUrl <url>]
 ###############################################################################
 
 param(
@@ -9,23 +9,16 @@ param(
     [string]$FrontendUrl = "http://localhost:3001"
 )
 
-Write-Host "[NOTE] This script location is deprecated." -ForegroundColor Yellow
-Write-Host "       Please use: .\scripts\health_check.ps1" -ForegroundColor Yellow
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "MBSE Knowledge Graph - Health Check" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Backend URL:  $BackendUrl" -ForegroundColor Gray
+Write-Host "Frontend URL: $FrontendUrl" -ForegroundColor Gray
 Write-Host ""
 
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = (Get-Item "$ScriptDir\..\..\").FullName
-$NewScript = Join-Path $ProjectRoot "scripts\health_check.ps1"
-
-if (Test-Path $NewScript) {
-    & $NewScript -BackendUrl $BackendUrl -FrontendUrl $FrontendUrl
-    exit $LASTEXITCODE
-}
-
-# Fallback to inline execution if new script not found
-Write-Host "[WARN] New script not found, running inline..." -ForegroundColor Yellow
-
 $allPassed = $true
+$warnings = 0
 
 # Check 1: Backend Health Endpoint
 Write-Host "[1/5] Checking Backend Health Endpoint..." -ForegroundColor Yellow
@@ -35,6 +28,7 @@ try {
         Write-Host "      [PASS] Backend is healthy" -ForegroundColor Green
     } else {
         Write-Host "      [WARN] Backend responded but status unclear: $response" -ForegroundColor Yellow
+        $warnings++
     }
 } catch {
     Write-Host "      [FAIL] Backend health check failed: $($_.Exception.Message)" -ForegroundColor Red
@@ -46,7 +40,7 @@ Write-Host "[2/5] Checking Backend API Documentation..." -ForegroundColor Yellow
 try {
     $response = Invoke-WebRequest -Uri "$BackendUrl/docs" -TimeoutSec 10 -ErrorAction Stop
     if ($response.StatusCode -eq 200) {
-        Write-Host "      [PASS] API documentation is accessible at $BackendUrl/docs" -ForegroundColor Green
+        Write-Host "      [PASS] API documentation is accessible" -ForegroundColor Green
     }
 } catch {
     Write-Host "      [FAIL] API docs not accessible: $($_.Exception.Message)" -ForegroundColor Red
@@ -62,6 +56,7 @@ try {
         Write-Host "      [PASS] Graph API working - Found $($nodeTypes.Count) node types" -ForegroundColor Green
     } else {
         Write-Host "      [WARN] Graph API responded but no node types found (database may be empty)" -ForegroundColor Yellow
+        $warnings++
     }
 } catch {
     Write-Host "      [FAIL] Graph API check failed: $($_.Exception.Message)" -ForegroundColor Red
@@ -73,14 +68,14 @@ Write-Host "[4/5] Checking Frontend Accessibility..." -ForegroundColor Yellow
 try {
     $response = Invoke-WebRequest -Uri "$FrontendUrl" -TimeoutSec 10 -ErrorAction Stop
     if ($response.StatusCode -eq 200) {
-        Write-Host "      [PASS] Frontend is accessible at $FrontendUrl" -ForegroundColor Green
+        Write-Host "      [PASS] Frontend is accessible" -ForegroundColor Green
     }
 } catch {
     Write-Host "      [FAIL] Frontend not accessible: $($_.Exception.Message)" -ForegroundColor Red
     $allPassed = $false
 }
 
-# Check 5: Neo4j Connectivity (via backend metrics)
+# Check 5: Database Connectivity
 Write-Host "[5/5] Checking Database Connectivity..." -ForegroundColor Yellow
 try {
     $response = Invoke-RestMethod -Uri "$BackendUrl/api/metrics/health" -TimeoutSec 10 -ErrorAction Stop
@@ -88,6 +83,7 @@ try {
         Write-Host "      [PASS] Database connection verified" -ForegroundColor Green
     } else {
         Write-Host "      [WARN] Database status unclear: $($response | ConvertTo-Json -Compress)" -ForegroundColor Yellow
+        $warnings++
     }
 } catch {
     # Try alternative endpoint
@@ -102,8 +98,10 @@ try {
 
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
-if ($allPassed) {
+if ($allPassed -and $warnings -eq 0) {
     Write-Host "All checks PASSED! Deployment is healthy." -ForegroundColor Green
+} elseif ($allPassed) {
+    Write-Host "All checks PASSED with $warnings warning(s)." -ForegroundColor Yellow
 } else {
     Write-Host "Some checks FAILED. Review the errors above." -ForegroundColor Red
 }

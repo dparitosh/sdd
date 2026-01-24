@@ -1,38 +1,31 @@
 ###############################################################################
-# MBSE Knowledge Graph - Cleanup Script (Windows PowerShell)
-# Purpose: Remove temporary files, caches, and build artifacts
-# Usage: .\cleanup.ps1
+# MBSE Knowledge Graph - Cleanup Script (DEPRECATED LOCATION)
+# This script has been moved to scripts/cleanup.ps1
+# This wrapper forwards to the new location for backward compatibility.
 ###############################################################################
 
-Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "MBSE Knowledge Graph - Cleanup Script" -ForegroundColor Cyan
-Write-Host "==========================================" -ForegroundColor Cyan
+param(
+    [switch]$IncludeNodeModules
+)
+
+Write-Host "[NOTE] This script location is deprecated." -ForegroundColor Yellow
+Write-Host "       Please use: .\scripts\cleanup.ps1" -ForegroundColor Yellow
 Write-Host ""
 
-# Get script directory and project root
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Get-Item "$ScriptDir\..\..\").FullName
+$NewScript = Join-Path $ProjectRoot "scripts\cleanup.ps1"
 
-Set-Location $ProjectRoot
-
-Write-Host "Project root: $ProjectRoot"
-Write-Host ""
-
-# Function to safely remove files/directories
-function Remove-SafelyLocal {
-    param(
-        [string]$Path,
-        [string]$Description
-    )
-    
-    $items = Get-ChildItem -Path $Path -Recurse -ErrorAction SilentlyContinue
-    if ($items) {
-        Write-Host "Removing: $Description" -ForegroundColor Yellow
-        Remove-Item -Path $Path -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "[SUCCESS] Removed: $Path" -ForegroundColor Green
+if (Test-Path $NewScript) {
+    if ($IncludeNodeModules) {
+        & $NewScript -IncludeNodeModules
     } else {
-        Write-Host "[OK] Already clean: $Description" -ForegroundColor Green
+        & $NewScript
     }
+    exit $LASTEXITCODE
+} else {
+    Write-Host "[ERROR] Could not find $NewScript" -ForegroundColor Red
+    exit 1
 }
 
 Write-Host "=== Removing Python cache files ===" -ForegroundColor Cyan
