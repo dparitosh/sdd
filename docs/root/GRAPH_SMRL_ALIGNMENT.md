@@ -47,7 +47,7 @@
 
 | Relationship | Count | SMRL Equivalent | Status |
 |--------------|-------|----------------|---------|
-| **HAS_COMMENT** | 2,799 | `Descriptions` field | ✅ Aligned (embedded) |
+| **OWNS_COMMENT** | ~3,000 | `Descriptions` field | ✅ Aligned (embedded) |
 | **TYPED_BY** | 1,418 | `IsAnInstanceOf` | ✅ Aligned |
 | **CONTAINS** | 1,034 | `BreakdownElementAssociation` | ✅ Aligned |
 | **ASSOCIATES_WITH** | 1,004 | Association endpoint | ✅ Aligned |
@@ -130,7 +130,7 @@ All 9 relationship types map to SMRL concepts:
 - ✅ **Composition**: `HAS_ATTRIBUTE` → Property ownership
 - ✅ **Association**: `ASSOCIATES_WITH`, `HAS_END` → Association semantics
 - ✅ **Connection**: `CONNECTED_BY` → Interface connections
-- ✅ **Documentation**: `HAS_COMMENT` → Descriptions field
+- ✅ **Documentation**: `OWNS_COMMENT` → Descriptions field
 - ✅ **Constraint**: `HAS_RULE` → Constraint specification
 
 ### 3. **Instances** (Good Support)
@@ -502,7 +502,7 @@ SET n.href = '/api/v1/Package/' + n.id
 ### 3. Restructure Comment Nodes (Week 1) ✅
 ```cypher
 // Convert Comment nodes to embedded descriptions
-MATCH (n)-[r:HAS_COMMENT]->(c:Comment)
+MATCH (n)-[r:OWNS_COMMENT]->(c:Comment)
 SET n.descriptions = coalesce(n.descriptions, []) + [{
   locale: 'en',
   value: c.body

@@ -24,27 +24,22 @@ export default function WorkflowStudio() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResults, setExecutionResults] = useState(null);
 
+  // NOTE: Workflows are currently hardcoded for demonstration as the backend
+  // does not yet support workflow persistence/retrieval.
   const workflows = [
     {
-      name: 'Standard Thermal Analysis',
+      name: 'Demo: Thermal Analysis',
       steps: 5,
       status: 'active',
-      lastRun: '2 hours ago',
-      runs: 45,
-    },
-    {
-      name: 'Multi-Physics Simulation',
-      steps: 8,
-      status: 'draft',
-      lastRun: 'Never',
+      lastRun: '—',
       runs: 0,
     },
     {
-      name: 'Structural Validation Suite',
-      steps: 6,
-      status: 'active',
-      lastRun: '1 day ago',
-      runs: 23,
+      name: 'Demo: Multi-Physics',
+      steps: 8,
+      status: 'draft',
+      lastRun: '—',
+      runs: 0,
     },
   ];
 
@@ -214,8 +209,8 @@ export default function WorkflowStudio() {
         actions={
           <Button
             onClick={() =>
-              toast.info('Create Workflow', {
-                description: 'Workflow creation wizard is not implemented yet.',
+              toast.info('Feature Unavailable', {
+                description: 'Workflow creation is currently under development.',
               })
             }
           >
@@ -351,7 +346,7 @@ export default function WorkflowStudio() {
               Edit Workflow
             </DialogTitle>
             <DialogDescription>
-              Editing is not wired to persistence yet.
+              This feature is currently under development.
             </DialogDescription>
           </DialogHeader>
 
@@ -372,8 +367,8 @@ export default function WorkflowStudio() {
             </Button>
             <Button
               onClick={() =>
-                toast.info('Not implemented', {
-                  description: 'Workflow editing will be implemented when persistence is added.',
+                toast.info('Feature Unavailable', {
+                  description: 'Workflow persistence is not yet implemented.',
                 })
               }
             >

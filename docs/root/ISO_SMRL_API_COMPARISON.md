@@ -38,7 +38,7 @@
 - InstanceSpecification
 
 **Relationships**:
-- HAS_COMMENT
+- OWNS_COMMENT
 - CONTAINS
 - HAS_ATTRIBUTE
 - TYPED_BY
@@ -136,7 +136,7 @@
 - ✅ Typing (TYPED_BY)
 
 **3. Documentation**
-- ✅ Comments (HAS_COMMENT)
+- ✅ Comments (OWNS_COMMENT)
 - ✅ Descriptions (in properties)
 
 ### ❌ What We're Missing (SMRL Standard)

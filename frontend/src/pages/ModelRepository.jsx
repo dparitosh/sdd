@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@ui/card';
-import { Badge } from '@ui/badge';
-import { Button } from '@ui/button';
-import { Input } from '@ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Boxes, Search, Plus, FileCode, Clock, Eye, Pencil } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiService } from '@/services/api';
@@ -13,7 +17,11 @@ export default function ModelRepository() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
+
+  // Form states
+  const [formData, setFormData] = useState({ name: '', type: 'Physical', description: '', status: 'draft' });
 
   const {
     data: modelsResponse,
@@ -74,29 +82,29 @@ export default function ModelRepository() {
   };
   const handleEdit = model => {
     setSelectedModel(model);
+    setFormData({ 
+        name: model.name || '', 
+        type: model.type || 'Physical', 
+        description: model.description || '', 
+        status: model.status || 'draft' 
+    });
     setIsEditOpen(true);
   };
   const handleAddNew = () => {
-    toast.info('Add New Model', {
-      description: 'Model creation is not implemented yet.'
+    setFormData({ name: '', type: 'Physical', description: '', status: 'draft' });
+    setIsCreateOpen(true);
+  };
+  const handleCreateSubmit = () => {
+    toast.info('Feature Unavailable', { 
+        description: 'Backend API for creating models is currently under development.' 
     });
   };
-  const handleSaveEdit = () => {
-    toast.success('Model Updated', {
-      description: 'Editing is not implemented yet.'
+  const handleEditSubmit = () => {
+    toast.info('Feature Unavailable', { 
+        description: 'Backend API for updating models is currently under development.' 
     });
-    setIsEditOpen(false);
-    setSelectedModel(null);
   };
-  return <div className="container mx-auto p-6 space-y-6"><PageHeader title="Model Repository" description="Centralized library of simulation models and analysis templates" icon={<Boxes className="h-8 w-8 text-primary" />} breadcrumbs={[{
-      label: 'Simulation Engineering',
-      href: '/simulation/models'
-    }, {
-      label: 'Model Repository'
-    }]} actions={<Button onClick={handleAddNew}><Plus className="h-4 w-4 mr-2" />Add New Model</Button>} /><Card><CardContent className="pt-6"><div className="flex gap-4"><div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input placeholder="Search models by name, type, or tags..." className="pl-10" /></div><Button variant="outline"><FileCode className="h-4 w-4 mr-2" />Filter by Type</Button></div></CardContent></Card><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{models.map(model => <Card key={model.id} className="hover:shadow-lg transition-shadow"><CardHeader><div className="flex items-start justify-between"><CardTitle className="text-lg">{model.name}</CardTitle><div className={`h-2 w-2 rounded-full ${getStatusColor(model.status)}`} /></div><CardDescription>{model.type} Model</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="h-4 w-4" />Modified {model.lastModified}</div><div className="flex gap-2"><Badge variant="outline" className="capitalize">{model.status}</Badge><Badge variant="secondary">{model.type}</Badge></div><div className="flex gap-2 pt-2"><Button variant="outline" size="sm" className="flex-1" onClick={() => handleView(model)}>View</Button><Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(model)}>Edit</Button></div></CardContent></Card>)}</div><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardContent className="pt-6"><div className="text-2xl font-bold">24</div><p className="text-sm text-muted-foreground">Total Models</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-500">12</div><p className="text-sm text-muted-foreground">Validated</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-500">8</div><p className="text-sm text-muted-foreground">In Draft</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-500">156</div><p className="text-sm text-muted-foreground">Total Runs</p></CardContent></Card></div><Dialog open={isViewOpen} onOpenChange={setIsViewOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-primary" />{selectedModel?.name}</DialogTitle><DialogDescription>Model Details and Information</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="grid grid-cols-2 gap-4"><div><label className="text-sm font-medium text-muted-foreground">Type</label><p className="text-sm mt-1">{selectedModel?.type}</p></div><div><label className="text-sm font-medium text-muted-foreground">Status</label><div className="mt-1"><Badge variant="outline" className="capitalize">{selectedModel?.status}</Badge></div></div><div><label className="text-sm font-medium text-muted-foreground">Version</label><p className="text-sm mt-1">{selectedModel?.version}</p></div><div><label className="text-sm font-medium text-muted-foreground">Author</label><p className="text-sm mt-1">{selectedModel?.author}</p></div></div><div><label className="text-sm font-medium text-muted-foreground">Description</label><p className="text-sm mt-1">{selectedModel?.description}</p></div><div><label className="text-sm font-medium text-muted-foreground">Tags</label><div className="flex gap-2 mt-2">{selectedModel?.tags?.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}</div></div><div><label className="text-sm font-medium text-muted-foreground">Last Modified</label><p className="text-sm mt-1">{selectedModel?.lastModified}</p></div></div><DialogFooter><Button variant="outline" onClick={() => setIsViewOpen(false)}>Close</Button><Button onClick={() => {
-            setIsViewOpen(false);
-            setIsEditOpen(true);
-          }}><Pencil className="h-4 w-4 mr-2" />Edit Model</Button></DialogFooter></DialogContent></Dialog><Dialog open={isEditOpen} onOpenChange={setIsEditOpen}><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5 text-primary" />Edit Model</DialogTitle><DialogDescription>Update model information and metadata</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div><label className="text-sm font-medium">Model Name</label><Input defaultValue={selectedModel?.name} className="mt-1" /></div><div className="grid grid-cols-2 gap-4"><div><label className="text-sm font-medium">Type</label><Input defaultValue={selectedModel?.type} className="mt-1" /></div><div><label className="text-sm font-medium">Version</label><Input defaultValue={selectedModel?.version} className="mt-1" /></div></div><div><label className="text-sm font-medium">Description</label><Input defaultValue={selectedModel?.description} className="mt-1" /></div><div><label className="text-sm font-medium">Status</label><div className="flex gap-2 mt-1"><Badge variant={selectedModel?.status === 'validated' ? 'default' : 'outline'} className="cursor-pointer">Validated</Badge><Badge variant={selectedModel?.status === 'draft' ? 'default' : 'outline'} className="cursor-pointer">Draft</Badge><Badge variant={selectedModel?.status === 'archived' ? 'default' : 'outline'} className="cursor-pointer">Archived</Badge></div></div></div><DialogFooter><Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button><Button onClick={handleSaveEdit}>Save Changes</Button></DialogFooter></DialogContent></Dialog></div>;
+  
 
   return <div className="container mx-auto p-6 space-y-6"><PageHeader title="Model Repository" description="Centralized library of simulation models and analysis templates" icon={<Boxes className="h-8 w-8 text-primary" />} breadcrumbs={[{
       label: 'Simulation Engineering',
@@ -121,35 +129,68 @@ export default function ModelRepository() {
 
     {isModelsError && <Card className="border-destructive/40"><CardHeader><CardTitle>Failed to load models</CardTitle><CardDescription>{String(modelsError?.message || modelsError || 'Unknown error')}</CardDescription></CardHeader><CardContent><Button variant="outline" onClick={() => refetchModels()}>Retry</Button></CardContent></Card>}
 
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {(isModelsLoading ? Array.from({ length: 6 }).map((_, idx) => ({ id: `loading-${idx}` })) : models).map(model => {
-        if (isModelsLoading) {
-          return <Card key={model.id} className="animate-pulse"><CardHeader><div className="h-5 bg-muted rounded w-2/3" /><div className="h-4 bg-muted rounded w-1/3 mt-2" /></CardHeader><CardContent><div className="h-4 bg-muted rounded w-1/2" /><div className="h-8 bg-muted rounded w-full mt-4" /></CardContent></Card>;
-        }
-
-        return <Card key={model.id} className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <CardTitle className="text-lg">{model.name}</CardTitle>
-              <div className={`h-2 w-2 rounded-full ${getStatusColor(model.status)}`} />
-            </div>
-            <CardDescription>{model.parameter_count} parameters · {model.constraint_count} constraints</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />From graph schema
-            </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="capitalize">{model.status}</Badge>
-              <Badge variant="secondary">Class</Badge>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleView(model)}>View</Button>
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(model)}>Edit</Button>
-            </div>
-          </CardContent>
-        </Card>;
-      })}
+    <div className="border rounded-md">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Model Name</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Parameters</TableHead>
+            <TableHead>Constraints</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Last Modified</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isModelsLoading ? (
+            Array.from({ length: 5 }).map((_, idx) => (
+              <TableRow key={`loading-${idx}`}>
+                <TableCell><div className="h-4 w-32 bg-muted rounded animate-pulse" /></TableCell>
+                <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
+                <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
+                <TableCell><div className="h-5 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                <TableCell><div className="h-4 w-24 bg-muted rounded animate-pulse" /></TableCell>
+                <TableCell className="text-right"><div className="h-8 w-16 bg-muted rounded animate-pulse inline-block" /></TableCell>
+              </TableRow>
+            ))
+          ) : models.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                No models found.
+              </TableCell>
+            </TableRow>
+          ) : (
+            models.map(model => (
+              <TableRow key={model.id}>
+                <TableCell className="font-medium">{model.name}</TableCell>
+                <TableCell>{model.type || 'Class'}</TableCell>
+                <TableCell>{model.parameter_count}</TableCell>
+                <TableCell>{model.constraint_count}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={`capitalize ${model.status === 'validated' ? 'border-green-500 text-green-500' : 'border-amber-500 text-amber-500'}`}>
+                    {model.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {model.lastModified || '—'}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleView(model)}>
+                      <Eye className="h-4 w-4 mr-1" /> View
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(model)}>
+                      <Pencil className="h-4 w-4 mr-1" /> Edit
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -220,14 +261,106 @@ export default function ModelRepository() {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5 text-primary" />Edit Model</DialogTitle>
-          <DialogDescription>Editing is not implemented yet</DialogDescription>
+          <DialogDescription>Update model information and metadata</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div><label className="text-sm font-medium">Model Name</label><Input defaultValue={selectedModel?.name} className="mt-1" /></div>
+          <div className="space-y-2">
+            <Label>Model Name</Label>
+            <Input 
+                value={formData.name} 
+                onChange={e => setFormData({...formData, name: e.target.value})} 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label>Type</Label>
+                <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Physical">Physical</SelectItem>
+                        <SelectItem value="Logical">Logical</SelectItem>
+                        <SelectItem value="Functional">Functional</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label>Status</Label>
+                 <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="validated">Validated</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea 
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})} 
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveEdit}>Save Changes</Button>
+          <Button onClick={handleEditSubmit}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" />Create Model</DialogTitle>
+          <DialogDescription>Add a new simulation model to the repository</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Model Name</Label>
+            <Input 
+                placeholder="e.g. Thermal System V2"
+                value={formData.name} 
+                onChange={e => setFormData({...formData, name: e.target.value})} 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2">
+                <Label>Type</Label>
+                <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Physical">Physical</SelectItem>
+                        <SelectItem value="Logical">Logical</SelectItem>
+                        <SelectItem value="Functional">Functional</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label>Status</Label>
+                 <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="validated">Validated</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea 
+                placeholder="Describe the model purpose and scope..."
+                value={formData.description} 
+                onChange={e => setFormData({...formData, description: e.target.value})} 
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+          <Button onClick={handleCreateSubmit}>Create Model</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

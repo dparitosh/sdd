@@ -4,11 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@ui/c
 import { Badge } from '@ui/badge';
 import { Button } from '@ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ui/tabs';
-import { TrendingUp, Download, Share2, BarChart3, LineChart, PieChart, Activity as ActivityIcon } from 'lucide-react';
+import { TrendingUp, Download, Share2, Activity as ActivityIcon } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { apiService } from '@/services/api';
-import { Separator } from '@ui/separator';
 
 export default function ResultsAnalysis() {
   const [selectedResult, setSelectedResult] = useState(null);
@@ -19,6 +17,8 @@ export default function ResultsAnalysis() {
     queryKey: ['simulation-results'],
     queryFn: () => apiService.simulation.getResults({ limit: 100 }),
   });
+
+  const { isLoading, isError, error, refetch } = resultsQuery;
 
   const trsQuery = useQuery({
     queryKey: ['oslc-trs-changelog'],
@@ -92,9 +92,20 @@ export default function ResultsAnalysis() {
       </div>
     </CardContent></Card>
 
-    <Card><CardHeader><CardTitle>Result Visualization</CardTitle><CardDescription>Interactive charts and data exploration</CardDescription></CardHeader><CardContent><Tabs defaultValue="charts" className="w-full"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="charts"><BarChart3 className="h-4 w-4 mr-2" />Charts</TabsTrigger><TabsTrigger value="trends"><LineChart className="h-4 w-4 mr-2" />Trends</TabsTrigger><TabsTrigger value="comparison"><PieChart className="h-4 w-4 mr-2" />Comparison</TabsTrigger></TabsList><TabsContent value="charts" className="space-y-4"><div className="h-64 border-2 border-dashed rounded-lg flex items-center justify-center"><div className="text-center"><BarChart3 className="h-12 w-12 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Interactive charts will be displayed here</p><p className="text-xs text-muted-foreground">Select a result to visualize</p></div></div></TabsContent><TabsContent value="trends" className="space-y-4"><div className="h-64 border-2 border-dashed rounded-lg flex items-center justify-center"><div className="text-center"><LineChart className="h-12 w-12 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Trend analysis coming soon</p><p className="text-xs text-muted-foreground">Track metrics over time</p></div></div></TabsContent><TabsContent value="comparison" className="space-y-4"><div className="h-64 border-2 border-dashed rounded-lg flex items-center justify-center"><div className="text-center"><PieChart className="h-12 w-12 mx-auto mb-2 text-muted-foreground" /><p className="text-sm text-muted-foreground">Comparison view coming soon</p><p className="text-xs text-muted-foreground">Compare multiple results side-by-side</p></div></div></TabsContent></Tabs></CardContent></Card>
-
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4"><Card><CardContent className="pt-6"><div className="text-2xl font-bold">{totalRuns}</div><p className="text-sm text-muted-foreground">Total Runs</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-500">{successRate}%</div><p className="text-sm text-muted-foreground">Success Rate</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-blue-500">—</div><p className="text-sm text-muted-foreground">Data Stored</p></CardContent></Card><Card><CardContent className="pt-6"><div className="text-2xl font-bold text-amber-500">—</div><p className="text-sm text-muted-foreground">Avg Runtime</p></CardContent></Card></div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-2xl font-bold">{totalRuns}</div>
+          <p className="text-sm text-muted-foreground">Total Runs</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-2xl font-bold text-green-500">{successRate}%</div>
+          <p className="text-sm text-muted-foreground">Success Rate</p>
+        </CardContent>
+      </Card>
+    </div>
 
     <Card>
       <CardHeader>

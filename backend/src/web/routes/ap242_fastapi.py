@@ -55,7 +55,7 @@ class GeometryInfo(BaseModel):
 
 class Part(BaseModel):
     id: Optional[str] = None
-    name: str
+    name: Optional[str] = "Unknown"
     description: Optional[str] = None
     part_number: Optional[str] = None
     status: Optional[str] = None
@@ -70,8 +70,8 @@ class PartsResponse(BaseModel):
 
 
 class PartDetail(BaseModel):
-    id: str
-    name: str
+    id: Optional[str] = "Missing ID"
+    name: Optional[str] = "Unknown"
     description: Optional[str] = None
     part_number: Optional[str] = None
     status: Optional[str] = None
@@ -237,7 +237,7 @@ async def get_parts(
         parts = [
             {
                 "id": r["id"],
-                "name": r["name"],
+                "name": r["name"] or "Unknown",
                 "description": r["description"],
                 "part_number": r["part_number"],
                 "status": r["status"],
@@ -246,7 +246,6 @@ async def get_parts(
                 "requirements": [req for req in r["satisfies_requirements"] if req],
             }
             for r in results
-            if r["id"]  # Filter out parts without IDs
         ]
 
         return {"count": len(parts), "parts": parts}
@@ -300,8 +299,8 @@ async def get_part_detail(
         part = r["part"]
 
         part_detail = {
-            "id": part["id"],
-            "name": part["name"],
+            "id": part.get("id"),
+            "name": part.get("name", "Unknown"),
             "description": part.get("description"),
             "part_number": part.get("part_number"),
             "status": part.get("status"),

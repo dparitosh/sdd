@@ -48,6 +48,16 @@ A distributed collaboration platform for Model-Based Systems Engineering (MBSE) 
 - **Requirements Management**: Full traceability with 5 requirements and links
 - **Service Layer Architecture**: Connection pooling (50 max connections)
 - **High-Performance Caching**: TTL-based caching (99% faster repeated queries)
+
+## Installation
+
+See [INSTALL.md](INSTALL.md) for detailed step-by-step installation instructions for Windows.
+
+### Quick Start
+1. Clone the repository
+2. Run `deployment/scripts/install.ps1` (Admin)
+3. Configure `.env` with Neo4j credentials
+4. Run `start_all.ps1`
 - **Database Optimization**: 25 indexes + 7 constraints for fast queries
 - **Governance**: Person nodes and audit trails (created_by, modified_by)
 - **SMRL v1 API**: Full CRUD with `/api/v1/` endpoints

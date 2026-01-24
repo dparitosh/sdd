@@ -21,31 +21,31 @@ STATS_CACHE_TTL = 60  # 60 seconds
 
 # Pydantic models
 class PackageResponse(BaseModel):
-    id: str
-    name: str
+    id: Optional[str] = None
+    name: Optional[str] = "Unknown"
     comment: Optional[str] = None
     child_count: int
 
 
 class PackageContent(BaseModel):
-    id: str
-    name: str
-    type: str
+    id: Optional[str] = None
+    name: Optional[str] = "Unknown"
+    type: Optional[str] = None
     comment: Optional[str] = None
     display_name: Optional[str] = None
     member_ends: Optional[str] = None
 
 
 class PackageDetails(BaseModel):
-    package_id: str
-    package_name: str
+    package_id: Optional[str] = None
+    package_name: Optional[str] = "Unknown"
     package_comment: Optional[str] = None
     contents: List[PackageContent]
 
 
 class ClassResponse(BaseModel):
-    id: str
-    name: str
+    id: Optional[str] = None
+    name: Optional[str] = "Unknown"
     comment: Optional[str] = None
     property_count: int
 
@@ -63,8 +63,8 @@ class ParentClass(BaseModel):
 
 
 class ClassDetails(BaseModel):
-    id: str
-    name: str
+    id: Optional[str] = None
+    name: Optional[str] = "Unknown"
     comment: Optional[str] = None
     properties: List[PropertyDetail]
     parents: List[ParentClass]
@@ -72,15 +72,15 @@ class ClassDetails(BaseModel):
 
 class SearchResult(BaseModel):
     id: Optional[str] = None
-    name: str
-    type: str
+    name: Optional[str] = "Unknown"
+    type: Optional[str] = None
     comment: Optional[str] = None
 
 
 class Artifact(BaseModel):
     id: Optional[str] = None
-    name: str
-    type: str
+    name: Optional[str] = "Unknown"
+    type: Optional[str] = None
     comment: Optional[str] = None
 
 
@@ -120,7 +120,7 @@ async def get_packages():
         packages = [
             {
                 "id": r["id"],
-                "name": r["name"],
+                "name": r["name"] or "Unknown",
                 "comment": r["comment"],
                 "child_count": r["child_count"],
             }

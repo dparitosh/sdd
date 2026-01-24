@@ -25,7 +25,7 @@ router = APIRouter()
 
 
 class OntologyClass(BaseModel):
-    name: str
+    name: Optional[str] = "Unknown"
     ontology: Optional[str] = None
     uri: Optional[str] = None
     description: Optional[str] = None
@@ -38,7 +38,7 @@ class OntologiesResponse(BaseModel):
 
 
 class OntologyDetail(BaseModel):
-    name: str
+    name: Optional[str] = "Unknown"
     ontology: Optional[str] = None
     uri: Optional[str] = None
     description: Optional[str] = None
@@ -50,7 +50,7 @@ class OntologyDetail(BaseModel):
 
 
 class Unit(BaseModel):
-    name: str
+    name: Optional[str] = "Unknown"
     symbol: Optional[str] = None
     type: Optional[str] = None
     si_conversion: Optional[Any] = None  # Can be string or float
@@ -150,7 +150,7 @@ async def get_ontologies(
 
         ontologies = [
             {
-                "name": r["name"],
+                "name": r["name"] or "Unknown",
                 "ontology": r["ontology"],
                 "uri": r["uri"],
                 "description": r["description"],
@@ -207,7 +207,7 @@ async def get_ontology_detail(
         owl = r["owl"]
 
         ontology_detail = {
-            "name": owl["name"],
+            "name": owl.get("name", "Unknown"),
             "ontology": owl.get("ontology"),
             "uri": owl.get("uri"),
             "description": owl.get("description"),
@@ -272,7 +272,7 @@ async def get_units(
 
         units = [
             {
-                "name": r["name"],
+                "name": r["name"] or "Unknown",
                 "symbol": r["symbol"],
                 "type": r["type"],
                 "si_conversion": r["si_conversion"],

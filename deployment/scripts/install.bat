@@ -106,13 +106,14 @@ if %errorLevel% equ 0 (
     echo [SUCCESS] Application files copied
 ) else (
     REM Fallback if exclude.txt doesn't exist
-    xcopy /E /I /Y "%PROJECT_ROOT%\*.py" "%INSTALL_DIR%" >nul 2>&1
-    xcopy /E /I /Y "%PROJECT_ROOT%\*.json" "%INSTALL_DIR%" >nul 2>&1
-    xcopy /E /I /Y "%PROJECT_ROOT%\*.txt" "%INSTALL_DIR%" >nul 2>&1
-    xcopy /E /I /Y "%PROJECT_ROOT%\*.md" "%INSTALL_DIR%" >nul 2>&1
-    xcopy /E /I /Y "%PROJECT_ROOT%\src" "%INSTALL_DIR%\src\" >nul 2>&1
-    xcopy /E /I /Y "%PROJECT_ROOT%\frontend" "%INSTALL_DIR%\frontend\" >nul 2>&1
-    xcopy /E /I /Y "%PROJECT_ROOT%\deployment" "%INSTALL_DIR%\deployment\" >nul 2>&1
+    xcopy /E /I /Y "%PROJECT_ROOT%\backend" "%INSTALL_DIR%\backend" >nul 2>&1
+    xcopy /E /I /Y "%PROJECT_ROOT%\frontend" "%INSTALL_DIR%\frontend" >nul 2>&1
+    xcopy /E /I /Y "%PROJECT_ROOT%\deployment" "%INSTALL_DIR%\deployment" >nul 2>&1
+    xcopy /E /I /Y "%PROJECT_ROOT%\samples" "%INSTALL_DIR%\samples" >nul 2>&1
+    xcopy /Y "%PROJECT_ROOT%\package.json" "%INSTALL_DIR%" >nul 2>&1
+    xcopy /Y "%PROJECT_ROOT%\*.md" "%INSTALL_DIR%" >nul 2>&1
+    xcopy /Y "%PROJECT_ROOT%\*.json" "%INSTALL_DIR%" >nul 2>&1
+    xcopy /Y "%PROJECT_ROOT%\*.js" "%INSTALL_DIR%" >nul 2>&1
     echo [SUCCESS] Application files copied (basic)
 )
 
@@ -120,17 +121,31 @@ echo.
 echo === Installing Python Dependencies ===
 cd /d "%INSTALL_DIR%"
 
-if exist "requirements.txt" (
-    echo Installing from requirements.txt...
+if exist "backend\requirements.txt" (
+    echo Installing from backend\requirements.txt...
     python -m pip install --upgrade pip
-    python -m pip install -r requirements.txt
+    python -m pip install -r backend\requirements.txt
     if %errorLevel% equ 0 (
         echo [SUCCESS] Python dependencies installed
     ) else (
         echo [WARNING] Some Python dependencies may have failed to install
     )
 ) else (
-    echo [WARNING] requirements.txt not found
+    echo [WARNING] backend\requirements.txt not found
+)
+
+echo.
+echo === Setting up Data ===
+if not exist "%INSTALL_DIR%\data\raw" (
+    mkdir "%INSTALL_DIR%\data\raw"
+    echo [SUCCESS] Created data\raw
+)
+
+if exist "%INSTALL_DIR%\samples\reference\smrlv12\data\domain_models\mossec\Domain_model.xmi" (
+    copy /Y "%INSTALL_DIR%\samples\reference\smrlv12\data\domain_models\mossec\Domain_model.xmi" "%INSTALL_DIR%\data\raw\Domain_model.xmi" >nul
+    echo [SUCCESS] Copied Domain_model.xmi to data\raw
+) else (
+    echo [WARNING] Domain_model.xmi not found
 )
 
 echo.
@@ -192,7 +207,7 @@ REM Create start_all.bat
     echo @echo off
     echo echo Starting MBSE Knowledge Graph services...
     echo cd /d "%INSTALL_DIR%"
-    echo start "MBSE Backend" cmd /k "set PYTHONPATH=%INSTALL_DIR% && python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000"
+    echo start "MBSE Backend" cmd /k "cd backend && python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000"
     echo timeout /t 3 /nobreak ^>nul
     echo start "MBSE Frontend" cmd /k "npm run preview -- --host 0.0.0.0 --port 3001"
     echo echo Services started!

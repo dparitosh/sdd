@@ -18,6 +18,7 @@ import TraceabilityMatrix from '@/pages/TraceabilityMatrix';
 import PLMIntegration from '@/pages/PLMIntegration';
 import SystemMonitoring from '@/pages/SystemMonitoring';
 import RequirementsDashboard from '@/pages/RequirementsDashboard';
+import MossecDashboard from '@/pages/MossecDashboard';
 import PartsExplorer from '@/pages/PartsExplorer';
 import GraphBrowser from '@/pages/GraphBrowser';
 import DataImport from '@/pages/DataImport';
@@ -130,6 +131,14 @@ function AppContent() {
                     element={
                       <ErrorBoundary>
                         <RequirementsDashboard />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/mossec-dashboard"
+                    element={
+                      <ErrorBoundary>
+                        <MossecDashboard />
                       </ErrorBoundary>
                     }
                   />

@@ -3,16 +3,19 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+# Add backend directory to path so we can import src
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from loguru import logger
 
-from graph.connection import Neo4jConnection
-from parsers.semantic_loader import SemanticXMILoader
-from utils.config import Config
+from dotenv import load_dotenv
+from src.graph.connection import Neo4jConnection
+from src.parsers.semantic_loader import SemanticXMILoader
+from src.utils.config import Config
 
 
 def main():
+    load_dotenv()
     logger.info("🔄 Reloading database with enhanced Association properties...")
 
     # Load config

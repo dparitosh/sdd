@@ -203,6 +203,31 @@ export const apiService = {
     return apiClient.get<any>(`/${type.toLowerCase()}/${encodeURIComponent(id)}`);
   },
 
+  // Graph Visualization
+  graph: {
+    /**
+     * Get graph data nodes and links
+     * @param params - Optional filter parameters (node_types, limit, etc.)
+     * @returns Graph data object
+     */
+    getData: (params?: { limit?: number; node_types?: string }) =>
+      apiClient.get<any>('/graph/data', { params }),
+
+    /**
+     * Get list of node types
+     * @returns List of node types with counts
+     */
+    getNodeTypes: () =>
+      apiClient.get<any>('/graph/node-types'),
+
+    /**
+     * Get list of relationship types
+     * @returns List of relationship types with counts
+     */
+    getRelationshipTypes: () =>
+      apiClient.get<any>('/graph/relationship-types'),
+  },
+
   // SMRL v1 API
   
   /**

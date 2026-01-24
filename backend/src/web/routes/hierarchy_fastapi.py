@@ -25,8 +25,8 @@ class DirectionEnum(str, Enum):
 
 # Pydantic models
 class RequirementInfo(BaseModel):
-    id: str
-    name: str
+    id: Optional[str] = "Missing ID"
+    name: Optional[str] = "Unknown"
     type: Optional[str] = None
     status: Optional[str] = None
 
@@ -34,7 +34,8 @@ class RequirementInfo(BaseModel):
 class TraceabilityLink(BaseModel):
     part_id: Optional[str] = None
     part_name: Optional[str] = None
-    ontology_name: Optional[str] = None
+    materials: List[str] = []
+    ontologies: List[str] = []
 
 
 class TraceabilityItem(BaseModel):
@@ -120,9 +121,10 @@ async def get_traceability_matrix(api_key: str = Depends(get_api_key)):
         WHERE req.ap_level = 1
         OPTIONAL MATCH (req)-[*1..3]->(part:Part)
         WHERE part.ap_level = 2
+        OPTIONAL MATCH (part)-[:USES_MATERIAL]->(mat:Material)
         OPTIONAL MATCH (part)-[*1..3]->(owl:ExternalOwlClass)
         WHERE owl.ap_level = 3
-        WITH req, part, owl
+        WITH req, part, COLLECT(DISTINCT mat.name) as materials, COLLECT(DISTINCT owl.name) as ontologies
         RETURN req.id AS requirement_id,
                req.name AS requirement_name,
                req.type AS requirement_type,
@@ -130,7 +132,8 @@ async def get_traceability_matrix(api_key: str = Depends(get_api_key)):
                COLLECT(DISTINCT {
                    part_id: part.id,
                    part_name: part.name,
-                   ontology_name: owl.name
+                   materials: materials,
+                   ontologies: ontologies
                }) AS traceability
         ORDER BY req.name
         """
@@ -141,11 +144,20 @@ async def get_traceability_matrix(api_key: str = Depends(get_api_key)):
             {
                 "requirement": {
                     "id": r["requirement_id"],
-                    "name": r["requirement_name"],
+                    "name": r["requirement_name"] or "Unknown",
                     "type": r["requirement_type"],
                     "status": r["requirement_status"],
                 },
-                "traceability": [t for t in r["traceability"] if t.get("part_id")],
+                "traceability": [
+                    {
+                        "part_id": t["part_id"],
+                        "part_name": t["part_name"],
+                        "materials": t["materials"],
+                        "ontologies": t["ontologies"]
+                    }
+                    for t in r["traceability"]
+                    if t.get("part_id")
+                ],
             }
             for r in results
         ]

@@ -6,12 +6,14 @@ import { Input } from '@ui/input';
 import { Button } from '@ui/button';
 import { Label } from '@ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ui/table';
 import { Badge } from '@ui/badge';
 import { Skeleton } from '@ui/skeleton';
-import { Search, ExternalLink, List, Network, ChevronLeft, ChevronRight, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { Search, ExternalLink, List, Network, ChevronLeft, ChevronRight, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Loader2, Download } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import { toast } from 'sonner';
 const ARTIFACT_TYPES = ['All', 'Class', 'Package', 'Property', 'Association', 'Requirement', 'Constraint', 'Enumeration', 'Port', 'Slot', 'InstanceSpecification'];
 const NODE_TYPE_PROPERTIES = {
   'All': ['name', 'comment', 'id'],
@@ -40,9 +42,15 @@ const SEARCH_OPERATORS = [{
   label: 'Ends With'
 }];
 const PAGE_SIZE = 25;
-export default function AdvancedSearch() {
+export default function AdvancedSearch({ 
+    defaultType = 'All', 
+    allowedTypes = [], 
+    hideTypeSelector = false, 
+    title = "Advanced Search",
+    enableHeader = true
+} = {}) {
   const [searchParams, setSearchParams] = useState({
-    type: 'All',
+    type: defaultType,
     name: '',
     comment: ''
   });
@@ -58,6 +66,8 @@ export default function AdvancedSearch() {
     value: '',
     logicOperator: 'AND'
   }]);
+
+  const effectiveArtifactTypes = allowedTypes.length > 0 ? allowedTypes : ARTIFACT_TYPES;
   const availableProperties = NODE_TYPE_PROPERTIES[searchParams.type] || NODE_TYPE_PROPERTIES['All'];
   const addCriterion = () => {
     const newId = Math.max(...searchCriteria.map(c => c.id), 0) + 1;
@@ -100,7 +110,7 @@ export default function AdvancedSearch() {
   };
   const handleReset = () => {
     setSearchParams({
-      type: 'All',
+      type: defaultType,
       name: '',
       comment: ''
     });
@@ -114,6 +124,7 @@ export default function AdvancedSearch() {
     }]);
   };
   const totalPages = results ? Math.ceil(results.length / PAGE_SIZE) : 0;
+  
   const sortedResults = results ? [...results].sort((a, b) => {
     let aVal = a[sortField] || '';
     let bVal = b[sortField] || '';
@@ -161,12 +172,118 @@ export default function AdvancedSearch() {
           }
           return <Button key={pageNum} variant={currentPage === pageNum ? "default" : "outline"} size="sm" className="w-9 h-9" onClick={() => goToPage(pageNum)}>{pageNum}</Button>;
         })}{totalPages > 5 && currentPage < totalPages - 2 && <><span className="text-muted-foreground px-1">...</span><Button variant="outline" size="sm" className="w-9 h-9" onClick={() => goToPage(totalPages)}>{totalPages}</Button></>}</div><Button variant="outline" size="sm" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className="h-9">Next<ChevronRight className="h-4 w-4 ml-1" /></Button></div></div> : null;
-  return <div className="container mx-auto p-6 space-y-6"><PageHeader title="Advanced Search" description="Search for SysML/UML artifacts in the knowledge graph with advanced filtering" icon={<Search className="h-6 w-6 text-primary" />} breadcrumbs={[{
+  const exportToCSV = () => {
+    // If results is empty, we just export a CSV with headers
+    const dataToExport = (results && results.length > 0) ? results : [{}];
+    
+    // Determine keys (headers)
+    let keys;
+    if (results && results.length > 0) {
+        keys = Object.keys(results[0]);
+    } else {
+        // Fallback to available properties if no results
+        keys = availableProperties;
+    }
+
+    const csv = [keys.join(','), ...dataToExport.map(row => keys.map(key => {
+      const value = row[key];
+      if (value === null || value === undefined) return '';
+      return `"${String(value).replace(/"/g, '""')}"`;
+    }).join(','))].join('\n');
+
+    const blob = new Blob([csv], {
+      type: 'text/csv'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mossec_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Results exported to CSV');
+  };
+
+  const exportSchema = async () => {
+    try {
+      // Use direct API path since API_BASE is internal
+      // Use apiService.client to ensure auth headers are present, but need to handle full URL
+      // Actually fetch is simpler if we include headers.
+      // Better: reuse apiService's axios instance but manual GET
+      const token = localStorage.getItem('auth-storage') 
+        ? JSON.parse(localStorage.getItem('auth-storage')).state?.token 
+        : null;
+
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      
+      const response = await fetch('/api/export/schema', { headers });
+      
+      if (!response.ok) throw new Error('Export failed: ' + response.statusText);
+      const data = await response.json();
+      
+      // Check if backend returned error
+      if (data.metadata?.error) {
+          throw new Error('Backend error: ' + data.metadata.error);
+      }
+
+      // Convert Schema JSON to CSV format
+      const headersCSV = ['Category', 'Type', 'Count', 'Properties'];
+      const rows = [];
+      
+      // Add Nodes
+      if (data.schema?.nodes) {
+        data.schema.nodes.forEach(node => {
+          rows.push([
+            'Node',
+            `"${node.label}"`,
+            node.count,
+            `"${(node.properties || []).join(', ')}"`
+          ]);
+        });
+      }
+      
+      // Add Relationships
+      if (data.schema?.relationships) {
+        data.schema.relationships.forEach(rel => {
+            rows.push([
+                'Relationship',
+                `"${rel.type}"`,
+                rel.count,
+                '""' // Relationships in this API don't have property schema returned yet
+            ]);
+        });
+      }
+      
+      const csvContent = [
+          headersCSV.join(','), 
+          ...rows.map(r => r.join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mossec_schema_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Schema exported as CSV');
+    } catch (e) {
+      toast.error('Failed to export schema: ' + e.message);
+      console.error(e);
+    }
+  };
+
+  const containerClass = enableHeader ? "container mx-auto p-6 space-y-6" : "space-y-6";
+
+  return <div className={containerClass}>{enableHeader && <PageHeader title={title} description="Search for artifacts in the knowledge graph with advanced filtering" icon={<Search className="h-6 w-6 text-primary" />} breadcrumbs={[{
       label: 'Knowledge Graph',
       href: '/graph'
     }, {
-      label: 'Advanced Search'
-    }]} actions={results && <Badge variant="outline">{results.length} {results.length === 1 ? 'result' : 'results'}</Badge>} /><Card className="card-corporate border-2 shadow-lg"><CardHeader className="border-b bg-linear-to-r from-primary/5 to-primary/10 pb-4"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><Search className="h-5 w-5 text-primary" />Search Criteria</CardTitle>{isLoading && <Badge variant="outline" className="text-xs"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Searching...</Badge>}</div></CardHeader><CardContent className="pt-6"><div className="space-y-6"><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"><div className="space-y-2"><Label htmlFor="type" className="text-sm font-semibold">Artifact Type *</Label><Select value={searchParams.type} onValueChange={value => {
+      label: 'Search'
+    }]} actions={results && <Badge variant="outline">{results.length} {results.length === 1 ? 'result' : 'results'}</Badge>} />}<Card className="card-corporate border-2 shadow-lg"><CardHeader className="border-b bg-linear-to-r from-primary/5 to-primary/10 pb-4"><div className="flex items-center justify-between"><CardTitle className="flex items-center gap-2"><Search className="h-5 w-5 text-primary" />Search Criteria</CardTitle>{isLoading && <Badge variant="outline" className="text-xs"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Searching...</Badge>}</div></CardHeader><CardContent className="pt-6"><div className="space-y-6"><div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"><div className="space-y-2"><Label htmlFor="type" className="text-sm font-semibold">Artifact Type *</Label>
+    {hideTypeSelector ? (
+        <div className="p-2 border rounded-md bg-muted/30 font-medium">{searchParams.type}</div>
+    ) : (
+    <Select value={searchParams.type} onValueChange={value => {
                 setSearchParams({
                   ...searchParams,
                   type: value
@@ -178,7 +295,23 @@ export default function AdvancedSearch() {
                   value: '',
                   logicOperator: 'AND'
                 }]);
-              }}><SelectTrigger id="type"><SelectValue /></SelectTrigger><SelectContent>{ARTIFACT_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div></div><div className="space-y-4 mt-6 pt-6 border-t-2"><div className="flex items-center justify-between mb-4"><Label className="text-base font-semibold">Search Criteria</Label><Button variant="outline" size="sm" onClick={addCriterion} className="flex gap-1"><Plus className="h-4 w-4" />Add Criterion</Button></div>{searchCriteria.map((criterion, index) => <div key={criterion.id} className="space-y-3">{index > 0 && <div className="flex items-center gap-2 mb-2"><Select value={criterion.logicOperator} onValueChange={value => updateCriterion(criterion.id, 'logicOperator', value)}><SelectTrigger className="w-24 h-8 bg-primary/10 border-primary/30"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="AND">AND</SelectItem><SelectItem value="OR">OR</SelectItem></SelectContent></Select><div className="h-px flex-1 bg-border" /></div>}<div className="grid gap-3 md:grid-cols-12 items-end bg-muted/30 p-4 rounded-lg border-2"><div className="md:col-span-3 space-y-2"><Label className="text-xs">Property</Label><Select value={criterion.property} onValueChange={value => updateCriterion(criterion.id, 'property', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{availableProperties.map(prop => <SelectItem key={prop} value={prop}>{prop.charAt(0).toUpperCase() + prop.slice(1).replace('_', ' ')}</SelectItem>)}</SelectContent></Select></div><div className="md:col-span-3 space-y-2"><Label className="text-xs">Operator</Label><Select value={criterion.operator} onValueChange={value => updateCriterion(criterion.id, 'operator', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{SEARCH_OPERATORS.map(op => <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>)}</SelectContent></Select></div><div className="md:col-span-5 space-y-2"><Label className="text-xs">Value</Label><Input placeholder="Enter search value..." value={criterion.value} onChange={e => updateCriterion(criterion.id, 'value', e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} /></div><div className="md:col-span-1 flex items-end"><Button variant="ghost" size="sm" onClick={() => removeCriterion(criterion.id)} disabled={searchCriteria.length === 1} className="h-10 w-full text-destructive hover:text-destructive hover:bg-destructive/10"><X className="h-4 w-4" /></Button></div></div></div>)}</div></div><div className="flex items-center justify-between mt-6 pt-6 border-t-2"><div className="flex gap-3"><Button onClick={handleSearch} className="flex gap-2 shadow-md hover:shadow-lg transition-all min-w-[140px]" size="lg"><Search className="h-4 w-4" />Search Now</Button><Button variant="outline" onClick={handleReset} size="lg" className="border-2 min-w-[140px]">Clear All</Button></div>{results && <div className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">{results.length}</span> artifacts match your criteria</div>}</div></CardContent></Card><Card className="card-corporate border-2"><CardHeader className="border-b bg-linear-to-r from-accent/10 to-accent/5"><div className="flex items-center justify-between"><CardTitle>Search Results{results && <span className="ml-2 text-sm font-normal text-muted-foreground">({results.length} found{results.length > PAGE_SIZE ? `, showing ${paginatedResults.length}` : ''})</span>}</CardTitle><Tabs value={viewMode} onValueChange={v => setViewMode(v)}><TabsList><TabsTrigger value="table" className="flex items-center gap-1"><List className="h-4 w-4" />Table</TabsTrigger><TabsTrigger value="graph" className="flex items-center gap-1"><Network className="h-4 w-4" />Graph</TabsTrigger></TabsList></Tabs></div></CardHeader><CardContent>{!isLoading && <PaginationControls />}{isLoading ? <div className="space-y-2 mt-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div> : results && results.length > 0 ? <><Tabs value={viewMode}><TabsContent value="table" className="mt-0"><div className="rounded-lg border-2 shadow-sm overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow className="hover:bg-muted/50"><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('type')}><div className="flex items-center font-semibold">Type<SortIcon field="type" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('name')}><div className="flex items-center font-semibold">Name<SortIcon field="name" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('id')}><div className="flex items-center font-semibold">UID<SortIcon field="id" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('comment')}><div className="flex items-center font-semibold">Comment<SortIcon field="comment" /></div></TableHead><TableHead className="w-[100px]"><div className="font-semibold">Actions</div></TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((artifact, index) => <TableRow key={artifact.id || artifact.uid || index}><TableCell><Badge variant="outline">{artifact.type}</Badge></TableCell><TableCell className="font-medium">{artifact.name || '(unnamed)'}</TableCell><TableCell><code className="text-xs">{artifact.id || artifact.uid}</code></TableCell><TableCell className="max-w-md truncate">{artifact.comment || '-'}</TableCell><TableCell><Button variant="ghost" size="sm" disabled={!artifact.id && !artifact.uid} onClick={() => {
+              }}><SelectTrigger id="type"><SelectValue /></SelectTrigger><SelectContent>{effectiveArtifactTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select>
+    )}
+    </div></div><div className="space-y-4 mt-6 pt-6 border-t-2"><div className="flex items-center justify-between mb-4"><Label className="text-base font-semibold">Search Criteria</Label><Button variant="outline" size="sm" onClick={addCriterion} className="flex gap-1"><Plus className="h-4 w-4" />Add Criterion</Button></div>{searchCriteria.map((criterion, index) => <div key={criterion.id} className="space-y-3">{index > 0 && <div className="flex items-center gap-2 mb-2"><Select value={criterion.logicOperator} onValueChange={value => updateCriterion(criterion.id, 'logicOperator', value)}><SelectTrigger className="w-24 h-8 bg-primary/10 border-primary/30"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="AND">AND</SelectItem><SelectItem value="OR">OR</SelectItem></SelectContent></Select><div className="h-px flex-1 bg-border" /></div>}<div className="grid gap-3 md:grid-cols-12 items-end bg-muted/30 p-4 rounded-lg border-2"><div className="md:col-span-3 space-y-2"><Label className="text-xs">Property</Label><Select value={criterion.property} onValueChange={value => updateCriterion(criterion.id, 'property', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{availableProperties.map(prop => <SelectItem key={prop} value={prop}>{prop.charAt(0).toUpperCase() + prop.slice(1).replace('_', ' ')}</SelectItem>)}</SelectContent></Select></div><div className="md:col-span-3 space-y-2"><Label className="text-xs">Operator</Label><Select value={criterion.operator} onValueChange={value => updateCriterion(criterion.id, 'operator', value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{SEARCH_OPERATORS.map(op => <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>)}</SelectContent></Select></div><div className="md:col-span-5 space-y-2"><Label className="text-xs">Value</Label><Input placeholder="Enter search value..." value={criterion.value} onChange={e => updateCriterion(criterion.id, 'value', e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} /></div><div className="md:col-span-1 flex items-end"><Button variant="ghost" size="sm" onClick={() => removeCriterion(criterion.id)} disabled={searchCriteria.length === 1} className="h-10 w-full text-destructive hover:text-destructive hover:bg-destructive/10"><X className="h-4 w-4" /></Button></div></div></div>)}</div></div><div className="flex items-center justify-between mt-6 pt-6 border-t-2"><div className="flex gap-3"><Button onClick={handleSearch} className="flex gap-2 shadow-md hover:shadow-lg transition-all min-w-[140px]" size="lg"><Search className="h-4 w-4" />Search Now</Button><Button variant="outline" onClick={handleReset} size="lg" className="border-2 min-w-[140px]">Clear All</Button></div>{results && <div className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">{results.length}</span> artifacts match your criteria</div>}</div></CardContent></Card><Card className="card-corporate border-2"><CardHeader className="border-b bg-linear-to-r from-accent/10 to-accent/5"><div className="flex items-center justify-between"><CardTitle>Search Results{results && <span className="ml-2 text-sm font-normal text-muted-foreground">({results.length} found{results.length > PAGE_SIZE ? `, showing ${paginatedResults.length}` : ''})</span>}</CardTitle><div className="flex items-center gap-2">
+    <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1"><Download className="h-3.5 w-3.5" />Export</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportToCSV}>
+                Export Results (CSV)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportSchema}>
+                Export Schema (CSV)
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
+    <Tabs value={viewMode} onValueChange={v => setViewMode(v)}><TabsList><TabsTrigger value="table" className="flex items-center gap-1"><List className="h-4 w-4" />Table</TabsTrigger><TabsTrigger value="graph" className="flex items-center gap-1"><Network className="h-4 w-4" />Graph</TabsTrigger></TabsList></Tabs></div></div></CardHeader><CardContent>{!isLoading && <PaginationControls />}{isLoading ? <div className="space-y-2 mt-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div> : results && results.length > 0 ? <><Tabs value={viewMode}><TabsContent value="table" className="mt-0"><div className="rounded-lg border-2 shadow-sm overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow className="hover:bg-muted/50"><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('type')}><div className="flex items-center font-semibold">Type<SortIcon field="type" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('name')}><div className="flex items-center font-semibold">Name<SortIcon field="name" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('id')}><div className="flex items-center font-semibold">UID<SortIcon field="id" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('comment')}><div className="flex items-center font-semibold">Comment<SortIcon field="comment" /></div></TableHead><TableHead className="w-[100px]"><div className="font-semibold">Actions</div></TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((artifact, index) => <TableRow key={artifact.id || artifact.uid || index}><TableCell><Badge variant="outline">{artifact.type}</Badge></TableCell><TableCell className="font-medium">{artifact.name || '(unnamed)'}</TableCell><TableCell><code className="text-xs">{artifact.id || artifact.uid}</code></TableCell><TableCell className="max-w-md truncate">{artifact.comment || '-'}</TableCell><TableCell><Button variant="ghost" size="sm" disabled={!artifact.id && !artifact.uid} onClick={() => {
                           const artifactId = artifact.id || artifact.uid;
                           const artifactType = artifact.type.toLowerCase();
                           if (artifactId) {

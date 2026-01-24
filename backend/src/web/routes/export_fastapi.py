@@ -41,6 +41,114 @@ class ExportFormat(BaseModel):
 
 
 # ============================================================================
+# SCHEMA EXPORT ENDPOINT
+# ============================================================================
+
+
+@router.get("/schema")
+async def export_schema():
+    """
+    Export database schema and metadata
+
+    Returns:
+        JSON object containing node types, relationship types, and property definitions
+    """
+    try:
+        neo4j = get_neo4j_service()
+        
+        # 1. Get Node Types and Counts (Simpler query)
+        node_query = """
+        MATCH (n)
+        RETURN labels(n) as labels, count(n) as count
+        ORDER BY count DESC
+        """
+        node_results = neo4j.execute_query(node_query)
+        
+        # 2. Get Relationship Types and Counts (Simpler query)
+        rel_query = """
+        MATCH ()-[r]->()
+        RETURN type(r) as type, count(r) as count
+        ORDER BY count DESC
+        """
+        rel_results = neo4j.execute_query(rel_query)
+        
+        # 3. Get Property Keys (Schema extraction)
+        # Using db.schema.nodeTypeProperties is cleanest if available
+        # Fallback to sampling if fails
+        schema_query = """
+        CALL db.schema.nodeTypeProperties()
+        YIELD nodeType, propertyName, propertyTypes
+        RETURN nodeType, collect(propertyName) as properties
+        """
+        try:
+            prop_results = neo4j.execute_query(schema_query)
+        except Exception:
+             # Fallback query if db.schema.nodeTypeProperties is not available (Neo4j < 5.x)
+            schema_query = """
+            MATCH (n) 
+            WITH n, labels(n)[0] as label
+            LIMIT 1000 
+            RETURN label, keys(n) as properties
+            """
+            prop_results_raw = neo4j.execute_query(schema_query)
+            # Process raw results to merge keys per label
+            temp_map = {}
+            for r in prop_results_raw:
+                lbl = r["label"] if r["label"] else "Unknown"
+                if lbl not in temp_map:
+                    temp_map[lbl] = set()
+                # keys(n) returns list of strings
+                for k in r["properties"]:
+                    temp_map[lbl].add(k)
+            
+            prop_results = [{"nodeType": f":`{k}`", "properties": list(v)} for k, v in temp_map.items()]
+
+        # Prop map: ":`Label`" -> ["prop1", "prop2"]
+        # Normalize keys: ":`Label`" -> "Label"
+        prop_map = {}
+        for r in prop_results:
+             # nodeType format is usually ":`Label`" or ":Label"
+             raw_type = r.get("nodeType", "")
+             clean_label = raw_type.replace(":", "").replace("`", "") # simplistic cleaning
+             prop_map[clean_label] = r.get("properties", [])
+
+        # Construct Response
+        nodes = []
+        for r in node_results:
+            # labels is a list e.g. ["Class", "Model"]
+            # We treat the first label as primary or join them
+            labels = r.get("labels", [])
+            label_str = labels[0] if labels else "Unlabeled"
+            
+            nodes.append({
+                "label": label_str,
+                "count": r["count"],
+                "properties": prop_map.get(label_str, [])
+            })
+            
+        relationships = [{"type": r["type"], "count": r["count"]} for r in rel_results]
+        
+        return {
+            "metadata": {
+                "generated_at": "now", 
+                "version": "1.0"
+            },
+            "schema": {
+                "nodes": nodes,
+                "relationships": relationships
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error exporting schema: {e}")
+        # Return empty valid structure instead of 500 to avoid "blank csv" resulting from error page
+        return {
+            "metadata": {"error": str(e)},
+            "schema": {"nodes": [], "relationships": []}
+        }
+
+
+# ============================================================================
 # GRAPHML EXPORT ENDPOINT
 # ============================================================================
 

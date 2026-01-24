@@ -130,17 +130,47 @@ Write-Host "=== Installing Python Dependencies ===" -ForegroundColor Cyan
 
 Set-Location $InstallDir
 
-if (Test-Path "requirements.txt") {
-    Write-Host "Installing from requirements.txt..."
-    python -m pip install --upgrade pip
-    python -m pip install -r requirements.txt
+# Create Virtual Environment if it doesn't exist
+if (-not (Test-Path ".venv")) {
+    Write-Host "Creating virtual environment..."
+    python -m venv .venv
+    Write-Host "[SUCCESS] Virtual environment created" -ForegroundColor Green
+}
+
+$VenvPython = "$InstallDir\.venv\Scripts\python.exe"
+$RequirementsFile = "backend\requirements.txt"
+
+if (Test-Path $RequirementsFile) {
+    Write-Host "Installing from $RequirementsFile..."
+    & $VenvPython -m pip install --upgrade pip
+    & $VenvPython -m pip install -r $RequirementsFile
+    
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[SUCCESS] Python dependencies installed" -ForegroundColor Green
     } else {
         Write-Host "[WARNING] Some Python dependencies may have failed to install" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "[WARNING] requirements.txt not found" -ForegroundColor Yellow
+    Write-Host "[WARNING] $RequirementsFile not found" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "=== Setting up Data ===" -ForegroundColor Cyan
+
+$DataRawDir = "$InstallDir\data\raw"
+if (-not (Test-Path $DataRawDir)) {
+    New-Item -ItemType Directory -Path $DataRawDir -Force | Out-Null
+    Write-Host "[SUCCESS] Created $DataRawDir" -ForegroundColor Green
+}
+
+$SourceXmi = "$InstallDir\samples\reference\smrlv12\data\domain_models\mossec\Domain_model.xmi"
+$DestXmi = "$DataRawDir\Domain_model.xmi"
+
+if (Test-Path $SourceXmi) {
+    Copy-Item -Path $SourceXmi -Destination $DestXmi -Force
+    Write-Host "[SUCCESS] Copied Domain_model.xmi to data/raw" -ForegroundColor Green
+} else {
+    Write-Host "[WARNING] Source XMI not found at $SourceXmi" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -204,10 +234,12 @@ Write-Host "=== Creating Service Scripts ===" -ForegroundColor Cyan
 @"
 Write-Host "Starting MBSE Knowledge Graph services..." -ForegroundColor Cyan
 Set-Location "$InstallDir"
-`$env:PYTHONPATH = "$InstallDir"
 
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; `$env:PYTHONPATH='$InstallDir'; python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000" -WindowStyle Normal
+# Start Backend (in new window)
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir\backend'; & '$InstallDir\.venv\Scripts\python' -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload" -WindowStyle Normal
 Start-Sleep -Seconds 3
+
+# Start Frontend (in new window)
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; npm run preview -- --host 0.0.0.0 --port 3001" -WindowStyle Normal
 
 Write-Host "Services started!" -ForegroundColor Green

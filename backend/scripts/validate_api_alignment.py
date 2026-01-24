@@ -96,6 +96,22 @@ def main():
             "endpoint": "/api/v1/Constraint?limit=5",
             "keys": ["id", "name", "constrained_element"],
         },
+        "ModelInstance": {
+            "endpoint": "/api/v1/ModelInstance?limit=5",
+            "keys": ["id", "name"],
+        },
+        "Study": {
+            "endpoint": "/api/v1/Study?limit=5",
+            "keys": ["id", "name"],
+        },
+        "Part (AP242)": {
+            "endpoint": "/api/v1/Part?limit=5",
+            "keys": ["id", "name"],
+        },
+        "Requirement (AP239)": {
+            "endpoint": "/api/v1/Requirement?limit=5",
+            "keys": ["id", "name"],
+        },
         "All Nodes (Generic)": {
             "endpoint": "/api/v1/nodes?type=Class&limit=3",
             "keys": ["id", "name", "type"],

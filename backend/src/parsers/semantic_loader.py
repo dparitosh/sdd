@@ -274,7 +274,7 @@ class SemanticXMILoader:
         "ownedLiteral": "HAS_LITERAL",
         "nestedClassifier": "HAS_NESTED_CLASSIFIER",
         "ownedRule": "HAS_RULE",
-        "ownedComment": "HAS_COMMENT",
+        "ownedComment": "OWNS_COMMENT",
         "ownedBehavior": "HAS_BEHAVIOR",
         "ownedEnd": "HAS_END",
         "memberEnd": "HAS_MEMBER_END",
@@ -436,6 +436,29 @@ class SemanticXMILoader:
                 # Get simple label from type (e.g., uml:Class -> Class)
                 label = elem_type.split(":")[-1] if ":" in elem_type else elem_type
 
+                # Create detailed labels list
+                labels = [label]
+
+                # Check for Domain Entities (AP239, AP242, AP243) to align with UI/UX
+                # These are usually defined as Classes in the XMI but need specific labels for the Application
+                domain_entities = {
+                    # AP243 (MoSSEC)
+                    "ModelInstance", "Study", "ActualActivity", "AssociativeModelNetwork",
+                    "ModelType", "Method", "Evaluation", "Result",
+                    
+                    # AP242 (CAD)
+                    "Part", "PartVersion", "Assembly", "GeometricModel",
+                    "ShapeRepresentation", "Material", "ComponentBasedSolid",
+                    
+                    # AP239 (PLCS)
+                    "Requirement", "RequirementVersion", "breakdown", "WorkOrder",
+                    "Activity", "Observation", "ProductConfiguration",
+                    "Document", "Person", "Organization"
+                }
+
+                if name in domain_entities:
+                    labels.append(name)
+
                 # Extract ALL UML/SysML properties
                 properties = self._extract_element_properties(elem, elem_type)
                 properties.update(
@@ -458,12 +481,13 @@ class SemanticXMILoader:
                     "id": elem_id,
                     "name": name,
                     "type": elem_type,
+                    "labels": labels,
                     "label": label,
                     "element": elem,
                     "properties": properties,
                 }
 
-                batch.append({"id": elem_id, "label": label, "properties": properties})
+                batch.append({"id": elem_id, "labels": labels, "properties": properties})
 
                 if len(batch) >= batch_size:
                     self._create_node_batch(batch)
@@ -580,7 +604,7 @@ class SemanticXMILoader:
         """Create a batch of nodes using APOC with all extracted properties"""
         query = """
         UNWIND $nodes AS node
-        CALL apoc.create.node([node.label], node.properties) YIELD node AS n
+        CALL apoc.create.node(node.labels, node.properties) YIELD node AS n
         RETURN count(n) AS created
         """
         self.conn.execute_query(query, {"nodes": batch})
@@ -1061,9 +1085,12 @@ class SemanticXMILoader:
                     annotated_refs = annotated_attr.split()
 
             # Create relationships
+            # Use a set to prevent duplicate relationships between same comment and target
+            processed_targets = set()
             for target_id in annotated_refs:
-                if target_id in self.element_cache:
+                if target_id in self.element_cache and target_id not in processed_targets:
                     batch.append({"comment_id": elem_id, "target_id": target_id})
+                    processed_targets.add(target_id)
 
         if batch:
             query = """

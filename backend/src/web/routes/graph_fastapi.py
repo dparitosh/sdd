@@ -43,6 +43,17 @@ ALLOWED_NODE_TYPES = {
     "ValueType",
     "Activity",
     "Breakdown",
+    # MoSSEC Types
+    "ModelInstance",
+    "Study",
+    "ActualActivity",
+    "AssociativeModelNetwork",
+    "ModelType",
+    "Method",
+    "Result",
+    "Verification",
+    "Context",
+    "MethodActivity",
     "Component",
     "ComponentPlacement",
     "Event",
@@ -51,7 +62,7 @@ ALLOWED_NODE_TYPES = {
     "Parameter",
     "System",
     "Slot",
-    "Comment",
+    "Comment"
 }
 
 

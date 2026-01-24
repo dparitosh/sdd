@@ -61,11 +61,18 @@ const navigationGroups = [
         description: 'Interactive graph visualization',
       },
       {
-        name: 'Requirements',
-        href: '/requirements',
+        name: 'Requirements Management',
+        href: '/ap239/requirements',
         icon: FileText,
         badge: null,
-        description: 'Requirements management',
+        description: 'ISO 10303-239 PLCS Dashboard',
+      },
+      {
+        name: 'MoSSEC (AP243)',
+        href: '/mossec-dashboard',
+        icon: Database,
+        badge: 'NEW',
+        description: 'ISO 10303-243 Co-simulation',
       },
       {
         name: 'Traceability Matrix',

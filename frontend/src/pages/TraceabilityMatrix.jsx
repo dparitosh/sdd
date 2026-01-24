@@ -38,7 +38,7 @@ export default function TraceabilityMatrix() {
       const response = await apiService.requirements.list({
         limit: 1000
       });
-      return response.data || [];
+      return Array.isArray(response) ? response : (response.data || []);
     }
   });
   const {
@@ -52,7 +52,7 @@ export default function TraceabilityMatrix() {
       for (const req of requirements.slice(0, 50)) {
         try {
           const response = await apiService.requirements.getTraceability(req.uid);
-          const links = response.data || [];
+          const links = Array.isArray(response) ? response : (response.data || []);
           links.forEach(link => {
             traces.push({
               requirement: {

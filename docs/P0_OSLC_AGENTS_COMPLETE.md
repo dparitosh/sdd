@@ -59,6 +59,5 @@ The following validation steps were performed:
 3.  **Component Testing:** `vitest` suite verified service layer integrity.
 
 ## ⏭️ Next Steps
-*   **Deployment:** Update Docker Compose to include Redis (if not already present).
 *   **Integration Testing:** Run full end-to-end flow with a live Neo4j instance.
 *   **Agent Training:** Enhance Agent prompts for more complex reasoning.

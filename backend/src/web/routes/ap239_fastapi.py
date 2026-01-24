@@ -21,8 +21,9 @@ router = APIRouter()
 
 # Pydantic models
 class Requirement(BaseModel):
+    uid: Optional[str] = None
     id: Optional[str] = None
-    name: str
+    name: Optional[str] = "Unknown"
     description: Optional[str] = None
     type: Optional[str] = None
     priority: Optional[str] = None
@@ -226,7 +227,8 @@ async def get_requirements(
         WHERE req.ap_level = 1 AND {where_clause}
         OPTIONAL MATCH (req)-[:HAS_VERSION]->(v:RequirementVersion)
         OPTIONAL MATCH (req)-[:SATISFIED_BY_PART]->(part:Part)
-        RETURN req.id AS id,
+        RETURN req.uid AS uid,
+               req.id AS id,
                req.name AS name,
                req.description AS description,
                req.type AS type,
@@ -244,8 +246,9 @@ async def get_requirements(
 
         requirements = [
             {
+                "uid": r.get("uid"),
                 "id": r["id"],
-                "name": r["name"],
+                "name": r["name"] or "Unknown",
                 "description": r["description"],
                 "type": r["type"],
                 "priority": r["priority"],
@@ -255,7 +258,6 @@ async def get_requirements(
                 "satisfied_by_parts": [p for p in r["satisfied_by_parts"] if p],
             }
             for r in results
-            if r["id"]  # Filter out requirements without IDs
         ]
 
         return {"count": len(requirements), "requirements": requirements}
@@ -312,8 +314,8 @@ async def get_requirement_detail(
         req = r["req"]
 
         requirement = {
-            "id": req["id"],
-            "name": req["name"],
+            "id": req.get("id"),
+            "name": req.get("name", "Unknown"),
             "description": req.get("description"),
             "type": req.get("type"),
             "priority": req.get("priority"),
