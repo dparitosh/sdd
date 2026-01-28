@@ -11,7 +11,13 @@ param(
     
     [Parameter(Position=1)]
     [ValidateSet('start', 'stop', 'restart', 'backend', 'frontend')]
-    [string]$SubCommand
+    [string]$SubCommand,
+
+    # If set, starts services without hiding output (logs stream in this console)
+    [switch]$Interactive,
+
+    # If set, prints detailed preflight info (no secrets) before starting services
+    [switch]$Inspect
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -24,6 +30,63 @@ function Get-PythonExe {
         return $venvPython
     }
     return "python"
+}
+
+function Mask-Value {
+    param(
+        [AllowNull()]
+        [string]$Value,
+        [switch]$Secret
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return "<empty>"
+    }
+    if ($Secret) {
+        return "<set>"
+    }
+    # Keep it readable but safe-ish
+    if ($Value.Length -le 8) {
+        return $Value
+    }
+    return "{0}...{1}" -f $Value.Substring(0, 4), $Value.Substring($Value.Length - 2)
+}
+
+function Show-Preflight {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('backend','frontend','all')]
+        [string]$Target
+    )
+
+    if (-not $Inspect) {
+        return
+    }
+
+    Write-Host "" 
+    Write-Host "=== Preflight Inspection ($Target) ===" -ForegroundColor Cyan
+    Write-Host "Project root: $ProjectRoot" -ForegroundColor DarkGray
+
+    try { Write-Host ("Git: " + (git --version 2>$null)) -ForegroundColor DarkGray } catch {}
+    try { Write-Host ("Python: " + (python --version 2>$null)) -ForegroundColor DarkGray } catch {}
+    try { Write-Host ("Node: " + (node --version 2>$null)) -ForegroundColor DarkGray } catch {}
+    try { Write-Host ("npm: " + (npm --version 2>$null)) -ForegroundColor DarkGray } catch {}
+
+    $envPath = Join-Path $ProjectRoot ".env"
+    Write-Host (".env present: " + (Test-Path -LiteralPath $envPath)) -ForegroundColor DarkGray
+
+    if ($Target -eq 'backend' -or $Target -eq 'all') {
+        Write-Host ("NEO4J_URI: " + (Mask-Value $env:NEO4J_URI)) -ForegroundColor DarkGray
+        Write-Host ("NEO4J_USER: " + (Mask-Value $env:NEO4J_USER)) -ForegroundColor DarkGray
+        Write-Host ("NEO4J_PASSWORD: " + (Mask-Value $env:NEO4J_PASSWORD -Secret)) -ForegroundColor DarkGray
+        Write-Host ("BACKEND_HOST: " + (Mask-Value $env:BACKEND_HOST)) -ForegroundColor DarkGray
+        Write-Host ("BACKEND_PORT: " + (Mask-Value $env:BACKEND_PORT)) -ForegroundColor DarkGray
+    }
+    if ($Target -eq 'frontend' -or $Target -eq 'all') {
+        Write-Host ("FRONTEND_HOST: " + (Mask-Value $env:FRONTEND_HOST)) -ForegroundColor DarkGray
+        Write-Host ("FRONTEND_PORT: " + (Mask-Value $env:FRONTEND_PORT)) -ForegroundColor DarkGray
+        Write-Host ("API_BASE_URL: " + (Mask-Value $env:API_BASE_URL)) -ForegroundColor DarkGray
+    }
 }
 
 if (-not (Test-Path $ProcessIdDir)) {
@@ -47,6 +110,7 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  .\scripts\service_manager.ps1 start           # Start all services"
+    Write-Host "  .\scripts\service_manager.ps1 start -Interactive -Inspect   # Start all services with live logs + checks"
     Write-Host "  .\scripts\service_manager.ps1 stop            # Stop all services"
     Write-Host "  .\scripts\service_manager.ps1 backend start   # Start backend only"
     Write-Host "  .\scripts\service_manager.ps1 frontend stop   # Stop frontend only"
@@ -110,15 +174,15 @@ function Start-Backend {
     try {
         $env:PYTHONPATH = Join-Path $ProjectRoot "backend"
 
-        $backendPidPath = Join-Path $ProcessIdDir "backend.pid"
-        if (Test-Path $backendPidPath) {
-            $existingPid = [int](Get-Content $backendPidPath)
-            $existingProcess = Get-Process -Id $existingPid -ErrorAction SilentlyContinue
+        $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
+        if (Test-Path $backendProcessIdPath) {
+            $existingProcessId = [int](Get-Content $backendProcessIdPath)
+            $existingProcess = Get-Process -Id $existingProcessId -ErrorAction SilentlyContinue
             if ($existingProcess) {
-                Write-Host "[OK] Backend already running (PID: $existingPid)" -ForegroundColor Green
+                Write-Host "[OK] Backend already running (PID: $existingProcessId)" -ForegroundColor Green
                 return
             }
-            Remove-Item $backendPidPath -ErrorAction SilentlyContinue
+            Remove-Item $backendProcessIdPath -ErrorAction SilentlyContinue
         }
 
         if (-not (Test-Path (Join-Path $ProjectRoot ".env")) -and (Test-Path (Join-Path $ProjectRoot ".env.example"))) {
@@ -129,25 +193,38 @@ function Start-Backend {
         Import-DotEnvIfPresent
         Assert-RequiredEnv -Names @('NEO4J_URI','NEO4J_USER','NEO4J_PASSWORD','BACKEND_HOST','BACKEND_PORT')
 
+        Show-Preflight -Target 'backend'
+
         $backendHost = $env:BACKEND_HOST
         $backendPort = $env:BACKEND_PORT
 
         $pythonExe = Get-PythonExe
         $logFile = Join-Path $env:TEMP "mbse-backend.log"
         $errFile = Join-Path $env:TEMP "mbse-backend-error.log"
+
+        if ($Interactive) {
+            Write-Host "[INFO] Starting backend in interactive mode (logs will stream here)" -ForegroundColor DarkGray
+            $process = Start-Process -FilePath $pythonExe `
+                -ArgumentList "-m", "uvicorn", "src.web.app_fastapi:app", "--host", $backendHost, "--port", $backendPort `
+                -PassThru -NoNewWindow
+        } else {
+            $process = Start-Process -FilePath $pythonExe `
+                -ArgumentList "-m", "uvicorn", "src.web.app_fastapi:app", "--host", $backendHost, "--port", $backendPort `
+                -RedirectStandardOutput $logFile `
+                -RedirectStandardError $errFile `
+                -PassThru -WindowStyle Hidden
+        }
         
-        $process = Start-Process -FilePath $pythonExe `
-            -ArgumentList "-m", "uvicorn", "src.web.app_fastapi:app", "--host", $backendHost, "--port", $backendPort `
-            -RedirectStandardOutput $logFile `
-            -RedirectStandardError $errFile `
-            -PassThru -WindowStyle Hidden
-        
-        $process.Id | Out-File $backendPidPath
+        $process.Id | Out-File $backendProcessIdPath
         Start-Sleep -Seconds 2
         
         if (-not $process.HasExited) {
             Write-Host "[OK] Backend started (PID: $($process.Id))" -ForegroundColor Green
             Write-Host "     URL: http://${backendHost}:${backendPort}" -ForegroundColor Cyan
+            if (-not $Interactive) {
+                Write-Host "     Logs: $logFile" -ForegroundColor DarkGray
+                Write-Host "     Errors: $errFile" -ForegroundColor DarkGray
+            }
         } else {
             Write-Host "[ERROR] Backend failed to start. Check logs:" -ForegroundColor Red
             Write-Host "     $errFile" -ForegroundColor Yellow
@@ -161,19 +238,21 @@ function Start-Frontend {
     Write-Host "Starting frontend..." -ForegroundColor Blue
     Push-Location $ProjectRoot
     try {
-        $frontendPidPath = Join-Path $ProcessIdDir "frontend.pid"
-        if (Test-Path $frontendPidPath) {
-            $existingPid = [int](Get-Content $frontendPidPath)
-            $existingProcess = Get-Process -Id $existingPid -ErrorAction SilentlyContinue
+        $frontendProcessIdPath = Join-Path $ProcessIdDir "frontend.pid"
+        if (Test-Path $frontendProcessIdPath) {
+            $existingProcessId = [int](Get-Content $frontendProcessIdPath)
+            $existingProcess = Get-Process -Id $existingProcessId -ErrorAction SilentlyContinue
             if ($existingProcess) {
-                Write-Host "[OK] Frontend already running (PID: $existingPid)" -ForegroundColor Green
+                Write-Host "[OK] Frontend already running (PID: $existingProcessId)" -ForegroundColor Green
                 return
             }
-            Remove-Item $frontendPidPath -ErrorAction SilentlyContinue
+            Remove-Item $frontendProcessIdPath -ErrorAction SilentlyContinue
         }
 
         Import-DotEnvIfPresent
         Assert-RequiredEnv -Names @('FRONTEND_HOST','FRONTEND_PORT','API_BASE_URL')
+
+        Show-Preflight -Target 'frontend'
 
         $frontendHost = $env:FRONTEND_HOST
         $frontendPort = $env:FRONTEND_PORT
@@ -181,17 +260,27 @@ function Start-Frontend {
         $logFile = Join-Path $env:TEMP "mbse-frontend.log"
         
         $npmCmd = "cd '$ProjectRoot'; npm run dev -- --host $frontendHost --port $frontendPort"
-        $process = Start-Process -FilePath "powershell.exe" `
-            -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $npmCmd `
-            -RedirectStandardOutput $logFile `
-            -PassThru -WindowStyle Hidden
+        if ($Interactive) {
+            Write-Host "[INFO] Starting frontend in interactive mode (logs will stream here)" -ForegroundColor DarkGray
+            $process = Start-Process -FilePath "powershell.exe" `
+                -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $npmCmd `
+                -PassThru -NoNewWindow
+        } else {
+            $process = Start-Process -FilePath "powershell.exe" `
+                -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $npmCmd `
+                -RedirectStandardOutput $logFile `
+                -PassThru -WindowStyle Hidden
+        }
         
-        $process.Id | Out-File $frontendPidPath
+        $process.Id | Out-File $frontendProcessIdPath
         Start-Sleep -Seconds 3
         
         if (-not $process.HasExited) {
             Write-Host "[OK] Frontend started (PID: $($process.Id))" -ForegroundColor Green
             Write-Host "     URL: http://${frontendHost}:${frontendPort}" -ForegroundColor Cyan
+            if (-not $Interactive) {
+                Write-Host "     Logs: $logFile" -ForegroundColor DarkGray
+            }
         } else {
             Write-Host "[ERROR] Frontend failed to start. Check logs:" -ForegroundColor Red
             Write-Host "     $logFile" -ForegroundColor Yellow
@@ -203,12 +292,12 @@ function Start-Frontend {
 
 function Stop-Backend {
     Write-Host "Stopping backend..." -ForegroundColor Blue
-    $backendPidPath = Join-Path $ProcessIdDir "backend.pid"
+    $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
     
-    if (Test-Path $backendPidPath) {
-        $pid = [int](Get-Content $backendPidPath)
-        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-        Remove-Item $backendPidPath -ErrorAction SilentlyContinue
+    if (Test-Path $backendProcessIdPath) {
+        $procId = [int](Get-Content $backendProcessIdPath)
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+        Remove-Item $backendProcessIdPath -ErrorAction SilentlyContinue
         Write-Host "[OK] Backend stopped" -ForegroundColor Green
     } else {
         # Try to find by port
@@ -229,15 +318,15 @@ function Stop-Backend {
 
 function Stop-Frontend {
     Write-Host "Stopping frontend..." -ForegroundColor Blue
-    $frontendPidPath = Join-Path $ProcessIdDir "frontend.pid"
+    $frontendProcessIdPath = Join-Path $ProcessIdDir "frontend.pid"
     
-    if (Test-Path $frontendPidPath) {
-        $pid = [int](Get-Content $frontendPidPath)
+    if (Test-Path $frontendProcessIdPath) {
+        $procId = [int](Get-Content $frontendProcessIdPath)
         # Kill the process tree
-        Get-CimInstance Win32_Process -Filter "ParentProcessId=$pid" -ErrorAction SilentlyContinue | 
+        Get-CimInstance Win32_Process -Filter "ParentProcessId=$procId" -ErrorAction SilentlyContinue | 
             ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
-        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-        Remove-Item $frontendPidPath -ErrorAction SilentlyContinue
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+        Remove-Item $frontendProcessIdPath -ErrorAction SilentlyContinue
         Write-Host "[OK] Frontend stopped" -ForegroundColor Green
     } else {
         # Try to find by port
@@ -261,14 +350,14 @@ function Show-Status {
     Write-Host "=== Service Status ===" -ForegroundColor Cyan
     
     # Check backend
-    $backendPidPath = Join-Path $ProcessIdDir "backend.pid"
+    $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
     $backendRunning = $false
-    if (Test-Path $backendPidPath) {
-        $pid = [int](Get-Content $backendPidPath)
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    if (Test-Path $backendProcessIdPath) {
+        $procId = [int](Get-Content $backendProcessIdPath)
+        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
         if ($proc) {
             $backendRunning = $true
-            Write-Host "[RUNNING] Backend (PID: $pid)" -ForegroundColor Green
+            Write-Host "[RUNNING] Backend (PID: $procId)" -ForegroundColor Green
         }
     }
     if (-not $backendRunning) {
@@ -283,14 +372,14 @@ function Show-Status {
     }
     
     # Check frontend
-    $frontendPidPath = Join-Path $ProcessIdDir "frontend.pid"
+    $frontendProcessIdPath = Join-Path $ProcessIdDir "frontend.pid"
     $frontendRunning = $false
-    if (Test-Path $frontendPidPath) {
-        $pid = [int](Get-Content $frontendPidPath)
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    if (Test-Path $frontendProcessIdPath) {
+        $procId = [int](Get-Content $frontendProcessIdPath)
+        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
         if ($proc) {
             $frontendRunning = $true
-            Write-Host "[RUNNING] Frontend (PID: $pid)" -ForegroundColor Green
+            Write-Host "[RUNNING] Frontend (PID: $procId)" -ForegroundColor Green
         }
     }
     if (-not $frontendRunning) {

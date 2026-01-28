@@ -8,7 +8,11 @@
 param(
     [switch]$SkipNodeInstall,
     [switch]$SkipPythonInstall,
-    [string]$InstallDir = $null
+    [string]$InstallDir = $null,
+
+    # If set, the installer will fail fast when Neo4j credentials are missing/placeholder.
+    # If not set (default), it will warn and let you proceed (useful for installing before you have Aura details).
+    [switch]$RequireNeo4j
 )
 
 Write-Host "==========================================" -ForegroundColor Cyan
@@ -28,6 +32,56 @@ if (-not $InstallDir) {
 }
 
 Set-Location $ProjectRoot
+
+function Import-DotEnvIfPresent {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$EnvPath
+    )
+
+    if (!(Test-Path -LiteralPath $EnvPath)) {
+        return
+    }
+
+    Get-Content -LiteralPath $EnvPath | ForEach-Object {
+        $line = $_
+        if ([string]::IsNullOrWhiteSpace($line)) { return }
+        $trimmed = $line.Trim()
+        if ($trimmed.StartsWith('#')) { return }
+
+        $idx = $trimmed.IndexOf('=')
+        if ($idx -lt 1) { return }
+
+        $key = $trimmed.Substring(0, $idx).Trim()
+        $value = $trimmed.Substring($idx + 1).Trim()
+        if ([string]::IsNullOrWhiteSpace($key)) { return }
+
+        # Remove surrounding quotes
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            if ($value.Length -ge 2) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+        }
+
+        # Don't override explicitly-set env vars
+        if ([string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($key))) {
+            [System.Environment]::SetEnvironmentVariable($key, $value)
+        }
+    }
+}
+
+function Is-PlaceholderNeo4jValue {
+    param(
+        [AllowNull()]
+        [string]$Value
+    )
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
+
+    $v = $Value.Trim().ToLowerInvariant()
+    # Common placeholder patterns used in templates
+    if ($v -match 'your-neo4j' -or $v -match '<your-' -or $v -match 'changeme' -or $v -match 'your-password') { return $true }
+    return $false
+}
 
 Write-Host ""
 Write-Host "=== Checking Prerequisites ===" -ForegroundColor Cyan
@@ -88,93 +142,6 @@ Write-Host "=== Setting up Python Virtual Environment ===" -ForegroundColor Cyan
 
 Set-Location $InstallDir
 
-# Create Virtual Environment if it doesn't exist
-if (-not (Test-Path ".venv")) {
-    Write-Host "Creating virtual environment..."
-    python -m venv .venv
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "[OK] Virtual environment created" -ForegroundColor Green
-    } else {
-        Write-Host "[ERROR] Failed to create virtual environment" -ForegroundColor Red
-        exit 1
-    }
-} else {
-    Write-Host "[OK] Virtual environment already exists" -ForegroundColor Green
-}
-
-$VenvPython = Join-Path $InstallDir ".venv\Scripts\python.exe"
-$VenvPip = Join-Path $InstallDir ".venv\Scripts\pip.exe"
-
-if (-not $SkipPythonInstall) {
-    Write-Host ""
-    Write-Host "=== Installing Python Dependencies ===" -ForegroundColor Cyan
-    
-    $RequirementsFile = Join-Path $InstallDir "backend\requirements.txt"
-    
-    if (Test-Path $RequirementsFile) {
-        Write-Host "Installing from $RequirementsFile..."
-        & $VenvPython -m pip install --upgrade pip --quiet
-        & $VenvPython -m pip install -r $RequirementsFile
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "[OK] Python dependencies installed" -ForegroundColor Green
-        } else {
-            Write-Host "[WARN] Some Python dependencies may have failed to install" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "[WARN] $RequirementsFile not found" -ForegroundColor Yellow
-    }
-}
-
-Write-Host ""
-Write-Host "=== Setting up Data Directory ===" -ForegroundColor Cyan
-
-$DataRawDir = Join-Path $InstallDir "data\raw"
-if (-not (Test-Path $DataRawDir)) {
-    New-Item -ItemType Directory -Path $DataRawDir -Force | Out-Null
-    Write-Host "[OK] Created $DataRawDir" -ForegroundColor Green
-} else {
-    Write-Host "[OK] $DataRawDir already exists" -ForegroundColor Green
-}
-
-# Copy reference XMI if not present
-$SourceXmi = Join-Path $InstallDir "samples\reference\smrlv12\data\domain_models\mossec\Domain_model.xmi"
-$DestXmi = Join-Path $DataRawDir "Domain_model.xmi"
-
-if ((Test-Path $SourceXmi) -and (-not (Test-Path $DestXmi))) {
-    Copy-Item -Path $SourceXmi -Destination $DestXmi -Force
-    Write-Host "[OK] Copied Domain_model.xmi to data/raw" -ForegroundColor Green
-} elseif (Test-Path $DestXmi) {
-    Write-Host "[OK] Domain_model.xmi already present in data/raw" -ForegroundColor Green
-}
-
-if (-not $SkipNodeInstall) {
-    Write-Host ""
-    Write-Host "=== Installing Node.js Dependencies ===" -ForegroundColor Cyan
-    
-    if (Test-Path (Join-Path $InstallDir "package.json")) {
-        Write-Host "Installing Node.js packages..."
-        npm install
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "[OK] Node.js dependencies installed" -ForegroundColor Green
-        } else {
-            Write-Host "[WARN] Some Node.js dependencies may have failed to install" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "[WARN] package.json not found" -ForegroundColor Yellow
-    }
-    
-    Write-Host ""
-    Write-Host "=== Building Frontend Application ===" -ForegroundColor Cyan
-    
-    npm run build
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "[OK] Frontend built successfully" -ForegroundColor Green
-    } else {
-        Write-Host "[WARN] Frontend build had issues (may still work in dev mode)" -ForegroundColor Yellow
-    }
-}
-
 Write-Host ""
 Write-Host "=== Creating Environment Configuration ===" -ForegroundColor Cyan
 
@@ -215,6 +182,153 @@ OUTPUT_DIR=./data/output
     Write-Host "[ACTION REQUIRED] Edit $EnvFile with your Neo4j credentials" -ForegroundColor Yellow
 } else {
     Write-Host "[OK] .env file already exists" -ForegroundColor Green
+}
+
+# Load env vars from .env now so later steps (like frontend build / checks) can rely on them.
+Import-DotEnvIfPresent -EnvPath $EnvFile
+
+# Neo4j credentials sanity check (no secrets printed)
+$neo4jMissing = @()
+foreach ($name in @('NEO4J_URI','NEO4J_USER','NEO4J_PASSWORD')) {
+    if ([string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($name))) {
+        $neo4jMissing += $name
+    }
+}
+
+$neo4jUriPlaceholder = Is-PlaceholderNeo4jValue -Value $env:NEO4J_URI
+$neo4jUserPlaceholder = Is-PlaceholderNeo4jValue -Value $env:NEO4J_USER
+$neo4jPassPlaceholder = Is-PlaceholderNeo4jValue -Value $env:NEO4J_PASSWORD
+
+if ($neo4jMissing.Count -gt 0 -or $neo4jUriPlaceholder -or $neo4jUserPlaceholder -or $neo4jPassPlaceholder) {
+    $msg = "Neo4j connection details are not configured (missing/placeholder). Edit $EnvFile (see .env.example)."
+    if ($RequireNeo4j) {
+        Write-Host "[ERROR] $msg" -ForegroundColor Red
+        exit 1
+    } else {
+        Write-Host "[WARN] $msg" -ForegroundColor Yellow
+        Write-Host "       Installer will continue, but backend will not be able to connect until you set real credentials." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "[OK] Neo4j credentials appear to be set (value check only; connectivity will be verified after Python deps install)" -ForegroundColor Green
+}
+
+# Create Virtual Environment if it doesn't exist
+if (-not (Test-Path ".venv")) {
+    Write-Host "Creating virtual environment..."
+    python -m venv .venv
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[OK] Virtual environment created" -ForegroundColor Green
+    } else {
+        Write-Host "[ERROR] Failed to create virtual environment" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "[OK] Virtual environment already exists" -ForegroundColor Green
+}
+
+$VenvPython = Join-Path $InstallDir ".venv\Scripts\python.exe"
+$VenvPip = Join-Path $InstallDir ".venv\Scripts\pip.exe"
+
+if (-not $SkipPythonInstall) {
+    Write-Host ""
+    Write-Host "=== Installing Python Dependencies ===" -ForegroundColor Cyan
+    
+    $RequirementsFile = Join-Path $InstallDir "backend\requirements.txt"
+    
+    if (Test-Path $RequirementsFile) {
+        Write-Host "Installing from $RequirementsFile..."
+        & $VenvPython -m pip install --upgrade pip --quiet
+        & $VenvPython -m pip install -r $RequirementsFile
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[OK] Python dependencies installed" -ForegroundColor Green
+        } else {
+            Write-Host "[WARN] Some Python dependencies may have failed to install" -ForegroundColor Yellow
+        }
+
+        # If Neo4j creds look real, verify connectivity now (fail early)
+        if (-not (Is-PlaceholderNeo4jValue -Value $env:NEO4J_URI) -and -not (Is-PlaceholderNeo4jValue -Value $env:NEO4J_USER) -and -not (Is-PlaceholderNeo4jValue -Value $env:NEO4J_PASSWORD)) {
+            Write-Host "" 
+            Write-Host "=== Verifying Neo4j Connectivity ===" -ForegroundColor Cyan
+            & $VenvPython (Join-Path $InstallDir "scripts\verify_connectivity.py")
+            if ($LASTEXITCODE -ne 0) {
+                $msg2 = "Neo4j connectivity check failed. Fix NEO4J_* in .env and rerun: .\\.venv\\Scripts\\python.exe scripts\\verify_connectivity.py"
+                if ($RequireNeo4j) {
+                    Write-Host "[ERROR] $msg2" -ForegroundColor Red
+                    exit 1
+                } else {
+                    Write-Host "[WARN] $msg2" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "[OK] Neo4j connectivity verified" -ForegroundColor Green
+            }
+        }
+    } else {
+        Write-Host "[WARN] $RequirementsFile not found" -ForegroundColor Yellow
+    }
+}
+
+Write-Host ""
+Write-Host "=== Setting up Data Directory ===" -ForegroundColor Cyan
+
+$DataRawDir = Join-Path $InstallDir "data\raw"
+if (-not (Test-Path $DataRawDir)) {
+    New-Item -ItemType Directory -Path $DataRawDir -Force | Out-Null
+    Write-Host "[OK] Created $DataRawDir" -ForegroundColor Green
+} else {
+    Write-Host "[OK] $DataRawDir already exists" -ForegroundColor Green
+}
+
+# Copy reference XMI if not present
+$candidateXmiPaths = @(
+    (Join-Path $InstallDir "smrlv12\data\domain_models\mossec\Domain_model.xmi"),
+    (Join-Path $InstallDir "samples\reference\smrlv12\data\domain_models\mossec\Domain_model.xmi")
+)
+
+$SourceXmi = $null
+foreach ($candidate in $candidateXmiPaths) {
+    if (Test-Path $candidate) {
+        $SourceXmi = $candidate
+        break
+    }
+}
+$DestXmi = Join-Path $DataRawDir "Domain_model.xmi"
+
+if ($SourceXmi -and (-not (Test-Path $DestXmi))) {
+    Copy-Item -Path $SourceXmi -Destination $DestXmi -Force
+    Write-Host "[OK] Copied Domain_model.xmi to data/raw" -ForegroundColor Green
+} elseif (Test-Path $DestXmi) {
+    Write-Host "[OK] Domain_model.xmi already present in data/raw" -ForegroundColor Green
+} else {
+    Write-Host "[WARN] Reference Domain_model.xmi not found to copy into data/raw." -ForegroundColor Yellow
+    Write-Host "       You can still run with your own XMI files in data/raw/, or use smrlv12 reference data." -ForegroundColor Yellow
+}
+
+if (-not $SkipNodeInstall) {
+    Write-Host ""
+    Write-Host "=== Installing Node.js Dependencies ===" -ForegroundColor Cyan
+    
+    if (Test-Path (Join-Path $InstallDir "package.json")) {
+        Write-Host "Installing Node.js packages..."
+        npm install
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "[OK] Node.js dependencies installed" -ForegroundColor Green
+        } else {
+            Write-Host "[WARN] Some Node.js dependencies may have failed to install" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "[WARN] package.json not found" -ForegroundColor Yellow
+    }
+    
+    Write-Host ""
+    Write-Host "=== Building Frontend Application ===" -ForegroundColor Cyan
+    
+    npm run build
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[OK] Frontend built successfully" -ForegroundColor Green
+    } else {
+        Write-Host "[WARN] Frontend build had issues (may still work in dev mode)" -ForegroundColor Yellow
+    }
 }
 
 Write-Host ""

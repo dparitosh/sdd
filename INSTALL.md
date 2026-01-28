@@ -29,6 +29,11 @@ Run the installer:
 .\scripts\install.ps1
 ```
 
+If you want the installer to **fail fast** when Neo4j credentials are missing/placeholder (recommended for CI or repeatable setups):
+```powershell
+.\scripts\install.ps1 -RequireNeo4j
+```
+
 **What this does:**
 - Validates Python and Node versions.
 - Creates a Python Virtual Environment (`.venv`) for isolated dependencies.
@@ -36,6 +41,11 @@ Run the installer:
 - Installs Node.js packages and builds the Frontend.
 - Copies the reference dataset (`Domain_model.xmi`) to `data/raw/` for initial loading.
 - Creates a `.env` template if not present.
+
+**Neo4j credentials safety checks during install:**
+- The installer creates (or reuses) `.env` **before** building the frontend so required frontend environment variables are available.
+- It checks `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` for missing/placeholder values (secrets are never printed).
+- If credentials look real and Python dependencies were installed, it runs a connectivity check via `scripts/verify_connectivity.py`.
 
 ## 4. Configuration
 
@@ -48,6 +58,12 @@ After installation, configure your database credentials.
 NEO4J_URI=neo4j+s://<your-instance-id>.databases.neo4j.io
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=<your-password>
+NEO4J_DATABASE=neo4j
+```
+
+3. Verify connectivity any time:
+```powershell
+.\.venv\Scripts\python.exe scripts\verify_connectivity.py
 ```
 
 3. Verify other settings:
@@ -62,6 +78,48 @@ FRONTEND_PORT=3001
 API_BASE_URL=http://localhost:5000
 ```
 
+### LLM (AI Agent) configuration
+
+The backend includes an optional LangGraph-based agent. You can run it using either:
+
+- **OpenAI** (default): requires `OPENAI_API_KEY`
+- **Ollama** (local): requires Ollama running and `OLLAMA_*` configured
+
+In `.env`:
+
+```dotenv
+# Choose one: openai | ollama
+LLM_PROVIDER=openai
+
+# OpenAI
+OPENAI_API_KEY=<your-openai-api-key>
+OPENAI_MODEL=gpt-4o
+OPENAI_TEMPERATURE=0.7
+
+# Ollama (local)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1
+OLLAMA_TEMPERATURE=0.7
+```
+
+#### Using Ollama (local)
+
+1. Install Ollama: https://ollama.com/
+2. Ensure the Ollama server is running (default: `http://localhost:11434`).
+3. Pull a model (example):
+
+```powershell
+ollama pull llama3.1
+```
+
+4. Set in `.env`:
+
+```dotenv
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1
+```
+
 ## 5. Starting the Services
 
 Start both Backend and Frontend services using the service manager:
@@ -71,6 +129,16 @@ Start both Backend and Frontend services using the service manager:
 ```
 
 This will launch both services in the background.
+
+If you prefer **step-by-step startup with console inspection output and live logs**, use:
+```powershell
+.\scripts\service_manager.ps1 start -Interactive -Inspect
+```
+
+Or the convenience wrapper:
+```powershell
+.\scripts\start_all_interactive.ps1 -Inspect
+```
 
 - **Frontend UI**: [http://localhost:3001](http://localhost:3001)
 - **Backend API Docs**: [http://localhost:5000/docs](http://localhost:5000/docs)

@@ -6,6 +6,7 @@ Implements reasoning, tool-use, and orchestration capabilities
 import json
 import operator
 import os
+import importlib
 from typing import Annotated, Any, Literal, Optional, TypedDict
 
 import requests
@@ -20,6 +21,49 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from loguru import logger
 from pydantic import SecretStr
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        logger.warning(f"Invalid float value for {name}={raw!r}; using default {default}")
+        return default
+
+
+def _resolve_llm(api_key: Optional[str] = None):
+    """Resolve LLM implementation from environment.
+
+    Supported providers:
+      - openai (default)
+      - ollama
+    """
+
+    provider_name = (os.getenv("LLM_PROVIDER") or "openai").strip().lower()
+    if provider_name == "openai":
+        model = os.getenv("OPENAI_MODEL") or "gpt-4o"
+        temperature = _env_float("OPENAI_TEMPERATURE", 0.7)
+        secret_api_key = SecretStr(api_key) if api_key else None
+        return ChatOpenAI(model=model, temperature=temperature, api_key=secret_api_key)
+
+    if provider_name == "ollama":
+        try:
+            ChatOllama = getattr(importlib.import_module("langchain_ollama"), "ChatOllama")  # pyright: ignore[reportMissingImports]
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(
+                "LLM_PROVIDER=ollama selected, but langchain-ollama is not available. "
+                "Install backend dependencies (backend/requirements.txt)."
+            ) from e
+
+        base_url = os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434"
+        model = os.getenv("OLLAMA_MODEL") or "llama3.1"
+        temperature = _env_float("OLLAMA_TEMPERATURE", 0.7)
+        return ChatOllama(base_url=base_url, model=model, temperature=temperature)
+
+    raise ValueError(f"Unsupported LLM_PROVIDER={provider_name!r}. Use 'openai' or 'ollama'.")
 
 
 def _content_to_text(content: Any) -> str:
@@ -184,8 +228,9 @@ class MBSEAgent:
             )
 
         self.tools_api = MBSETools(resolved_base_url)
-        secret_api_key = SecretStr(api_key) if api_key else None
-        self.llm = ChatOpenAI(model="gpt-4o", temperature=0.7, api_key=secret_api_key)
+        # LLM selection is controlled via env var LLM_PROVIDER.
+        # Defaults to OpenAI to preserve existing behavior.
+        self.llm = _resolve_llm(api_key=api_key)
 
         # Create LangChain tools
         self.tools = [
@@ -439,10 +484,11 @@ provide a clear, comprehensive answer to the user's question. Include specific d
 # ============================================================================
 
 if __name__ == "__main__":
-    # Initialize agent (requires OpenAI API key)
+    # Initialize agent (provider-controlled).
+    llm_provider = (os.getenv("LLM_PROVIDER") or "openai").strip().lower()
     openai_api_key = os.getenv("OPENAI_API_KEY")
-    if not openai_api_key:
-        print("ERROR: OPENAI_API_KEY environment variable not set")
+    if llm_provider == "openai" and not openai_api_key:
+        print("ERROR: OPENAI_API_KEY environment variable not set (LLM_PROVIDER=openai)")
         exit(1)
 
     agent = MBSEAgent(api_key=openai_api_key)
