@@ -10,6 +10,47 @@ $backendDir = Join-Path $repoRoot "backend"
 Set-Location $repoRoot
 $env:PYTHONPATH = "$backendDir;$env:PYTHONPATH"
 
+function Test-PortListening {
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$Port
+    )
+
+    $cmd = Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue
+    if ($cmd) {
+        try {
+            $c = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction Stop
+            return ($null -ne $c -and @($c).Count -gt 0)
+        } catch {
+            # fall back below
+        }
+    }
+
+    try {
+        $pattern = ":$Port\s+.*LISTENING"
+        $m = netstat -ano 2>$null | Select-String -Pattern $pattern
+        return ($null -ne $m)
+    } catch {
+        return $false
+    }
+}
+
+function Resolve-AvailablePort {
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$StartPort,
+        [int]$MaxAttempts = 20
+    )
+
+    for ($i = 0; $i -lt $MaxAttempts; $i++) {
+        $p = $StartPort + $i
+        if (-not (Test-PortListening -Port $p)) {
+            return $p
+        }
+    }
+    return $StartPort
+}
+
 function Import-DotEnvIfPresent {
     param(
         [Parameter(Mandatory=$true)]
@@ -50,6 +91,16 @@ function Import-DotEnvIfPresent {
 
 Import-DotEnvIfPresent -EnvPath (Join-Path $repoRoot '.env')
 
+# Normalize legacy names (older templates used API_HOST/API_PORT or FLASK_HOST/FLASK_PORT)
+if ([string]::IsNullOrWhiteSpace($env:BACKEND_HOST)) {
+    if (-not [string]::IsNullOrWhiteSpace($env:API_HOST)) { $env:BACKEND_HOST = $env:API_HOST }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:FLASK_HOST)) { $env:BACKEND_HOST = $env:FLASK_HOST }
+}
+if ([string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) {
+    if (-not [string]::IsNullOrWhiteSpace($env:API_PORT)) { $env:BACKEND_PORT = $env:API_PORT }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:FLASK_PORT)) { $env:BACKEND_PORT = $env:FLASK_PORT }
+}
+
 $python = Join-Path $repoRoot ".venv\Scripts\python.exe"
 if (!(Test-Path $python)) {
     $python = "python"
@@ -67,6 +118,14 @@ if ($missing.Count -gt 0) {
 
 $backendHost = $env:BACKEND_HOST
 $backendPort = $env:BACKEND_PORT
+
+$desiredPort = [int]$backendPort
+$availablePort = Resolve-AvailablePort -StartPort $desiredPort
+if ($availablePort -ne $desiredPort) {
+    Write-Host "[WARNING] Port $desiredPort is already in use; using $availablePort instead. Update BACKEND_PORT in .env to avoid this." -ForegroundColor Yellow
+    $backendPort = $availablePort
+    $env:BACKEND_PORT = "$availablePort"
+}
 
 if ($Detach) {
     Write-Host "Launching backend in a separate process..."

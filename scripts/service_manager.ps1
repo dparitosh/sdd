@@ -24,6 +24,77 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = (Get-Item "$ScriptDir\..").FullName
 $ProcessIdDir = "$env:TEMP\mbse-pids"
 
+function Test-PortListening {
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$Port
+    )
+
+    # Prefer Get-NetTCPConnection when available (Windows 8+/Server 2012+)
+    $cmd = Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue
+    if ($cmd) {
+        try {
+            $c = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction Stop
+            return ($null -ne $c -and @($c).Count -gt 0)
+        } catch {
+            # Fall back to netstat below
+        }
+    }
+
+    try {
+        $pattern = ":$Port\s+.*LISTENING"
+        $m = netstat -ano 2>$null | Select-String -Pattern $pattern
+        return ($null -ne $m)
+    } catch {
+        return $false
+    }
+}
+
+function Resolve-AvailablePort {
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$StartPort,
+        [int]$MaxAttempts = 20
+    )
+
+    for ($i = 0; $i -lt $MaxAttempts; $i++) {
+        $p = $StartPort + $i
+        if (-not (Test-PortListening -Port $p)) {
+            return $p
+        }
+    }
+    return $StartPort
+}
+
+function Set-RuntimeEnvCompatibility {
+    # Frontend vars
+    if ([string]::IsNullOrWhiteSpace($env:FRONTEND_HOST) -and -not [string]::IsNullOrWhiteSpace($env:VITE_HOST)) {
+        $env:FRONTEND_HOST = $env:VITE_HOST
+    }
+    if ([string]::IsNullOrWhiteSpace($env:FRONTEND_PORT) -and -not [string]::IsNullOrWhiteSpace($env:VITE_PORT)) {
+        $env:FRONTEND_PORT = $env:VITE_PORT
+    }
+
+    # Backend vars (legacy deployment templates used API_HOST/API_PORT or FLASK_HOST/FLASK_PORT)
+    if ([string]::IsNullOrWhiteSpace($env:BACKEND_HOST)) {
+        if (-not [string]::IsNullOrWhiteSpace($env:API_HOST)) { $env:BACKEND_HOST = $env:API_HOST }
+        elseif (-not [string]::IsNullOrWhiteSpace($env:FLASK_HOST)) { $env:BACKEND_HOST = $env:FLASK_HOST }
+    }
+    if ([string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) {
+        if (-not [string]::IsNullOrWhiteSpace($env:API_PORT)) { $env:BACKEND_PORT = $env:API_PORT }
+        elseif (-not [string]::IsNullOrWhiteSpace($env:FLASK_PORT)) { $env:BACKEND_PORT = $env:FLASK_PORT }
+    }
+
+    # API base URL (Vite proxy target)
+    if ([string]::IsNullOrWhiteSpace($env:API_BASE_URL)) {
+        if (-not [string]::IsNullOrWhiteSpace($env:VITE_API_BASE_URL)) { $env:API_BASE_URL = $env:VITE_API_BASE_URL }
+        elseif (-not [string]::IsNullOrWhiteSpace($env:VITE_API_URL)) { $env:API_BASE_URL = $env:VITE_API_URL }
+        elseif (-not [string]::IsNullOrWhiteSpace($env:BACKEND_HOST) -and -not [string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) {
+            $env:API_BASE_URL = "http://127.0.0.1:$($env:BACKEND_PORT)"
+        }
+    }
+}
+
 function Get-PythonExe {
     $venvPython = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
     if (Test-Path $venvPython) {
@@ -32,7 +103,7 @@ function Get-PythonExe {
     return "python"
 }
 
-function Mask-Value {
+function Format-MaskedValue {
     param(
         [AllowNull()]
         [string]$Value,
@@ -76,16 +147,16 @@ function Show-Preflight {
     Write-Host (".env present: " + (Test-Path -LiteralPath $envPath)) -ForegroundColor DarkGray
 
     if ($Target -eq 'backend' -or $Target -eq 'all') {
-        Write-Host ("NEO4J_URI: " + (Mask-Value $env:NEO4J_URI)) -ForegroundColor DarkGray
-        Write-Host ("NEO4J_USER: " + (Mask-Value $env:NEO4J_USER)) -ForegroundColor DarkGray
-        Write-Host ("NEO4J_PASSWORD: " + (Mask-Value $env:NEO4J_PASSWORD -Secret)) -ForegroundColor DarkGray
-        Write-Host ("BACKEND_HOST: " + (Mask-Value $env:BACKEND_HOST)) -ForegroundColor DarkGray
-        Write-Host ("BACKEND_PORT: " + (Mask-Value $env:BACKEND_PORT)) -ForegroundColor DarkGray
+        Write-Host ("NEO4J_URI: " + (Format-MaskedValue $env:NEO4J_URI)) -ForegroundColor DarkGray
+        Write-Host ("NEO4J_USER: " + (Format-MaskedValue $env:NEO4J_USER)) -ForegroundColor DarkGray
+        Write-Host ("NEO4J_PASSWORD: " + (Format-MaskedValue $env:NEO4J_PASSWORD -Secret)) -ForegroundColor DarkGray
+        Write-Host ("BACKEND_HOST: " + (Format-MaskedValue $env:BACKEND_HOST)) -ForegroundColor DarkGray
+        Write-Host ("BACKEND_PORT: " + (Format-MaskedValue $env:BACKEND_PORT)) -ForegroundColor DarkGray
     }
     if ($Target -eq 'frontend' -or $Target -eq 'all') {
-        Write-Host ("FRONTEND_HOST: " + (Mask-Value $env:FRONTEND_HOST)) -ForegroundColor DarkGray
-        Write-Host ("FRONTEND_PORT: " + (Mask-Value $env:FRONTEND_PORT)) -ForegroundColor DarkGray
-        Write-Host ("API_BASE_URL: " + (Mask-Value $env:API_BASE_URL)) -ForegroundColor DarkGray
+        Write-Host ("FRONTEND_HOST: " + (Format-MaskedValue $env:FRONTEND_HOST)) -ForegroundColor DarkGray
+        Write-Host ("FRONTEND_PORT: " + (Format-MaskedValue $env:FRONTEND_PORT)) -ForegroundColor DarkGray
+        Write-Host ("API_BASE_URL: " + (Format-MaskedValue $env:API_BASE_URL)) -ForegroundColor DarkGray
     }
 }
 
@@ -191,12 +262,36 @@ function Start-Backend {
         }
 
         Import-DotEnvIfPresent
+        Set-RuntimeEnvCompatibility
         Assert-RequiredEnv -Names @('NEO4J_URI','NEO4J_USER','NEO4J_PASSWORD','BACKEND_HOST','BACKEND_PORT')
 
         Show-Preflight -Target 'backend'
 
         $backendHost = $env:BACKEND_HOST
         $backendPort = $env:BACKEND_PORT
+
+        $desiredBackendPort = [int]$backendPort
+        $availableBackendPort = Resolve-AvailablePort -StartPort $desiredBackendPort
+        if ($availableBackendPort -ne $desiredBackendPort) {
+            Write-Host "[WARN] Port $desiredBackendPort is already in use; using $availableBackendPort instead. Set BACKEND_PORT in .env to avoid this." -ForegroundColor Yellow
+            $backendPort = $availableBackendPort
+            $env:BACKEND_PORT = "$availableBackendPort"
+
+            # If API_BASE_URL points at the old local port, update it for this session so the frontend proxy still works.
+            if (-not [string]::IsNullOrWhiteSpace($env:API_BASE_URL)) {
+                try {
+                    $u = [System.Uri]$env:API_BASE_URL
+                    if ($u.Port -eq $desiredBackendPort -and ($u.Host -in @('localhost','127.0.0.1','0.0.0.0') -or $u.Host -eq $backendHost)) {
+                        $b = [System.UriBuilder]$u
+                        $b.Port = $availableBackendPort
+                        $env:API_BASE_URL = $b.Uri.AbsoluteUri.TrimEnd('/')
+                        Write-Host "[INFO] Updated API_BASE_URL for this session: $($env:API_BASE_URL)" -ForegroundColor DarkGray
+                    }
+                } catch {
+                    # ignore parse errors
+                }
+            }
+        }
 
         $pythonExe = Get-PythonExe
         $logFile = Join-Path $env:TEMP "mbse-backend.log"
@@ -250,12 +345,25 @@ function Start-Frontend {
         }
 
         Import-DotEnvIfPresent
+        Set-RuntimeEnvCompatibility
         Assert-RequiredEnv -Names @('FRONTEND_HOST','FRONTEND_PORT','API_BASE_URL')
 
         Show-Preflight -Target 'frontend'
 
         $frontendHost = $env:FRONTEND_HOST
         $frontendPort = $env:FRONTEND_PORT
+
+        $desiredFrontendPort = [int]$frontendPort
+        $availableFrontendPort = Resolve-AvailablePort -StartPort $desiredFrontendPort
+        if ($availableFrontendPort -ne $desiredFrontendPort) {
+            Write-Host "[WARN] Port $desiredFrontendPort is already in use; using $availableFrontendPort instead. Set FRONTEND_PORT in .env to avoid this." -ForegroundColor Yellow
+            $frontendPort = $availableFrontendPort
+            $env:FRONTEND_PORT = "$availableFrontendPort"
+            # Keep legacy name in-sync for tools that still look for VITE_PORT.
+            if ([string]::IsNullOrWhiteSpace($env:VITE_PORT)) {
+                $env:VITE_PORT = "$availableFrontendPort"
+            }
+        }
         
         $logFile = Join-Path $env:TEMP "mbse-frontend.log"
         
@@ -292,6 +400,9 @@ function Start-Frontend {
 
 function Stop-Backend {
     Write-Host "Stopping backend..." -ForegroundColor Blue
+    Import-DotEnvIfPresent
+    Set-RuntimeEnvCompatibility
+    $backendPort = if (-not [string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) { [int]$env:BACKEND_PORT } else { 5000 }
     $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
     
     if (Test-Path $backendProcessIdPath) {
@@ -301,7 +412,7 @@ function Stop-Backend {
         Write-Host "[OK] Backend stopped" -ForegroundColor Green
     } else {
         # Try to find by port
-        $netstat = netstat -ano 2>$null | Select-String ":5000.*LISTENING"
+        $netstat = netstat -ano 2>$null | Select-String ":$backendPort\s+.*LISTENING"
         if ($netstat) {
             $pids = $netstat | ForEach-Object { ($_ -split '\s+')[-1] } | Sort-Object -Unique
             foreach ($p in $pids) {
@@ -318,6 +429,9 @@ function Stop-Backend {
 
 function Stop-Frontend {
     Write-Host "Stopping frontend..." -ForegroundColor Blue
+    Import-DotEnvIfPresent
+    Set-RuntimeEnvCompatibility
+    $frontendPort = if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { [int]$env:FRONTEND_PORT } else { 3001 }
     $frontendProcessIdPath = Join-Path $ProcessIdDir "frontend.pid"
     
     if (Test-Path $frontendProcessIdPath) {
@@ -330,7 +444,7 @@ function Stop-Frontend {
         Write-Host "[OK] Frontend stopped" -ForegroundColor Green
     } else {
         # Try to find by port
-        $netstat = netstat -ano 2>$null | Select-String ":3001.*LISTENING"
+        $netstat = netstat -ano 2>$null | Select-String ":$frontendPort\s+.*LISTENING"
         if ($netstat) {
             $pids = $netstat | ForEach-Object { ($_ -split '\s+')[-1] } | Sort-Object -Unique
             foreach ($p in $pids) {
@@ -348,6 +462,11 @@ function Stop-Frontend {
 function Show-Status {
     Write-Host ""
     Write-Host "=== Service Status ===" -ForegroundColor Cyan
+
+    Import-DotEnvIfPresent
+    Set-RuntimeEnvCompatibility
+    $backendPort = if (-not [string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) { [int]$env:BACKEND_PORT } else { 5000 }
+    $frontendPort = if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { [int]$env:FRONTEND_PORT } else { 3001 }
     
     # Check backend
     $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
@@ -361,9 +480,9 @@ function Show-Status {
         }
     }
     if (-not $backendRunning) {
-        $netstat = netstat -ano 2>$null | Select-String ":5000.*LISTENING"
+        $netstat = netstat -ano 2>$null | Select-String ":$backendPort\s+.*LISTENING"
         if ($netstat) {
-            Write-Host "[RUNNING] Backend (detected on port 5000)" -ForegroundColor Green
+            Write-Host "[RUNNING] Backend (detected on port $backendPort)" -ForegroundColor Green
             $backendRunning = $true
         }
     }
@@ -383,9 +502,9 @@ function Show-Status {
         }
     }
     if (-not $frontendRunning) {
-        $netstat = netstat -ano 2>$null | Select-String ":3001.*LISTENING"
+        $netstat = netstat -ano 2>$null | Select-String ":$frontendPort\s+.*LISTENING"
         if ($netstat) {
-            Write-Host "[RUNNING] Frontend (detected on port 3001)" -ForegroundColor Green
+            Write-Host "[RUNNING] Frontend (detected on port $frontendPort)" -ForegroundColor Green
             $frontendRunning = $true
         }
     }
@@ -395,11 +514,11 @@ function Show-Status {
     
     Write-Host ""
     if ($backendRunning) {
-        Write-Host "Backend API:  http://localhost:5000" -ForegroundColor Cyan
-        Write-Host "API Docs:     http://localhost:5000/docs" -ForegroundColor Cyan
+        Write-Host ("Backend API:  http://localhost:$backendPort") -ForegroundColor Cyan
+        Write-Host ("API Docs:     http://localhost:$backendPort/docs") -ForegroundColor Cyan
     }
     if ($frontendRunning) {
-        Write-Host "Frontend UI:  http://localhost:3001" -ForegroundColor Cyan
+        Write-Host ("Frontend UI:  http://localhost:$frontendPort") -ForegroundColor Cyan
     }
     Write-Host ""
 }

@@ -182,13 +182,22 @@ if not exist "%INSTALL_DIR%\.env" (
         echo NEO4J_PASSWORD=your-password
         echo NEO4J_DATABASE=neo4j
         echo.
-        echo # API Configuration
-        echo API_HOST=0.0.0.0
-        echo API_PORT=5000
+        echo # Backend ^(FastAPI^)
+        echo BACKEND_HOST=0.0.0.0
+        echo BACKEND_PORT=5000
         echo.
-        echo # Frontend Configuration
-        echo VITE_PORT=3001
-        echo VITE_API_URL=http://localhost:5000
+        echo # Frontend ^(Vite^)
+        echo FRONTEND_HOST=0.0.0.0
+        echo FRONTEND_PORT=3001
+        echo.
+        echo # Frontend dev proxy target ^(Vite^)
+        echo API_BASE_URL=http://127.0.0.1:5000
+        echo.
+        echo # Legacy compatibility ^(older templates may still reference these^)
+        echo REM VITE_PORT=3001
+        echo REM VITE_API_URL=http://127.0.0.1:5000
+        echo REM API_HOST=0.0.0.0
+        echo REM API_PORT=5000
         echo.
         echo # Logging
         echo LOG_LEVEL=INFO
@@ -207,6 +216,7 @@ REM Create start_all.bat
     echo @echo off
     echo echo Starting MBSE Knowledge Graph services...
     echo cd /d "%INSTALL_DIR%"
+    echo REM NOTE: Ports/hosts are controlled via .env ^(BACKEND_HOST/BACKEND_PORT, FRONTEND_HOST/FRONTEND_PORT^)
     echo start "MBSE Backend" cmd /k "cd backend && python -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000"
     echo timeout /t 3 /nobreak ^>nul
     echo start "MBSE Frontend" cmd /k "npm run preview -- --host 0.0.0.0 --port 3001"

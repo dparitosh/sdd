@@ -201,13 +201,22 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 NEO4J_DATABASE=neo4j
 
-# API Configuration
-API_HOST=0.0.0.0
-API_PORT=5000
+# Backend (FastAPI)
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=5000
 
-# Frontend Configuration
-VITE_PORT=3001
-VITE_API_URL=http://localhost:5000
+# Frontend (Vite)
+FRONTEND_HOST=0.0.0.0
+FRONTEND_PORT=3001
+
+# Frontend dev proxy target (Vite)
+API_BASE_URL=http://127.0.0.1:5000
+
+# Legacy compatibility (older templates may still reference these)
+# VITE_PORT=3001
+# VITE_API_URL=http://127.0.0.1:5000
+# API_HOST=0.0.0.0
+# API_PORT=5000
 
 # Logging
 LOG_LEVEL=INFO
@@ -226,16 +235,45 @@ Write-Host "=== Creating Service Scripts ===" -ForegroundColor Cyan
 Write-Host "Starting MBSE Knowledge Graph services..." -ForegroundColor Cyan
 Set-Location "$InstallDir"
 
+function Import-DotEnvIfPresent {
+    param([string]`$EnvPath)
+    if (!(Test-Path -LiteralPath `$EnvPath)) { return }
+    Get-Content -LiteralPath `$EnvPath | ForEach-Object {
+        `$line = `$_
+        if ([string]::IsNullOrWhiteSpace(`$line)) { return }
+        `$trimmed = `$line.Trim()
+        if (`$trimmed.StartsWith('#')) { return }
+        `$idx = `$trimmed.IndexOf('=')
+        if (`$idx -lt 1) { return }
+        `$key = `$trimmed.Substring(0, `$idx).Trim()
+        `$value = `$trimmed.Substring(`$idx + 1).Trim()
+        if ([string]::IsNullOrWhiteSpace(`$key)) { return }
+        if ((`$value.StartsWith('"') -and `$value.EndsWith('"')) -or (`$value.StartsWith("'") -and `$value.EndsWith("'"))) {
+            if (`$value.Length -ge 2) { `$value = `$value.Substring(1, `$value.Length - 2) }
+        }
+        if ([string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable(`$key))) {
+            [System.Environment]::SetEnvironmentVariable(`$key, `$value)
+        }
+    }
+}
+
+Import-DotEnvIfPresent -EnvPath (Join-Path "$InstallDir" '.env')
+
+if ([string]::IsNullOrWhiteSpace(`$env:BACKEND_HOST)) { `$env:BACKEND_HOST = '0.0.0.0' }
+if ([string]::IsNullOrWhiteSpace(`$env:BACKEND_PORT)) { `$env:BACKEND_PORT = '5000' }
+if ([string]::IsNullOrWhiteSpace(`$env:FRONTEND_HOST)) { `$env:FRONTEND_HOST = '0.0.0.0' }
+if ([string]::IsNullOrWhiteSpace(`$env:FRONTEND_PORT)) { `$env:FRONTEND_PORT = '3001' }
+
 # Start Backend (in new window)
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir\backend'; & '$InstallDir\.venv\Scripts\python' -m uvicorn src.web.app_fastapi:app --host 0.0.0.0 --port 5000 --reload" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir\backend'; & '$InstallDir\.venv\Scripts\python' -m uvicorn src.web.app_fastapi:app --host $env:BACKEND_HOST --port $env:BACKEND_PORT --reload" -WindowStyle Normal
 Start-Sleep -Seconds 3
 
 # Start Frontend (in new window)
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; npm run preview -- --host 0.0.0.0 --port 3001" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; npm run preview -- --host $env:FRONTEND_HOST --port $env:FRONTEND_PORT" -WindowStyle Normal
 
 Write-Host "Services started!" -ForegroundColor Green
-Write-Host "Backend: http://localhost:5000"
-Write-Host "Frontend: http://localhost:3001"
+Write-Host "Backend: http://localhost:$env:BACKEND_PORT"
+Write-Host "Frontend: http://localhost:$env:FRONTEND_PORT"
 "@ | Out-File -FilePath "$InstallDir\start_all.ps1" -Encoding UTF8
 Write-Host "[SUCCESS] Created start_all.ps1" -ForegroundColor Green
 
