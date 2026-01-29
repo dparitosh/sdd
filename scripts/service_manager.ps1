@@ -366,17 +366,41 @@ function Start-Frontend {
         }
         
         $logFile = Join-Path $env:TEMP "mbse-frontend.log"
-        
-        $npmCmd = "cd '$ProjectRoot'; npm run dev -- --host $frontendHost --port $frontendPort"
+        $errFile = Join-Path $env:TEMP "mbse-frontend-error.log"
+
+        # Preflight: ensure the local Vite binary exists (otherwise `npm run dev` will fail with "vite not recognized")
+        $viteCmd = Join-Path $ProjectRoot "node_modules\\.bin\\vite.cmd"
+        if (-not (Test-Path -LiteralPath $viteCmd)) {
+            Write-Host "[ERROR] Frontend dependencies are not installed (missing: $viteCmd)" -ForegroundColor Red
+            Write-Host "        Run: .\\scripts\\install.ps1" -ForegroundColor Yellow
+            Write-Host "        Or from repo root: npm install" -ForegroundColor Yellow
+            return
+        }
+
+        # Prefer invoking npm directly with an argument list to avoid PowerShell -Command parsing and npm config warnings.
+        $npmExe = (Get-Command npm -ErrorAction Stop).Source
+        $npmArgs = @(
+            "run",
+            "dev",
+            "--",
+            "--host",
+            $frontendHost,
+            "--port",
+            $frontendPort
+        )
+
         if ($Interactive) {
             Write-Host "[INFO] Starting frontend in interactive mode (logs will stream here)" -ForegroundColor DarkGray
-            $process = Start-Process -FilePath "powershell.exe" `
-                -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $npmCmd `
+            $process = Start-Process -FilePath $npmExe `
+                -ArgumentList $npmArgs `
+                -WorkingDirectory $ProjectRoot `
                 -PassThru -NoNewWindow
         } else {
-            $process = Start-Process -FilePath "powershell.exe" `
-                -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $npmCmd `
+            $process = Start-Process -FilePath $npmExe `
+                -ArgumentList $npmArgs `
+                -WorkingDirectory $ProjectRoot `
                 -RedirectStandardOutput $logFile `
+                -RedirectStandardError $errFile `
                 -PassThru -WindowStyle Hidden
         }
         
@@ -388,10 +412,14 @@ function Start-Frontend {
             Write-Host "     URL: http://${frontendHost}:${frontendPort}" -ForegroundColor Cyan
             if (-not $Interactive) {
                 Write-Host "     Logs: $logFile" -ForegroundColor DarkGray
+                Write-Host "     Errors: $errFile" -ForegroundColor DarkGray
             }
         } else {
             Write-Host "[ERROR] Frontend failed to start. Check logs:" -ForegroundColor Red
             Write-Host "     $logFile" -ForegroundColor Yellow
+            if (-not $Interactive) {
+                Write-Host "     $errFile" -ForegroundColor Yellow
+            }
         }
     } finally {
         Pop-Location

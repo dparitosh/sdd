@@ -144,7 +144,7 @@ Important:
 
 ### Build output
 From repo root:
-- `npm ci`
+- `npm install`
 - `npm run build`
 
 This produces a static site under:
@@ -253,7 +253,7 @@ steps:
       versionSpec: '20.x'
 
   - script: |
-      npm ci
+      npm install
       npm run build
     displayName: Build frontend
     env:

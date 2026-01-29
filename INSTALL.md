@@ -336,10 +336,20 @@ For production deployments, consider:
 - Verify requirements: `.\.venv\Scripts\pip.exe list`
 - Check logs: `.\scripts\service_manager.ps1 logs backend`
 
+If you want a clean reinstall (keeps your repo, optionally backs up `.env`/`data`):
+```powershell
+.\scripts\reinstall.ps1 -BackupEnv -Start
+```
+
 ### Frontend won't start
 - Check Node version: `node --version` (should be 18+)
-- Reinstall dependencies: `npm ci`
+- Reinstall dependencies: `npm install`
 - Check logs: `.\scripts\service_manager.ps1 logs frontend`
+
+If Vite/TypeScript tools are missing (e.g. `'vite' is not recognized`), do a clean reinstall:
+```powershell
+.\scripts\reinstall.ps1 -BackupEnv -ForceNodeModulesClean -Start
+```
 
 ### Cannot connect to Neo4j
 - Verify `.env` credentials are correct

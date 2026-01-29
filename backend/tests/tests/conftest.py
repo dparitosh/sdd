@@ -18,6 +18,11 @@ from dotenv import load_dotenv
 from loguru import logger
 
 
+def _is_truthy_env(name: str) -> bool:
+    val = os.getenv(name, "").strip().lower()
+    return val in {"1", "true", "yes", "y", "on"}
+
+
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -33,6 +38,42 @@ def pytest_configure():
     if env_file.exists():
         # Do not override variables already provided by the environment/CI.
         load_dotenv(env_file, override=False)
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Make integration tests opt-in.
+
+    The repository supports running against an external Neo4j instance. Since
+    local Neo4j may not be available (e.g., when Docker support is removed), we
+    treat tests under `tests/integration/` as opt-in.
+
+    Enable them with:
+      PYTEST_RUN_INTEGRATION=1
+
+    When integration tests are disabled, the session-scoped `api_server` fixture
+    becomes a no-op so unit tests can run without Neo4j.
+    """
+
+    run_integration = _is_truthy_env("PYTEST_RUN_INTEGRATION")
+    has_integration = False
+
+    for item in items:
+        path = str(getattr(item, "fspath", "")).replace("\\", "/").lower()
+        if "/tests/integration/" in path:
+            has_integration = True
+            if not run_integration:
+                item.add_marker(
+                    pytest.mark.skip(
+                        reason=(
+                            "Integration tests are disabled by default. "
+                            "Set PYTEST_RUN_INTEGRATION=1 and configure Neo4j (NEO4J_URI/NEO4J_USER/NEO4J_PASSWORD) to enable."
+                        )
+                    )
+                )
+
+    # Used by the session autouse fixture to avoid starting services when
+    # integration tests are not running.
+    setattr(config, "_mbse_run_integration", bool(has_integration and run_integration))
 
 
 def _wait_for_http_ok(url: str, timeout_seconds: int = 60) -> bool:
@@ -65,11 +106,17 @@ def _seed_neo4j_if_empty() -> None:
 
     from src.graph.connection import Neo4jConnection
 
-    with Neo4jConnection(neo4j_uri, neo4j_user, neo4j_password) as conn:
-        result = conn.execute_query("MATCH (n) RETURN count(n) as count")
-        node_count = int(result[0]["count"]) if result else 0
-        if node_count > 0:
-            return
+    try:
+        with Neo4jConnection(neo4j_uri, neo4j_user, neo4j_password) as conn:
+            result = conn.execute_query("MATCH (n) RETURN count(n) as count")
+            node_count = int(result[0]["count"]) if result else 0
+            if node_count > 0:
+                return
+    except Exception as exc:
+        raise RuntimeError(
+            "Unable to connect to Neo4j for integration test seeding. "
+            "Ensure Neo4j is running and configured via NEO4J_URI/NEO4J_USER/NEO4J_PASSWORD."
+        ) from exc
 
         logger.info("Seeding Neo4j with minimal test data (empty database)")
 
@@ -131,16 +178,16 @@ def _seed_neo4j_if_empty() -> None:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def api_server():
+def api_server(pytestconfig: pytest.Config):
     """Start FastAPI (uvicorn) for integration tests.
 
     The integration suite uses real HTTP calls to http://127.0.0.1:5000.
     This fixture ensures a server is running during the test session.
     """
-    # If the suite is run without integration tests, don't pay the startup cost.
-    # (pytest doesn't give us the collection list here reliably across versions,
-    # so we use a simple opt-out switch.)
-    if os.getenv("PYTEST_NO_API_SERVER"):
+    # If integration tests are not enabled/collected, don't pay the startup cost.
+    if os.getenv("PYTEST_NO_API_SERVER") or not getattr(
+        pytestconfig, "_mbse_run_integration", False
+    ):
         yield
         return
 

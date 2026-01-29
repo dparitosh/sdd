@@ -1,14 +1,21 @@
-"""
-Security utilities for production deployment
-Includes password hashing, token management, and rate limiting
+"""src.web.middleware.security_utils
+
+Security utilities for production deployment.
+
+This module is FastAPI-safe (no Flask imports). It contains framework-agnostic
+helpers (password hashing, token generation, basic in-memory rate limiting).
+
+NOTE: For API key auth and rate limiting in FastAPI, prefer `slowapi` (already
+used by the app) or dependency-based checks.
 """
 
-import bcrypt
+from __future__ import annotations
+
 import secrets
-from typing import Optional
 from datetime import datetime, timedelta
-from functools import wraps
-from flask import request, jsonify
+
+import bcrypt
+from fastapi import HTTPException, Request, status
 from loguru import logger
 
 
@@ -44,7 +51,7 @@ class PasswordHasher:
         """
         try:
             return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.error(f"Password verification failed: {e}")
             return False
 
@@ -135,91 +142,57 @@ class RateLimiter:
 _rate_limiter = RateLimiter()
 
 
-def rate_limit(max_requests: int = 100, window_seconds: int = 60):
-    """
-    Decorator for Flask routes to add rate limiting
+def enforce_rate_limit(request: Request, *, max_requests: int = 100, window_seconds: int = 60) -> None:
+    """Enforce a simple in-memory rate limit.
 
-    Usage:
-        @app.route('/api/endpoint')
-        @rate_limit(max_requests=10, window_seconds=60)
-        def endpoint():
-            return {'status': 'ok'}
+    In production, prefer Redis-backed rate limiting (e.g., `slowapi`).
     """
 
-    def decorator(f):
-        @wraps(f)
-        def wrapped(*args, **kwargs):
-            # Get client identifier (IP address)
-            client_ip = request.remote_addr
-
-            # Check rate limit
-            if not _rate_limiter.is_allowed(client_ip, max_requests, window_seconds):
-                return (
-                    jsonify(
-                        {
-                            "error": "Rate limit exceeded",
-                            "message": f"Maximum {max_requests} requests per {window_seconds} seconds",
-                        }
-                    ),
-                    429,
-                )
-
-            return f(*args, **kwargs)
-
-        return wrapped
-
-    return decorator
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_limiter.is_allowed(client_ip, max_requests, window_seconds):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: max {max_requests} per {window_seconds}s",
+        )
 
 
-def require_api_key(f):
-    """
-    Decorator to require API key authentication
+def require_api_key(request: Request) -> str:
+    """Extract and validate an API key from request headers.
 
-    Usage:
-        @app.route('/api/protected')
-        @require_api_key
-        def protected():
-            return {'data': 'secret'}
+    This is designed to be used as a FastAPI dependency.
+
+    Note: This currently validates format only (prefix). Hook into a proper
+    datastore if you need real API keys.
     """
 
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        api_key = request.headers.get("X-API-Key")
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing API key (X-API-Key header)",
+        )
 
-        if not api_key:
-            return (
-                jsonify(
-                    {
-                        "error": "Missing API key",
-                        "message": "Please provide X-API-Key header",
-                    }
-                ),
-                401,
-            )
+    if not api_key.startswith("mbse_"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key format",
+        )
 
-        # TODO: Validate API key against database
-        # For now, this is a placeholder
-        if not api_key.startswith("mbse_"):
-            return (
-                jsonify(
-                    {"error": "Invalid API key", "message": "API key format is invalid"}
-                ),
-                401,
-            )
-
-        return f(*args, **kwargs)
-
-    return decorated
+    return api_key
 
 
 class SecurityHeaders:
-    """Add security headers to Flask responses"""
+    """Add security headers to a response-like object.
+
+    Works with Starlette/FastAPI responses (and most WSGI responses that expose
+    a `headers` mapping).
+    """
 
     @staticmethod
     def add_security_headers(response):
         """
         Add security headers to response
-        Should be called in Flask after_request handler
+        Should be called in a FastAPI/Starlette middleware after the response is created.
         """
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
@@ -229,8 +202,11 @@ class SecurityHeaders:
         )
         response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
 
-        # Remove Flask version header
-        response.headers.pop("Server", None)
+        # Remove server version header when possible
+        try:
+            response.headers.pop("Server", None)
+        except (AttributeError, TypeError):
+            pass
 
         return response
 
@@ -260,54 +236,12 @@ def sanitize_input(data: str, max_length: int = 1000) -> str:
     return data.strip()
 
 
-# Example usage in Flask app:
-"""
-from flask import Flask
-from security_utils import (
-    PasswordHasher,
-    TokenManager,
-    rate_limit,
-    require_api_key,
-    SecurityHeaders
-)
-
-app = Flask(__name__)
-
-# Add security headers to all responses
-@app.after_request
-def add_security_headers(response):
-    return SecurityHeaders.add_security_headers(response)
-
-# Public endpoint with rate limiting
-@app.route('/api/public')
-@rate_limit(max_requests=10, window_seconds=60)
-def public_endpoint():
-    return {'data': 'public'}
-
-# Protected endpoint requiring API key
-@app.route('/api/protected')
-@require_api_key
-@rate_limit(max_requests=100, window_seconds=60)
-def protected_endpoint():
-    return {'data': 'protected'}
-
-# User registration with password hashing
-@app.route('/api/register', methods=['POST'])
-def register():
-    password = request.json.get('password')
-    hashed = PasswordHasher.hash_password(password)
-    # Save hashed password to database
-    return {'status': 'registered'}
-
-# User login with password verification
-@app.route('/api/login', methods=['POST'])
-def login():
-    password = request.json.get('password')
-    stored_hash = get_user_password_hash()  # From database
-    
-    if PasswordHasher.verify_password(password, stored_hash):
-        token = TokenManager.generate_token()
-        return {'token': token}
-    
-    return {'error': 'Invalid credentials'}, 401
-"""
+__all__ = [
+    "PasswordHasher",
+    "TokenManager",
+    "RateLimiter",
+    "enforce_rate_limit",
+    "require_api_key",
+    "SecurityHeaders",
+    "sanitize_input",
+]

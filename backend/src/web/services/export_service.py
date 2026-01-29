@@ -6,11 +6,10 @@ Supports JSON, XML, CSV, GraphML, RDF, and SysML/PlantUML
 import json
 import csv
 from io import StringIO
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
-from loguru import logger
 
 
 class ExportService:
@@ -349,50 +348,37 @@ class ExportService:
         return {"elements": elements}
 
 
-# Example Flask routes for export:
-"""
-from flask import Blueprint, request, Response
-from export_service import ExportService
-from services import get_neo4j_service
-
-export_bp = Blueprint('export', __name__, url_prefix='/api/export')
-
-@export_bp.route('/json', methods=['POST'])
-def export_json():
-    query = request.json.get('query')
-    params = request.json.get('params', {})
-    
-    service = ExportService(get_neo4j_service())
-    result = service.export_json(query, params)
-    
-    return Response(result, mimetype='application/json')
-
-@export_bp.route('/csv', methods=['POST'])
-def export_csv():
-    query = request.json.get('query')
-    params = request.json.get('params', {})
-    
-    service = ExportService(get_neo4j_service())
-    result = service.export_csv(query, params)
-    
-    return Response(result, mimetype='text/csv', 
-                   headers={'Content-Disposition': 'attachment; filename=export.csv'})
-
-@export_bp.route('/graphml')
-def export_graphml():
-    service = ExportService(get_neo4j_service())
-    result = service.export_graphml()
-    
-    return Response(result, mimetype='application/xml',
-                   headers={'Content-Disposition': 'attachment; filename=graph.graphml'})
-
-@export_bp.route('/plantuml')
-def export_plantuml():
-    package = request.args.get('package')
-    
-    service = ExportService(get_neo4j_service())
-    result = service.export_plantuml(package)
-    
-    return Response(result, mimetype='text/plain',
-                   headers={'Content-Disposition': 'attachment; filename=diagram.puml'})
-"""
+# Example FastAPI routes for export:
+#
+# from fastapi import APIRouter
+# from pydantic import BaseModel
+# from starlette.responses import Response
+#
+# from src.web.services.export_service import ExportService
+# from src.web.services.services import get_neo4j_service
+#
+#
+# router = APIRouter(prefix="/api/export", tags=["export"])
+#
+#
+# class ExportRequest(BaseModel):
+#     query: str
+#     params: dict = {}
+#
+#
+# @router.post("/json")
+# def export_json(req: ExportRequest):
+#     service = ExportService(get_neo4j_service())
+#     result = service.export_json(req.query, req.params)
+#     return Response(result, media_type="application/json")
+#
+#
+# @router.post("/csv")
+# def export_csv(req: ExportRequest):
+#     service = ExportService(get_neo4j_service())
+#     result = service.export_csv(req.query, req.params)
+#     return Response(
+#         result,
+#         media_type="text/csv",
+#         headers={"Content-Disposition": "attachment; filename=export.csv"},
+#     )

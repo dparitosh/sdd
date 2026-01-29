@@ -1,18 +1,18 @@
-"""
-Prometheus metrics for monitoring application performance
+"""src.web.middleware.metrics
+
+Prometheus metrics helpers.
+
+This module is framework-agnostic and can be used with FastAPI/Starlette.
 """
 
-from prometheus_client import (
-    Counter,
-    Histogram,
-    Gauge,
-    generate_latest,
-    CONTENT_TYPE_LATEST,
-)
-from flask import Response
-from functools import wraps
+from __future__ import annotations
+
 import time
-from loguru import logger
+from functools import wraps
+from typing import Any
+
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from starlette.responses import Response
 
 
 # Define metrics
@@ -75,36 +75,28 @@ def track_request_metrics(f):
     """
 
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any):
         start_time = time.time()
 
         # Get endpoint name
         endpoint = f.__name__
         method = "GET"  # Default, will be overridden by Flask context if available
 
-        try:
-            # Execute the function
-            result = f(*args, **kwargs)
+        # Execute the function
+        result = f(*args, **kwargs)
 
-            # Determine status code
-            if isinstance(result, tuple):
-                status = result[1] if len(result) > 1 else 200
-            else:
-                status = 200
+        # Determine status code
+        if isinstance(result, tuple):
+            status = result[1] if len(result) > 1 else 200
+        else:
+            status = 200
 
-            # Record metrics
-            duration = time.time() - start_time
-            REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=status).inc()
-            REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
+        # Record metrics
+        duration = time.time() - start_time
+        REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=status).inc()
+        REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
 
-            return result
-
-        except Exception as e:
-            # Record error
-            duration = time.time() - start_time
-            REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=500).inc()
-            REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
-            raise
+        return result
 
     return decorated
 
@@ -122,25 +114,21 @@ def track_neo4j_query(query_type: str = "read"):
 
     def decorator(f):
         @wraps(f)
-        def decorated(*args, **kwargs):
+        def decorated(*args: Any, **kwargs: Any):
             start_time = time.time()
 
             try:
                 result = f(*args, **kwargs)
-
-                # Record successful query
-                duration = time.time() - start_time
-                NEO4J_QUERY_COUNT.labels(query_type=query_type, status="success").inc()
-                NEO4J_QUERY_DURATION.labels(query_type=query_type).observe(duration)
-
-                return result
-
-            except Exception as e:
-                # Record failed query
+            except Exception:
                 duration = time.time() - start_time
                 NEO4J_QUERY_COUNT.labels(query_type=query_type, status="error").inc()
                 NEO4J_QUERY_DURATION.labels(query_type=query_type).observe(duration)
                 raise
+
+            duration = time.time() - start_time
+            NEO4J_QUERY_COUNT.labels(query_type=query_type, status="success").inc()
+            NEO4J_QUERY_DURATION.labels(query_type=query_type).observe(duration)
+            return result
 
         return decorated
 
@@ -151,37 +139,28 @@ def track_agent_query(f):
     """Decorator to track AI agent query metrics"""
 
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any):
         start_time = time.time()
 
         try:
             result = f(*args, **kwargs)
-
-            duration = time.time() - start_time
-            AGENT_QUERIES.labels(status="success").inc()
-            AGENT_QUERY_DURATION.observe(duration)
-
-            return result
-
-        except Exception as e:
+        except Exception:
             duration = time.time() - start_time
             AGENT_QUERIES.labels(status="error").inc()
             AGENT_QUERY_DURATION.observe(duration)
             raise
 
+        duration = time.time() - start_time
+        AGENT_QUERIES.labels(status="success").inc()
+        AGENT_QUERY_DURATION.observe(duration)
+        return result
+
     return decorated
 
 
 def metrics_endpoint():
-    """
-    Flask endpoint to expose Prometheus metrics
-
-    Usage:
-        @app.route('/metrics')
-        def metrics():
-            return metrics_endpoint()
-    """
-    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+    """Create a Starlette Response containing Prometheus metrics."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 class MetricsCollector:
@@ -214,42 +193,21 @@ class MetricsCollector:
         PLM_SYNC_DURATION.labels(plm_system=plm_system).observe(duration)
 
 
-# Example integration with Flask:
-"""
-from flask import Flask
-from metrics import (
-    metrics_endpoint,
-    track_request_metrics,
-    track_neo4j_query,
-    MetricsCollector
-)
-
-app = Flask(__name__)
-
-# Expose metrics endpoint
-@app.route('/metrics')
-def metrics():
-    return metrics_endpoint()
-
-# Track HTTP requests
-@app.route('/api/classes')
-@track_request_metrics
-def get_classes():
-    return {'classes': [...]}
-
-# Track Neo4j queries
-@track_neo4j_query('read')
-def query_database():
-    # Execute Neo4j query
-    pass
-
-# Manual metrics collection
-def some_function():
-    # Check cache
-    if value_in_cache:
-        MetricsCollector.record_cache_hit('query_cache')
-        return cached_value
-    else:
-        MetricsCollector.record_cache_miss('query_cache')
-        return fetch_from_db()
-"""
+__all__ = [
+    "REQUEST_COUNT",
+    "REQUEST_DURATION",
+    "NEO4J_QUERY_COUNT",
+    "NEO4J_QUERY_DURATION",
+    "ACTIVE_CONNECTIONS",
+    "CACHE_HITS",
+    "CACHE_MISSES",
+    "AGENT_QUERIES",
+    "AGENT_QUERY_DURATION",
+    "PLM_SYNC_COUNT",
+    "PLM_SYNC_DURATION",
+    "track_request_metrics",
+    "track_neo4j_query",
+    "track_agent_query",
+    "metrics_endpoint",
+    "MetricsCollector",
+]

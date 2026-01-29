@@ -1,19 +1,15 @@
-"""
-Web middleware components for Flask application.
+"""src.web.middleware
+
+FastAPI middleware and related helpers.
+
+IMPORTANT:
+This package must remain safe to import in environments where Flask is not
+installed. Keep imports in this file minimal and avoid importing optional or
+legacy components at module import time.
 """
 
-from .error_handler import (
-    APIError,
-    DatabaseError,
-    NotFoundError,
-    ValidationError,
-    register_error_handlers,
-)
+# Intentionally do not eagerly import submodules here.
+# Import what you need directly, e.g.:
+#   from src.web.middleware.jwt_middleware import create_jwt_middleware
 
-__all__ = [
-    "register_error_handlers",
-    "APIError",
-    "ValidationError",
-    "NotFoundError",
-    "DatabaseError",
-]
+__all__: list[str] = []

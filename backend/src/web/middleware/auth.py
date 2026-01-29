@@ -1,14 +1,20 @@
+"""src.web.middleware.auth
+
+JWT helpers for FastAPI.
+
+This project uses FastAPI and provides authentication primarily via
+`JWTAuthMiddleware` (see `jwt_middleware.py`) and FastAPI dependencies.
+
+This module keeps a small set of framework-agnostic JWT utilities that are safe
+to import without Flask.
 """
-JWT-based Authentication Middleware
-Provides token generation, validation, and decorators for protected routes
-"""
+
+from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
-from functools import wraps
-
 import jwt
-from flask import jsonify, request
+from fastapi import HTTPException, Request, status
 from loguru import logger
 
 # ============================================================================
@@ -93,153 +99,35 @@ def verify_token(token: str, token_type: str = "access") -> dict:
         jwt.ExpiredSignatureError: Token has expired
         jwt.InvalidTokenError: Token is invalid
     """
-    try:
-        payload = jwt.decode(
-            token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM]
+    payload = jwt.decode(token, AuthConfig.SECRET_KEY, algorithms=[AuthConfig.ALGORITHM])
+
+    # Verify token type
+    if payload.get("type") != token_type:
+        raise jwt.InvalidTokenError(f"Invalid token type. Expected {token_type}")
+
+    logger.debug(f"Token verified for user: {payload.get('sub')}")
+    return payload
+
+
+def get_token_from_header(request: Request) -> str:
+    """Extract Bearer token from Authorization header (FastAPI Request)."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-        # Verify token type
-        if payload.get("type") != token_type:
-            raise jwt.InvalidTokenError(f"Invalid token type. Expected {token_type}")
-
-        logger.debug(f"Token verified for user: {payload.get('sub')}")
-        return payload
-
-    except jwt.ExpiredSignatureError:
-        logger.warning("Token has expired")
-        raise
-    except jwt.InvalidTokenError as e:
-        logger.warning(f"Invalid token: {e}")
-        raise
-
-
-def get_token_from_header() -> str:
-    """Extract JWT token from Authorization header"""
-    auth_header = request.headers.get("Authorization")
-
-    if not auth_header:
-        raise ValueError("Authorization header missing")
-
     parts = auth_header.split()
-
     if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise ValueError("Invalid Authorization header format. Use: Bearer <token>")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Authorization header format. Use: Bearer <token>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return parts[1]
-
-
-# ============================================================================
-# AUTHENTICATION DECORATORS
-# ============================================================================
-
-
-def require_auth(f):
-    """
-    Decorator to protect routes with JWT authentication
-
-    Usage:
-        @app.route('/protected')
-        @require_auth
-        def protected_route():
-            return jsonify({"message": "You are authenticated"})
-    """
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            # Extract token from header
-            token = get_token_from_header()
-
-            # Verify token
-            payload = verify_token(token, token_type="access")
-
-            # Add user info to request context
-            request.user = {"username": payload.get("sub"), "role": payload.get("role")}
-
-            logger.info(f"Authenticated request from user: {request.user['username']}")
-
-            return f(*args, **kwargs)
-
-        except ValueError as e:
-            logger.warning(f"Authentication failed: {e}")
-            return jsonify({"error": "Authentication required", "message": str(e)}), 401
-
-        except jwt.ExpiredSignatureError:
-            return (
-                jsonify(
-                    {
-                        "error": "Token expired",
-                        "message": "Your session has expired. Please login again.",
-                    }
-                ),
-                401,
-            )
-
-        except jwt.InvalidTokenError as e:
-            return jsonify({"error": "Invalid token", "message": str(e)}), 401
-
-        except Exception as e:
-            logger.error(f"Unexpected authentication error: {e}")
-            return (
-                jsonify(
-                    {
-                        "error": "Authentication failed",
-                        "message": "An unexpected error occurred",
-                    }
-                ),
-                500,
-            )
-
-    return decorated_function
-
-
-def require_role(required_role: str):
-    """
-    Decorator to restrict access based on user role
-
-    Usage:
-        @app.route('/admin')
-        @require_auth
-        @require_role('admin')
-        def admin_route():
-            return jsonify({"message": "Admin access granted"})
-    """
-
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            user = getattr(request, "user", None)
-
-            if not user:
-                return (
-                    jsonify(
-                        {
-                            "error": "Authentication required",
-                            "message": "You must be logged in to access this resource",
-                        }
-                    ),
-                    401,
-                )
-
-            if user.get("role") != required_role:
-                logger.warning(
-                    f"Access denied for user {user['username']} (role: {user.get('role')}, required: {required_role})"
-                )
-                return (
-                    jsonify(
-                        {
-                            "error": "Insufficient permissions",
-                            "message": f"This resource requires '{required_role}' role",
-                        }
-                    ),
-                    403,
-                )
-
-            return f(*args, **kwargs)
-
-        return decorated_function
-
-    return decorator
 
 
 # ============================================================================
@@ -247,7 +135,7 @@ def require_role(required_role: str):
 # ============================================================================
 
 
-def authenticate_user(username: str, password: str) -> dict | None:
+def authenticate_user(username: str, password: str) -> dict[str, str] | None:
     """
     Authenticate user credentials
 
@@ -287,8 +175,9 @@ def refresh_access_token(refresh_token: str) -> dict:
         jwt.InvalidTokenError: Refresh token is invalid
     """
     payload = verify_token(refresh_token, token_type="refresh")
-
     username = payload.get("sub")
+    if not isinstance(username, str) or not username:
+        raise jwt.InvalidTokenError("Refresh token missing subject")
 
     # In production, verify user still exists and is active
 
@@ -311,7 +200,7 @@ def refresh_access_token(refresh_token: str) -> dict:
 _token_blacklist = set()
 
 
-def revoke_token(token: str):
+def revoke_token(token: str) -> None:
     """Add token to blacklist"""
     _token_blacklist.add(token)
     logger.info("Token revoked")
@@ -320,30 +209,18 @@ def revoke_token(token: str):
 def is_token_revoked(token: str) -> bool:
     """Check if token is blacklisted"""
     return token in _token_blacklist
+def require_active_token(request: Request) -> str:
+    """Ensure the current Bearer token is not revoked.
 
+    This is intended for use as a FastAPI dependency.
+    """
 
-def require_active_token(f):
-    """Decorator to check if token is not revoked"""
+    token = get_token_from_header(request)
+    if is_token_revoked(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token revoked. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            token = get_token_from_header()
-
-            if is_token_revoked(token):
-                return (
-                    jsonify(
-                        {
-                            "error": "Token revoked",
-                            "message": "This token has been revoked. Please login again.",
-                        }
-                    ),
-                    401,
-                )
-
-            return f(*args, **kwargs)
-
-        except ValueError as e:
-            return jsonify({"error": "Authentication required", "message": str(e)}), 401
-
-    return decorated_function
+    return token

@@ -310,6 +310,28 @@ if (-not $SkipNodeInstall) {
     
     if (Test-Path (Join-Path $InstallDir "package.json")) {
         Write-Host "Installing Node.js packages..."
+
+        # Guardrail: if a stale lockfile pins incompatible React versions (e.g., React 19)
+        # it can trigger peer-dependency failures even though package.json has been updated.
+        $lockPath = Join-Path $InstallDir "package-lock.json"
+        if (Test-Path -LiteralPath $lockPath) {
+            try {
+                $lockHasReact19 = Select-String -LiteralPath $lockPath -Pattern '"react"\s*:\s*"\^19\.|react@19\.' -Quiet
+                if ($lockHasReact19) {
+                    Write-Host "[WARN] Detected stale package-lock.json referencing React 19. Removing lockfile to allow a clean install." -ForegroundColor Yellow
+                    Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+
+                    $nmPath = Join-Path $InstallDir "node_modules"
+                    if (Test-Path -LiteralPath $nmPath) {
+                        Write-Host "[INFO] Removing existing node_modules for a clean dependency install..." -ForegroundColor DarkGray
+                        Remove-Item -LiteralPath $nmPath -Recurse -Force -ErrorAction SilentlyContinue
+                    }
+                }
+            } catch {
+                # If lockfile can't be inspected, proceed without blocking install.
+            }
+        }
+
         npm install
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[OK] Node.js dependencies installed" -ForegroundColor Green

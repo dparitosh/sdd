@@ -1,15 +1,19 @@
-"""
-Error Handler Middleware - Standardized error responses for Flask API
-Provides consistent error handling, logging, and user-friendly error messages
+"""src.web.middleware.error_handler
+
+FastAPI-native error handling utilities.
+
+This module previously implemented handlers for a different web stack.
+The project uses FastAPI, so we provide equivalent exception classes and a
+registration helper that works with FastAPI/Starlette.
 """
 
-import sys
 import traceback
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
-from flask import jsonify, request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from loguru import logger
-from werkzeug.exceptions import HTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Custom Exception Classes
 
@@ -18,7 +22,7 @@ class APIError(Exception):
     """Base class for API errors"""
 
     def __init__(
-        self, message: str, status_code: int = 500, payload: Dict[str, Any] = None
+        self, message: str, status_code: int = 500, payload: Dict[str, Any] | None = None
     ):
         super().__init__()
         self.message = message
@@ -45,7 +49,12 @@ class APIError(Exception):
 class ValidationError(APIError):
     """Raised when request validation fails"""
 
-    def __init__(self, message: str, field: str = None, payload: Dict[str, Any] = None):
+    def __init__(
+        self,
+        message: str,
+        field: str | None = None,
+        payload: Dict[str, Any] | None = None,
+    ):
         payload = payload or {}
         if field:
             payload["field"] = field
@@ -56,7 +65,10 @@ class NotFoundError(APIError):
     """Raised when requested resource not found"""
 
     def __init__(
-        self, resource_type: str = None, resource_id: str = None, message: str = None
+        self,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        message: str | None = None,
     ):
         if message is None:
             if resource_type and resource_id:
@@ -81,7 +93,7 @@ class DatabaseError(APIError):
     def __init__(
         self,
         message: str = "Database operation failed",
-        original_error: Exception = None,
+        original_error: Exception | None = None,
     ):
         payload = {}
         if original_error:
@@ -107,7 +119,9 @@ class AuthorizationError(APIError):
 class RateLimitError(APIError):
     """Raised when rate limit exceeded"""
 
-    def __init__(self, message: str = "Rate limit exceeded", retry_after: int = None):
+    def __init__(
+        self, message: str = "Rate limit exceeded", retry_after: int | None = None
+    ):
         payload = {}
         if retry_after:
             payload["retry_after"] = retry_after
@@ -115,106 +129,42 @@ class RateLimitError(APIError):
         super().__init__(message, status_code=429, payload=payload)
 
 
-# Error Handler Registration
+def register_error_handlers(app: FastAPI) -> None:
+    """Register exception handlers with a FastAPI application.
 
-
-def register_error_handlers(app):
-    """
-    Register error handlers with Flask application.
-
-    Args:
-        app: Flask application instance
-
-    Usage:
-        from web.middleware import register_error_handlers
-        register_error_handlers(app)
+    Note: `app_fastapi.py` already defines a few custom handlers for auth
+    compatibility. Only call this if you want to standardize APIError handling
+    across additional apps.
     """
 
-    @app.errorhandler(APIError)
-    def handle_api_error(error: APIError) -> Tuple[Dict[str, Any], int]:
-        """Handle custom API errors"""
-        response = error.to_dict()
+    @app.exception_handler(APIError)
+    async def handle_api_error(request: Request, exc: APIError):
+        log_error(exc, request, exc.status_code)
+        return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
-        # Log error with context
-        log_error(error, request, error.status_code)
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_exception(request: Request, exc: StarletteHTTPException):
+        # Preserve FastAPI/Starlette's standard "detail" shape by default.
+        log_error(exc, request, exc.status_code)
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-        return jsonify(response), error.status_code
-
-    @app.errorhandler(HTTPException)
-    def handle_http_exception(error: HTTPException) -> Tuple[Dict[str, Any], int]:
-        """Handle Werkzeug HTTP exceptions"""
-        response = {
-            "error": {
-                "type": "HTTPException",
-                "message": error.description or str(error),
-                "status_code": error.code,
-            }
-        }
-
-        # Log error with context
-        log_error(error, request, error.code)
-
-        return jsonify(response), error.code
-
-    @app.errorhandler(Exception)
-    def handle_unexpected_error(error: Exception) -> Tuple[Dict[str, Any], int]:
-        """Handle unexpected errors"""
-        # Log full traceback for debugging
-        logger.error(f"Unexpected error: {str(error)}")
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, exc: Exception):
+        logger.error(f"Unexpected error: {exc}")
         logger.error(traceback.format_exc())
+        log_error(exc, request, 500)
 
-        # Don't expose internal error details in production
-        if app.config.get("DEBUG", False):
-            message = str(error)
-            error_type = error.__class__.__name__
-        else:
-            message = "An internal server error occurred"
-            error_type = "InternalServerError"
-
-        response = {
-            "error": {"type": error_type, "message": message, "status_code": 500}
-        }
-
-        # Log error with context
-        log_error(error, request, 500)
-
-        return jsonify(response), 500
-
-    @app.errorhandler(404)
-    def handle_404(error) -> Tuple[Dict[str, Any], int]:
-        """Handle 404 Not Found errors"""
-        response = {
-            "error": {
-                "type": "NotFound",
-                "message": f"Endpoint '{request.path}' not found",
-                "status_code": 404,
-                "path": request.path,
-                "method": request.method,
-            }
-        }
-
-        logger.warning(f"404 Not Found: {request.method} {request.path}")
-
-        return jsonify(response), 404
-
-    @app.errorhandler(405)
-    def handle_405(error) -> Tuple[Dict[str, Any], int]:
-        """Handle 405 Method Not Allowed errors"""
-        response = {
-            "error": {
-                "type": "MethodNotAllowed",
-                "message": f"Method '{request.method}' not allowed for endpoint '{request.path}'",
-                "status_code": 405,
-                "path": request.path,
-                "method": request.method,
-            }
-        }
-
-        logger.warning(f"405 Method Not Allowed: {request.method} {request.path}")
-
-        return jsonify(response), 405
-
-    logger.info("Error handlers registered successfully")
+        # Avoid leaking internals by default.
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "type": "InternalServerError",
+                    "message": "An internal server error occurred",
+                    "status_code": 500,
+                }
+            },
+        )
 
 
 # Utility Functions
@@ -229,15 +179,17 @@ def log_error(error: Exception, request_obj, status_code: int):
         request_obj: Flask request object
         status_code: HTTP status code
     """
+    # Starlette/FastAPI request fields differ slightly from Flask.
+    client = getattr(request_obj, "client", None)
     error_data = {
         "error_type": error.__class__.__name__,
         "error_message": str(error),
         "status_code": status_code,
-        "method": request_obj.method,
-        "path": request_obj.path,
-        "query_params": dict(request_obj.args),
-        "remote_addr": request_obj.remote_addr,
-        "user_agent": request_obj.user_agent.string,
+        "method": getattr(request_obj, "method", None),
+        "path": getattr(getattr(request_obj, "url", None), "path", None),
+        "query_params": dict(getattr(request_obj, "query_params", {}) or {}),
+        "remote_addr": getattr(client, "host", None) if client else None,
+        "user_agent": (request_obj.headers.get("user-agent") if hasattr(request_obj, "headers") else None),
     }
 
     # Log at appropriate level based on status code
@@ -271,88 +223,6 @@ def format_validation_errors(errors: Dict[str, Any]) -> ValidationError:
         return ValidationError(str(errors))
 
 
-# Request Logging Middleware
 
-
-def log_request_info(app):
-    """
-    Add request/response logging middleware.
-
-    Args:
-        app: Flask application instance
-
-    Usage:
-        from web.middleware.error_handler import log_request_info
-        log_request_info(app)
-    """
-
-    @app.before_request
-    def before_request():
-        """Log incoming request details"""
-        logger.debug(f"→ {request.method} {request.path} | IP: {request.remote_addr}")
-
-        # Log query parameters (if any)
-        if request.args:
-            logger.debug(f"  Query params: {dict(request.args)}")
-
-        # Log request body (for POST/PUT/PATCH, excluding large payloads)
-        if request.method in ["POST", "PUT", "PATCH"]:
-            if request.content_length and request.content_length < 10000:  # 10KB limit
-                try:
-                    logger.debug(f"  Request body: {request.get_json()}")
-                except Exception:
-                    pass  # Ignore JSON parsing errors
-
-    @app.after_request
-    def after_request(response):
-        """Log outgoing response details"""
-        logger.debug(
-            f"← {request.method} {request.path} | Status: {response.status_code}"
-        )
-        return response
-
-    logger.info("Request logging middleware registered")
-
-
-# Health Check Utilities
-
-
-def create_health_check_endpoint(app, neo4j_service=None):
-    """
-    Create /health endpoint for monitoring.
-
-    Args:
-        app: Flask application instance
-        neo4j_service: Optional Neo4jService instance for database health check
-
-    Usage:
-        from web.middleware.error_handler import create_health_check_endpoint
-        from web.services import get_neo4j_service
-        create_health_check_endpoint(app, get_neo4j_service())
-    """
-
-    @app.route("/health", methods=["GET"])
-    def health_check():
-        """Health check endpoint for load balancers/monitoring"""
-        health = {"status": "healthy", "service": "mbse-knowledge-graph", "checks": {}}
-
-        # Check database connection (if service provided)
-        if neo4j_service:
-            try:
-                # Simple query to verify connectivity
-                result = neo4j_service.execute_query("RETURN 1 as test")
-                health["checks"]["database"] = "healthy" if result else "unhealthy"
-            except Exception as e:
-                health["checks"]["database"] = "unhealthy"
-                health["status"] = "degraded"
-                logger.error(f"Database health check failed: {str(e)}")
-
-        # Determine overall status
-        if health["status"] == "degraded":
-            status_code = 503  # Service Unavailable
-        else:
-            status_code = 200
-
-        return jsonify(health), status_code
-
-    logger.info("Health check endpoint created at /health")
+# NOTE: Request logging and health endpoints are implemented directly in
+# `src.web.app_fastapi` and route modules.
