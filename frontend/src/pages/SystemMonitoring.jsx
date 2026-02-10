@@ -44,8 +44,8 @@ export default function SystemMonitoring() {
   const historicalData = historicalMetrics?.datapoints.map(dp => ({
     timestamp: new Date(dp.timestamp).toLocaleTimeString(),
     requests: dp.value,
-    latency: Math.random() * 50 + 50,
-    errors: Math.random() * 5
+    latency: dp.latency ?? metrics?.p95Latency ?? 0,
+    errors: dp.errors ?? metrics?.errorRate ?? 0
   }));
   const metricCards = [{
     title: 'API Request Rate',

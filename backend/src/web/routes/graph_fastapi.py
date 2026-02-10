@@ -62,7 +62,30 @@ ALLOWED_NODE_TYPES = {
     "Parameter",
     "System",
     "Slot",
-    "Comment"
+    "Comment",
+    # XMI/MBSE Element Types
+    "MBSEElement",
+    "Connector",
+    "Generalization",
+    # XSD Schema Types
+    "XSDSchema",
+    "XSDElement",
+    "XSDComplexType",
+    "XSDSimpleType",
+    "XSDAttribute",
+    "XSDGroup",
+    # Semantic Layer Types (metadata)
+    "Documentation",
+    "DomainConcept",
+    "ExternalModel",
+}
+
+# Metadata node types - excluded from default visualization
+# These are derived/semantic nodes, not core domain data
+METADATA_NODE_TYPES = {
+    "Documentation",
+    "DomainConcept",
+    "ExternalModel",
 }
 
 
@@ -104,6 +127,7 @@ class GraphData(BaseModel):
 class NodeType(BaseModel):
     type: str
     count: int
+    is_metadata: bool = False  # True for semantic layer nodes
 
 
 class NodeTypesResponse(BaseModel):
@@ -128,6 +152,9 @@ async def get_graph_data(
     depth: int = Query(1, ge=1, le=3, description="Relationship traversal depth"),
     ap_level: Optional[int] = Query(
         None, description="Filter by AP level (1=AP239, 2=AP242, 3=AP243)"
+    ),
+    include_metadata: bool = Query(
+        False, description="Include metadata nodes (Documentation, DomainConcept, ExternalModel)"
     ),
     api_key: str = Depends(get_api_key),
 ):
@@ -157,6 +184,10 @@ async def get_graph_data(
         # Filter against whitelist to prevent injection
         validated_types = [nt for nt in requested_types if nt in ALLOWED_NODE_TYPES]
 
+        # Exclude metadata types unless explicitly requested
+        if not include_metadata:
+            validated_types = [nt for nt in validated_types if nt not in METADATA_NODE_TYPES]
+
         # Build query
         where_clauses = []
         params = {"limit": limit}
@@ -166,6 +197,12 @@ async def get_graph_data(
                 [f"'{nt}' IN labels(n)" for nt in validated_types]
             )
             where_clauses.append(f"({type_conditions})")
+        elif not include_metadata:
+            # No specific types requested, but exclude metadata by default
+            exclude_conditions = " AND ".join(
+                [f"NOT '{mt}' IN labels(n)" for mt in METADATA_NODE_TYPES]
+            )
+            where_clauses.append(f"({exclude_conditions})")
 
         if ap_level is not None:
             where_clauses.append("n.ap_level = $ap_level")
@@ -273,12 +310,20 @@ async def get_graph_data(
 @router.get(
     "/node-types", response_model=NodeTypesResponse, response_class=Neo4jJSONResponse
 )
-async def get_node_types(api_key: str = Depends(get_api_key)):
+async def get_node_types(
+    include_metadata: bool = Query(
+        False, description="Include metadata node types in results"
+    ),
+    api_key: str = Depends(get_api_key),
+):
     """
     Get list of all node types (labels) in the graph with counts
 
+    Args:
+        include_metadata: Include metadata types like Documentation, DomainConcept
+
     Returns:
-        Array of node types with their counts
+        Array of node types with their counts and metadata flag
     """
     try:
         neo4j = get_neo4j_service()
@@ -297,7 +342,18 @@ async def get_node_types(api_key: str = Depends(get_api_key)):
 
         results = neo4j.execute_query(query)
 
-        node_types = [{"type": r["type"], "count": r["count"]} for r in results]
+        node_types = []
+        for r in results:
+            node_type = r["type"]
+            is_meta = node_type in METADATA_NODE_TYPES
+            # Skip metadata unless requested
+            if is_meta and not include_metadata:
+                continue
+            node_types.append({
+                "type": node_type,
+                "count": r["count"],
+                "is_metadata": is_meta
+            })
 
         return {"node_types": node_types, "total_types": len(node_types)}
 

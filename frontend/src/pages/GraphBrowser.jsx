@@ -12,11 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { apiService } from '@/services/api';
 
-export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Browser" } = {}) {
+export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Browser", emptyMessage = "No graph data available." } = {}) {
   const fgRef = useRef(null);
   const containerRef = useRef(null);
   const [selectedNodeTypes, setSelectedNodeTypes] = useState(fixedNodeTypes);
   const [nodeTypeOpen, setNodeTypeOpen] = useState(false);
+  const [layoutDone, setLayoutDone] = useState(false);
+  const graphIdRef = useRef(null); // Track which graph we've laid out
   
   // Update state if prop changes
   useEffect(() => {
@@ -112,6 +114,15 @@ export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Brows
   }, [graphData]);
   useEffect(() => {
     if (!fgRef.current || !normalizedGraph) return;
+    
+    // Create a unique ID for this graph configuration
+    const graphId = `${selectedNodeTypes.join(',')}-${limit[0]}-${normalizedGraph.nodes.length}`;
+    
+    // Only set up forces and reheat if this is a new graph
+    if (graphIdRef.current === graphId) return;
+    graphIdRef.current = graphId;
+    setLayoutDone(false);
+    
     const nodeTypes = (normalizedGraph.metadata?.node_types || []).filter(t => typeof t === 'string' && t.length > 0).sort();
     const typeIndex = new Map();
     nodeTypes.forEach((t, idx) => typeIndex.set(t, idx));
@@ -139,7 +150,7 @@ export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Brows
         fgRef.current.zoomToFit(600, 60);
       } catch {}
     }, 250);
-  }, [normalizedGraph]);
+  }, [normalizedGraph, selectedNodeTypes, limit]);
   const highlighted = useMemo(() => {
     const focus = selectedNode || hoverNode;
     if (!normalizedGraph || !focus) {
@@ -242,9 +253,24 @@ export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Brows
       fgRef.current.zoomToFit(500, 50);
     }
   };
-  const toggleNodeType = useCallback((type) => {
-    // Force type to string to be safe
-    const typeStr = String(type);
+  
+  const isFixedMode = fixedNodeTypes && fixedNodeTypes.length > 0;
+  
+  // Available types for dropdown - if fixed mode, use fixed list, otherwise use API types
+  const dropdownTypes = isFixedMode 
+      ? fixedNodeTypes.map(t => ({ type: t, count: null })) 
+      : availableNodeTypes;
+
+  const toggleNodeType = useCallback((typeInput) => {
+    // cmdk lowercases values, so we need to find the original case
+    // First check if it's already in the dropdown list (exact match)
+    const exactMatch = dropdownTypes.find(t => t.type === typeInput);
+    // If not found, try case-insensitive match
+    const caseInsensitiveMatch = dropdownTypes.find(t => 
+      t.type.toLowerCase() === String(typeInput).toLowerCase()
+    );
+    const typeStr = exactMatch?.type || caseInsensitiveMatch?.type || String(typeInput);
+    
     setSelectedNodeTypes(prev => {
         // Handle selection toggle
         const exists = prev.includes(typeStr);
@@ -254,14 +280,7 @@ export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Brows
             : [...prev, typeStr];
         return newSelection;
     });
-  }, []);
-  
-  const isFixedMode = fixedNodeTypes && fixedNodeTypes.length > 0;
-  
-  // Available types for dropdown - if fixed mode, use fixed list, otherwise use API types
-  const dropdownTypes = isFixedMode 
-      ? fixedNodeTypes.map(t => ({ type: t, count: null })) 
-      : availableNodeTypes;
+  }, [dropdownTypes]);
 
   const legendTypes = useMemo(() => {
     if (selectedNodeTypes.length > 0) {
@@ -280,7 +299,7 @@ export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Brows
                 backgroundColor: getNodeColor({
                   type
                 })
-              }} /><span>{type}</span></div>)}<div className="flex items-center gap-2 pt-1"><div className="w-3 h-3 rounded-full bg-gray-500" /><span className="text-muted-foreground">Other types</span></div></CardContent></Card></div></div><div className="flex-1 relative" ref={containerRef} onPointerMove={handlePointerMove}><div className="absolute top-4 right-4 z-10 flex gap-2"><Button variant="outline" size="icon" onClick={handleZoomIn}><ZoomIn className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={handleZoomOut}><ZoomOut className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={handleZoomReset}><Maximize2 className="h-4 w-4" /></Button></div>{isLoading && <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20"><div className="text-center space-y-4"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /><p className="text-sm text-muted-foreground">Loading graph data...</p></div></div>}{error && <div className="absolute inset-0 flex items-center justify-center bg-background z-20"><Card className="max-w-md"><CardHeader><div className="flex items-center gap-2"><AlertCircle className="h-5 w-5 text-destructive" /><CardTitle>Failed to Load Graph</CardTitle></div><CardDescription>{error instanceof Error ? error.message : 'Unknown error'}</CardDescription></CardHeader></Card></div>}{normalizedGraph && !isLoading && !error && normalizedGraph.nodes.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-muted-foreground z-20">No nodes found. Try adjusting filters.</div>}{normalizedGraph && !isLoading && !error && normalizedGraph.nodes.length > 0 && <ForceGraph2D 
+              }} /><span>{type}</span></div>)}<div className="flex items-center gap-2 pt-1"><div className="w-3 h-3 rounded-full bg-gray-500" /><span className="text-muted-foreground">Other types</span></div></CardContent></Card></div></div><div className="flex-1 relative" ref={containerRef} onPointerMove={handlePointerMove}><div className="absolute top-4 right-4 z-10 flex gap-2"><Button variant="outline" size="icon" onClick={handleZoomIn}><ZoomIn className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={handleZoomOut}><ZoomOut className="h-4 w-4" /></Button><Button variant="outline" size="icon" onClick={handleZoomReset}><Maximize2 className="h-4 w-4" /></Button></div>{isLoading && <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20"><div className="text-center space-y-4"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /><p className="text-sm text-muted-foreground">Loading graph data...</p></div></div>}{error && <div className="absolute inset-0 flex items-center justify-center bg-background z-20"><Card className="max-w-md"><CardHeader><div className="flex items-center gap-2"><AlertCircle className="h-5 w-5 text-destructive" /><CardTitle>Failed to Load Graph</CardTitle></div><CardDescription>{error instanceof Error ? error.message : 'Unknown error'}</CardDescription></CardHeader></Card></div>}{normalizedGraph && !isLoading && !error && normalizedGraph.nodes.length === 0 && <div className="absolute inset-0 flex items-center justify-center z-20"><Card className="max-w-md"><CardHeader><div className="flex items-center gap-2"><AlertCircle className="h-5 w-5 text-muted-foreground" /><CardTitle>No Data Found</CardTitle></div><CardDescription>{emptyMessage}</CardDescription></CardHeader></Card></div>}{normalizedGraph && !isLoading && !error && normalizedGraph.nodes.length > 0 && <ForceGraph2D 
         width={dimensions.width}
         height={dimensions.height}
         ref={fgRef} graphData={{
@@ -324,7 +343,7 @@ export default function GraphBrowser({ fixedNodeTypes = [], title = "Graph Brows
       }} linkWidth={l => {
         const id = String(l.id);
         return highlighted.linkKeys && highlighted.linkKeys.has(id) ? 2.6 : 1.2;
-      }} linkDirectionalArrowLength={3} linkDirectionalArrowRelPos={1} cooldownTicks={100} warmupTicks={100} d3VelocityDecay={0.3} enableZoomInteraction enablePanInteraction enableNodeDrag />}{(hoverNode || hoverLink) && pointer && (
+      }} linkDirectionalArrowLength={3} linkDirectionalArrowRelPos={1} cooldownTicks={100} cooldownTime={3000} warmupTicks={100} d3VelocityDecay={0.3} onEngineStop={() => setLayoutDone(true)} enableZoomInteraction enablePanInteraction enableNodeDrag={!layoutDone} />}{(hoverNode || hoverLink) && pointer && (
         <div
           className="absolute z-50 pointer-events-none rounded-md border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
           style={{

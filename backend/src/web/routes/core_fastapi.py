@@ -395,49 +395,6 @@ async def search_post(
         raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
 
 
-@router.post("/search", response_model=SearchResponse, response_class=Neo4jJSONResponse)
-async def search_post(search_request: SearchRequest):
-    """
-    Search for entities by name (POST version for test compatibility)
-
-    Args:
-        search_request: Search parameters with name and limit
-
-    Returns:
-        Search results with 'results' wrapper
-    """
-    try:
-        neo4j = get_neo4j_service()
-
-        # Use optimized search query
-        query = """
-        MATCH (n)
-        WHERE n.name =~ ('(?i).*' + $query + '.*')
-        RETURN n.id AS id,
-               n.name AS name,
-               labels(n)[0] AS type,
-               n.comment AS comment
-        ORDER BY n.name
-        LIMIT $limit
-        """
-        result = neo4j.execute_query(
-            query, {"query": search_request.name, "limit": search_request.limit}
-        )
-
-        results = [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "type": r["type"],
-                "comment": r["comment"],
-            }
-            for r in result
-            if r.get("id")  # Filter out entries with None id
-        ]
-
-        return {"results": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
 
 
 @router.get(
@@ -665,6 +622,22 @@ async def get_artifact_by_id(
     Returns:
         Artifact details with properties
     """
+    # Whitelist validation to prevent Cypher injection
+    ALLOWED_ARTIFACT_TYPES = {
+        "Class", "Package", "Requirement", "Part", "PartVersion", "Material",
+        "Assembly", "Connector", "Property", "Port", "Association",
+        "Generalization", "Constraint", "Comment", "InstanceSpecification",
+        "DataType", "Enumeration", "Interface", "Signal", "Activity",
+        "StateMachine", "UseCase", "Actor", "Component", "Artifact",
+        "MBSEElement", "XSDElement", "XSDComplexType", "XSDSimpleType",
+        "XSDSchema", "StepFile", "StepInstance", "StepEntityType",
+        "DomainConcept", "OntologyClass",
+    }
+    if artifact_type not in ALLOWED_ARTIFACT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid artifact type: {artifact_type}. Allowed types: {', '.join(sorted(ALLOWED_ARTIFACT_TYPES))}",
+        )
     try:
         neo4j = get_neo4j_service()
 

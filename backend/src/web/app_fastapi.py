@@ -26,6 +26,7 @@ from src.web.middleware.jwt_middleware import create_jwt_middleware
 from src.web.middleware.session_manager import SessionManager
 from src.web.routes.auth_fastapi import set_session_manager
 from src.web.utils.responses import Neo4jJSONResponse
+from src.web.utils.runtime_config import get_cors_origins, get_frontend_url
 
 # Load environment variables (searches current directory and parents for .env)
 load_dotenv(find_dotenv(usecwd=True))
@@ -171,11 +172,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 # Configure CORS - Restrict to specific origins in production
-import os
-
-allowed_origins = os.getenv(
-    "CORS_ORIGINS", "http://localhost:3001,http://localhost:3000"
-).split(",")
+allowed_origins = get_cors_origins()
 
 app.add_middleware(
     CORSMiddleware,
@@ -249,12 +246,7 @@ async def add_security_headers(request: Request, call_next):
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect to React frontend dashboard"""
-    import os
-
-    frontend_url = os.getenv(
-        "FRONTEND_URL",
-        "https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev",
-    )
+    frontend_url = get_frontend_url()
     return RedirectResponse(url=f"{frontend_url}/dashboard")
 
 
@@ -262,12 +254,7 @@ async def root():
 @app.get("/info", response_class=Neo4jJSONResponse)
 async def info():
     """API information and architecture overview"""
-    import os
-
-    frontend_url = os.getenv(
-        "FRONTEND_URL",
-        "https://vigilant-space-goldfish-5x6rp4rvpxg244wj-3001.app.github.dev",
-    )
+    frontend_url = get_frontend_url()
 
     return {
         "name": "MBSE Knowledge Graph REST API",
@@ -535,6 +522,37 @@ try:
     logger.info("✓ Registered OSLC TRS routes (FastAPI)")
 except ImportError as e:
     logger.warning(f"OSLC TRS routes not available: {e}")
+
+try:
+    from src.web.routes.express_parser_fastapi import router as express_parser_router
+    app.include_router(express_parser_router, prefix="/api", tags=["EXPRESS Parser"])
+    logger.info("✓ Registered EXPRESS Parser routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"EXPRESS Parser routes not available: {e}")
+
+try:
+    from src.web.routes.ontology_ingest_fastapi import router as ontology_ingest_router
+
+    app.include_router(ontology_ingest_router)
+    logger.info("✓ Registered Ontology ingestion routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Ontology ingestion routes not available: {e}")
+
+try:
+    from src.web.routes.step_ingest_fastapi import router as step_ingest_router
+
+    app.include_router(step_ingest_router)
+    logger.info("✓ Registered STEP ingestion routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"STEP ingestion routes not available: {e}")
+
+try:
+    from src.web.routes.admin_fastapi import router as admin_router
+
+    app.include_router(admin_router)
+    logger.info("✓ Registered Admin maintenance routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Admin routes not available: {e}")
 
 logger.info("=" * 60)
 logger.info("🎉 100% FastAPI Migration Complete - All Routes Converted!")

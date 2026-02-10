@@ -367,7 +367,7 @@ export default function RestApiExplorer() {
       }
       const endTime = Date.now();
       return {
-        data: result.data,
+        data: result,
         time: endTime - startTime
       };
     },

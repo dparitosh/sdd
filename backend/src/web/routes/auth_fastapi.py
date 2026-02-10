@@ -5,7 +5,7 @@ With Redis-based session management support
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -109,7 +109,7 @@ def create_access_token(
     permissions: Optional[list] = None,
 ) -> str:
     """Create JWT access token with session support"""
-    expires_at = datetime.utcnow() + timedelta(
+    expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=AuthConfig.ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
@@ -118,7 +118,7 @@ def create_access_token(
         "role": role,
         "type": "access",
         "exp": expires_at,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
         "jti": uuid4().hex,
     }
 
@@ -135,7 +135,7 @@ def create_access_token(
 
 def create_refresh_token(username: str) -> str:
     """Create JWT refresh token"""
-    expires_at = datetime.utcnow() + timedelta(
+    expires_at = datetime.now(timezone.utc) + timedelta(
         days=AuthConfig.REFRESH_TOKEN_EXPIRE_DAYS
     )
 
@@ -143,7 +143,7 @@ def create_refresh_token(username: str) -> str:
         "sub": username,
         "type": "refresh",
         "exp": expires_at,
-        "iat": datetime.utcnow(),
+        "iat": datetime.now(timezone.utc),
         "jti": uuid4().hex,
     }
 

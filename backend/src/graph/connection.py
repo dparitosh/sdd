@@ -1,5 +1,6 @@
 """Neo4j database connection management"""
 
+import os
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -9,7 +10,7 @@ from neo4j import Driver, GraphDatabase, Session
 class Neo4jConnection:
     """Neo4j database connection manager"""
 
-    def __init__(self, uri: str, user: str, password: str):
+    def __init__(self, uri: str, user: str, password: str, database: Optional[str] = None):
         """
         Initialize Neo4j connection
 
@@ -17,10 +18,12 @@ class Neo4jConnection:
             uri: Neo4j connection URI
             user: Neo4j username
             password: Neo4j password
+            database: Neo4j database name (defaults to NEO4J_DATABASE env var or 'neo4j')
         """
         self.uri = uri
         self.user = user
         self.password = password
+        self.database = database or os.getenv('NEO4J_DATABASE', 'neo4j')
         self._driver: Optional[Driver] = None
 
     def __enter__(self):
@@ -57,7 +60,7 @@ class Neo4jConnection:
             True if connection is successful, False otherwise
         """
         try:
-            with self._driver.session() as session:
+            with self._driver.session(database=self.database) as session:
                 result = session.run("RETURN 1 AS num")
                 record = result.single()
                 return record["num"] == 1
@@ -81,7 +84,7 @@ class Neo4jConnection:
         if not self._driver:
             raise RuntimeError("Not connected to Neo4j")
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             result = session.run(query, parameters or {})
             return [dict(record) for record in result]
 
@@ -101,7 +104,7 @@ class Neo4jConnection:
         def _write_tx(tx, query, parameters):
             tx.run(query, parameters)
 
-        with self._driver.session() as session:
+        with self._driver.session(database=self.database) as session:
             session.execute_write(_write_tx, query, parameters or {})
 
     def create_node(self, label: str, properties: Dict[str, Any]) -> None:

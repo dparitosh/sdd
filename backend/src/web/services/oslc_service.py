@@ -13,6 +13,8 @@ from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, FOAF, XSD
 from fastapi import Request
 
+from src.web.utils.runtime_config import get_public_base_url
+
 # Define standard OSLC Namespaces
 OSLC = Namespace("http://open-services.net/ns/core#")
 OSLC_RM = Namespace("http://open-services.net/ns/rm#")
@@ -22,8 +24,9 @@ OSLC_CM = Namespace("http://open-services.net/ns/cm#")
 MBSE = Namespace("http://mbse-mossec.com/ns/core#")
 
 class OSLCService:
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url.rstrip("/")
+    def __init__(self, base_url: str | None = None):
+        resolved = base_url or get_public_base_url()
+        self.base_url = resolved.rstrip("/")
         
     def generate_rootservices(self) -> Graph:
         """

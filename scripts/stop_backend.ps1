@@ -1,7 +1,43 @@
 # Stop FastAPI backend (Windows PowerShell)
-# Kills the process listening on port 5000.
+# Kills the process listening on BACKEND_PORT (from .env/environment).
+
+# PSScriptAnalyzer -IgnoreRule PSUseApprovedVerbs
 
 $ErrorActionPreference = 'Stop'
+
+function Import-DotEnvIfPresent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EnvPath
+    )
+
+    if (-not (Test-Path -LiteralPath $EnvPath)) {
+        return
+    }
+
+    Get-Content $EnvPath | ForEach-Object {
+        $line = $_.Trim()
+        if (-not $line -or $line.StartsWith('#')) { return }
+        $parts = $line -split '=', 2
+        if ($parts.Length -ne 2) { return }
+        $name = $parts[0].Trim()
+        $value = $parts[1].Trim()
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        Set-Item -Path "Env:$name" -Value $value
+    }
+}
+
+# Load .env from repo root (one level above scripts/)
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$envPath = Join-Path $repoRoot ".env"
+Import-DotEnvIfPresent -EnvPath $envPath
+
+if ([string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) {
+    throw "BACKEND_PORT is not set. Set it in .env (recommended) or as an environment variable."
+}
+$backendPort = [int]$env:BACKEND_PORT
 
 function Get-ChildProcessIds([int]$ParentPid) {
     if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
@@ -19,7 +55,7 @@ function Get-ChildProcessIds([int]$ParentPid) {
     }
 }
 
-function Kill-ProcessTree([int]$RootPid) {
+function Stop-ProcessTree([int]$RootPid) {
     if ($RootPid -le 4) {
         throw "Refusing to terminate protected PID=$RootPid"
     }
@@ -84,36 +120,36 @@ function Get-ListeningPids([int]$Port) {
     return $pids | Select-Object -Unique
 }
 
-$pids = Get-ListeningPids -Port 5000
+$pids = Get-ListeningPids -Port $backendPort
 if (-not $pids -or $pids.Count -eq 0) {
-    Write-Output "Backend not running on port 5000."
+    Write-Output "Backend not running on port $backendPort."
     exit 0
 }
 
 $stoppedAny = $false
 foreach ($listeningPid in $pids) {
     try {
-        Kill-ProcessTree -RootPid $listeningPid
-        Write-Output "Stopped backend process tree PID=$listeningPid (port 5000)."
+        Stop-ProcessTree -RootPid $listeningPid
+        Write-Output "Stopped backend process tree PID=$listeningPid (port $backendPort)."
         $stoppedAny = $true
     } catch {
-        Write-Output "Failed to stop backend PID=$listeningPid (port 5000): $($_.Exception.Message)"
+        Write-Output "Failed to stop backend PID=$listeningPid (port $backendPort): $($_.Exception.Message)"
     }
 }
 
 if ($stoppedAny) {
     $deadline = (Get-Date).AddSeconds(5)
     while ((Get-Date) -lt $deadline) {
-        $stillListening = Get-ListeningPids -Port 5000
+        $stillListening = Get-ListeningPids -Port $backendPort
         if (-not $stillListening -or $stillListening.Count -eq 0) {
             exit 0
         }
         Start-Sleep -Milliseconds 200
     }
 
-    $stillListening = Get-ListeningPids -Port 5000
+    $stillListening = Get-ListeningPids -Port $backendPort
     $pidList = ($stillListening | ForEach-Object { $_.ToString() }) -join ','
-    Write-Output "Backend still listening on port 5000 after stop attempt. PIDs=$pidList"
+    Write-Output "Backend still listening on port $backendPort after stop attempt. PIDs=$pidList"
     exit 1
 }
 

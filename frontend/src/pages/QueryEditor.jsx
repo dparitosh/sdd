@@ -35,7 +35,7 @@ export default function QueryEditor() {
   const executeMutation = useMutation({
     mutationFn: cypherQuery => apiService.executeCypher(cypherQuery),
     onSuccess: response => {
-      const data = response.data;
+      const data = response;
       setResults(data.results || []);
       setSummary(data.summary || {
         executionTime: 0,

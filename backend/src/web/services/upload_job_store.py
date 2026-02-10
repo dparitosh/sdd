@@ -1,10 +1,26 @@
-"""
-Upload Job Storage Service - Persistent job tracking
-Stores upload job status in Redis for persistence across server restarts
-Falls back to in-memory storage if Redis is unavailable
+"""Upload Job Storage Service - Persistent job tracking.
+
+This module backs the `/api/upload/*` endpoints.
+
+Design
+------
+- Prefer Redis for persistence across server restarts (when enabled/available)
+- Fall back to an in-memory dict when Redis is unavailable
+
+API Compatibility
+-----------------
+`upload_fastapi.py` expects a small CRUD-style surface:
+    - create(job_id, data)
+    - update(job_id, updates)
+    - get(job_id)
+    - list_all()
+    - delete(job_id)
+
+Internally, this module also exposes `save_job/get_job/update_job/...` helpers.
 """
 
 import json
+from functools import lru_cache
 from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 from loguru import logger
@@ -39,7 +55,7 @@ class UploadJobStore:
                     logger.info("Upload job store using Redis for persistence")
                 else:
                     logger.warning("Redis unavailable, using in-memory job store")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
                 logger.warning(
                     f"Failed to connect to Redis: {e}, using in-memory job store"
                 )
@@ -74,11 +90,38 @@ class UploadJobStore:
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Failed to save job {job_id}: {e}")
             # Fallback to memory on error
             self._memory_store[job_id] = job_data
             return False
+
+    # ------------------------------------------------------------------
+    # Public CRUD-style API (used by upload_fastapi)
+    # ------------------------------------------------------------------
+
+    async def create(self, job_id: str, job_data: dict) -> bool:
+        """Create a new job entry."""
+        # Ensure job_id is present in stored data.
+        job_data = dict(job_data)
+        job_data.setdefault("job_id", job_id)
+        return await self.save_job(job_id, job_data)
+
+    async def update(self, job_id: str, updates: dict) -> bool:
+        """Update an existing job entry."""
+        return await self.update_job(job_id, updates)
+
+    async def get(self, job_id: str) -> Optional[dict]:
+        """Get a job entry."""
+        return await self.get_job(job_id)
+
+    async def delete(self, job_id: str) -> bool:
+        """Delete a job entry."""
+        return await self.delete_job(job_id)
+
+    async def list_all(self) -> List[dict]:
+        """List all jobs."""
+        return await self.list_jobs()
 
     async def get_job(self, job_id: str) -> Optional[dict]:
         """
@@ -103,7 +146,7 @@ class UploadJobStore:
             # Fallback to memory
             return self._memory_store.get(job_id)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Failed to get job {job_id}: {e}")
             return self._memory_store.get(job_id)
 
@@ -131,7 +174,7 @@ class UploadJobStore:
             # Save back
             return await self.save_job(job_id, job_data)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Failed to update job {job_id}: {e}")
             return False
 
@@ -158,7 +201,7 @@ class UploadJobStore:
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Failed to delete job {job_id}: {e}")
             return False
 
@@ -187,7 +230,7 @@ class UploadJobStore:
                 # Return from memory
                 return list(self._memory_store.values())
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Failed to list jobs: {e}")
             return list(self._memory_store.values())
 
@@ -214,7 +257,7 @@ class UploadJobStore:
                             job_id = job.get("job_id")
                             if job_id and await self.delete_job(job_id):
                                 deleted_count += 1
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
                         logger.warning(f"Failed to parse timestamp for job: {e}")
 
             if deleted_count > 0:
@@ -222,18 +265,16 @@ class UploadJobStore:
 
             return deleted_count
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             logger.error(f"Failed to cleanup old jobs: {e}")
             return 0
 
 
-# Global instance
-_job_store: Optional[UploadJobStore] = None
+@lru_cache(maxsize=1)
+def get_job_store() -> UploadJobStore:
+    """Get or create upload job store instance.
 
-
-async def get_job_store() -> UploadJobStore:
-    """Get or create upload job store instance"""
-    global _job_store
-    if _job_store is None:
-        _job_store = UploadJobStore()
-    return _job_store
+    This is intentionally synchronous; Redis connectivity is resolved lazily
+    inside the async store methods.
+    """
+    return UploadJobStore()

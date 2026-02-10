@@ -183,7 +183,27 @@ async def get_traceability(
         query_parts = []
         params = {}
 
-        # Source node filter
+        # Source node filter - validate against whitelist to prevent Cypher injection
+        ALLOWED_NODE_TYPES = {
+            "Class", "Package", "Requirement", "Part", "PartVersion", "Material",
+            "Assembly", "Connector", "Property", "Port", "Association",
+            "Generalization", "Constraint", "Comment", "InstanceSpecification",
+            "MBSEElement", "XSDElement", "StepFile", "StepInstance",
+            "DomainConcept", "OntologyClass", None,
+        }
+        ALLOWED_REL_TYPES = {
+            "OWNS", "DEFINES", "ASSOCIATES_WITH", "HAS_ATTRIBUTE", "TYPED_BY",
+            "GENERALIZES_TO", "HAS_PORT", "CONTAINS", "INSTANCE_OF", "STEP_REF",
+            "ALIGNS_TO", "SATISFIES", "TRACES_TO", "DERIVES_FROM",
+            "IMPLEMENTS", "VERIFIES", "REFINES", None,
+        }
+        if source_type and source_type not in ALLOWED_NODE_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid source_type: {source_type}")
+        if target_type and target_type not in ALLOWED_NODE_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid target_type: {target_type}")
+        if relationship_type and relationship_type not in ALLOWED_REL_TYPES:
+            raise HTTPException(status_code=400, detail=f"Invalid relationship_type: {relationship_type}")
+
         if source_type:
             query_parts.append(f"MATCH (source:{source_type})")
             params["source_type"] = source_type

@@ -28,13 +28,16 @@ Options:
 import argparse
 import re
 import sys
+from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 from loguru import logger
 
-# Add parent directory to path
-sys.path.insert(0, '.')
-from src.web.services import get_neo4j_service
+# Ensure `import src...` works when running this script from repo root.
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_ROOT = REPO_ROOT / "backend"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 
 class APHierarchyLinker:
@@ -467,6 +470,9 @@ def main():
         logger.remove()
         logger.add(lambda msg: print(msg, end=''), level='DEBUG')
     
+    # Import only after argparse has handled `--help`.
+    from src.web.services import get_neo4j_service
+
     # Connect to Neo4j
     neo4j = get_neo4j_service()
     

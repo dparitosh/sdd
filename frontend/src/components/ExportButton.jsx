@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Download, FileJson, FileSpreadsheet, FileCode, GitGraph, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiClient } from '@/services/api';
 const ExportButton = ({
   entityType,
   filters = {},
@@ -57,19 +58,20 @@ const ExportButton = ({
       });
       params.append('limit', '10000');
       params.append('include_properties', 'true');
-      const response = await fetch(`/api/v1/export/${endpoint}?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error(`Export failed: ${response.statusText}`);
-      }
-      const contentDisposition = response.headers.get('Content-Disposition');
+      // Use apiClient for proper auth headers
+      const response = await apiClient.client.get(`/v1/export/${endpoint}`, {
+        params: Object.fromEntries(params),
+        responseType: 'blob',
+      });
+      const blob = response.data instanceof Blob ? response.data : new Blob([JSON.stringify(response.data)]);
       let filename = `${entityType}_export.${format}`;
+      const contentDisposition = response.headers?.['content-disposition'];
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch && filenameMatch[1]) {
           filename = filenameMatch[1].replace(/['"]/g, '');
         }
       }
-      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -92,7 +94,7 @@ const ExportButton = ({
   };
   return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className={className} disabled={isExporting}>{isExporting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Exporting...</> : <><Download className="mr-2 h-4 w-4" />Export</>}</Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48"><DropdownMenuLabel>Export Format</DropdownMenuLabel><DropdownMenuSeparator />{exportFormats.map(format => {
         const Icon = format.icon;
-        return <DropdownMenuItem onClick={() => handleExport(format.id, format.endpoint)} disabled={isExporting} className="cursor-pointer"><Icon className="mr-2 h-4 w-4" />{format.name}</DropdownMenuItem>;
+        return <DropdownMenuItem key={format.id} onClick={() => handleExport(format.id, format.endpoint)} disabled={isExporting} className="cursor-pointer"><Icon className="mr-2 h-4 w-4" />{format.name}</DropdownMenuItem>;
       })}</DropdownMenuContent></DropdownMenu>;
 };
 export default ExportButton;

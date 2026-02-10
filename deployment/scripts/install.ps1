@@ -259,10 +259,10 @@ function Import-DotEnvIfPresent {
 
 Import-DotEnvIfPresent -EnvPath (Join-Path "$InstallDir" '.env')
 
-if ([string]::IsNullOrWhiteSpace(`$env:BACKEND_HOST)) { `$env:BACKEND_HOST = '0.0.0.0' }
-if ([string]::IsNullOrWhiteSpace(`$env:BACKEND_PORT)) { `$env:BACKEND_PORT = '5000' }
-if ([string]::IsNullOrWhiteSpace(`$env:FRONTEND_HOST)) { `$env:FRONTEND_HOST = '0.0.0.0' }
-if ([string]::IsNullOrWhiteSpace(`$env:FRONTEND_PORT)) { `$env:FRONTEND_PORT = '3001' }
+if ([string]::IsNullOrWhiteSpace(`$env:BACKEND_HOST)) { throw 'BACKEND_HOST is not set. Set it in .env.' }
+if ([string]::IsNullOrWhiteSpace(`$env:BACKEND_PORT)) { throw 'BACKEND_PORT is not set. Set it in .env.' }
+if ([string]::IsNullOrWhiteSpace(`$env:FRONTEND_HOST)) { throw 'FRONTEND_HOST is not set. Set it in .env.' }
+if ([string]::IsNullOrWhiteSpace(`$env:FRONTEND_PORT)) { throw 'FRONTEND_PORT is not set. Set it in .env.' }
 
 # Start Backend (in new window)
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir\backend'; & '$InstallDir\.venv\Scripts\python' -m uvicorn src.web.app_fastapi:app --host $env:BACKEND_HOST --port $env:BACKEND_PORT --reload" -WindowStyle Normal
@@ -272,8 +272,10 @@ Start-Sleep -Seconds 3
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$InstallDir'; npm run preview -- --host $env:FRONTEND_HOST --port $env:FRONTEND_PORT" -WindowStyle Normal
 
 Write-Host "Services started!" -ForegroundColor Green
-Write-Host "Backend: http://localhost:$env:BACKEND_PORT"
-Write-Host "Frontend: http://localhost:$env:FRONTEND_PORT"
+`$backendHostForDisplay = if (`$env:BACKEND_HOST -eq '0.0.0.0') { 'localhost' } else { `$env:BACKEND_HOST }
+`$frontendHostForDisplay = if (`$env:FRONTEND_HOST -eq '0.0.0.0') { 'localhost' } else { `$env:FRONTEND_HOST }
+Write-Host "Backend: http://`$backendHostForDisplay:`$env:BACKEND_PORT"
+Write-Host "Frontend: http://`$frontendHostForDisplay:`$env:FRONTEND_PORT"
 "@ | Out-File -FilePath "$InstallDir\start_all.ps1" -Encoding UTF8
 Write-Host "[SUCCESS] Created start_all.ps1" -ForegroundColor Green
 
@@ -298,9 +300,35 @@ Write-Host "2. Start the services:"
 Write-Host "   Run: $InstallDir\start_all.ps1"
 Write-Host ""
 Write-Host "3. Access the application:"
-Write-Host "   Frontend UI: http://localhost:3001"
-Write-Host "   Backend API: http://localhost:5000"
-Write-Host "   Health Check: http://localhost:5000/api/health"
+$envFilePath = Join-Path $InstallDir ".env"
+function Import-DotEnvIfPresent {
+    param([string]$EnvPath)
+    if (!(Test-Path -LiteralPath $EnvPath)) { return }
+    Get-Content $EnvPath | ForEach-Object {
+        $line = $_.Trim()
+        if (-not $line -or $line.StartsWith('#')) { return }
+        $parts = $line -split '=', 2
+        if ($parts.Length -ne 2) { return }
+        $name = $parts[0].Trim()
+        $value = $parts[1].Trim()
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+        Set-Item -Path "Env:$name" -Value $value
+    }
+}
+
+Import-DotEnvIfPresent -EnvPath $envFilePath
+$frontendPortForDisplay = if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { $env:FRONTEND_PORT } else { "3001" }
+$backendBaseUrlForDisplay = if (-not [string]::IsNullOrWhiteSpace($env:API_BASE_URL)) { $env:API_BASE_URL.TrimEnd('/') } else { "" }
+
+Write-Host "   Frontend UI: http://localhost:$frontendPortForDisplay"
+if (-not [string]::IsNullOrWhiteSpace($backendBaseUrlForDisplay)) {
+    Write-Host "   Backend API: $backendBaseUrlForDisplay"
+    Write-Host "   Health Check: $backendBaseUrlForDisplay/api/health"
+} else {
+    Write-Host "   Backend API: (set API_BASE_URL in .env)" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "Installation location: $InstallDir" -ForegroundColor Cyan
 Write-Host "Logs location: $LogDir" -ForegroundColor Cyan

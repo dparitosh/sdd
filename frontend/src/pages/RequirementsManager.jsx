@@ -55,7 +55,7 @@ export default function RequirementsManager() {
       const response = await apiService.requirements.list({
         limit: 1000
       });
-      return response.data || [];
+      return response || [];
     }
   });
   const createMutation = useMutation({

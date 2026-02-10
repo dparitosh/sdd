@@ -37,7 +37,7 @@ export interface ConnectorsResponse {
  */
 export const getConnectors = async (): Promise<ConnectorsResponse> => {
   const response = await apiClient.get<ConnectorsResponse>('/v1/plm/connectors');
-  return response.data;
+  return response;
 };
 
 /**
@@ -54,7 +54,7 @@ export const triggerSync = async (
     `/v1/plm/connectors/${connectorId}/sync`,
     options
   );
-  return response.data;
+  return response;
 };
 
 /**
@@ -66,5 +66,5 @@ export const getConnectorStatus = async (
   const response = await apiClient.get<ConnectorStatus>(
     `/v1/plm/connectors/${connectorId}/status`
   );
-  return response.data;
+  return response;
 };

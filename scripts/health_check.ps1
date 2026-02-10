@@ -5,9 +5,64 @@
 ###############################################################################
 
 param(
-    [string]$BackendUrl = "http://localhost:5000",
-    [string]$FrontendUrl = "http://localhost:3001"
+    [string]$BackendUrl,
+    [string]$FrontendUrl
 )
+
+function Import-DotEnvIfPresent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EnvPath
+    )
+
+    if (-not (Test-Path $EnvPath)) {
+        return
+    }
+
+    Get-Content $EnvPath | ForEach-Object {
+        $line = $_.Trim()
+        if (-not $line -or $line.StartsWith('#')) { return }
+
+        $parts = $line -split '=', 2
+        if ($parts.Length -ne 2) { return }
+
+        $name = $parts[0].Trim()
+        $value = $parts[1].Trim()
+
+        # Remove quotes if present
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+
+        # Force .env to be authoritative
+        Set-Item -Path "Env:$name" -Value $value
+    }
+}
+
+# Load .env from repo root (one level above scripts/)
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$envPath = Join-Path $repoRoot ".env"
+Import-DotEnvIfPresent -EnvPath $envPath
+
+if (-not $BackendUrl) {
+    if ($env:API_BASE_URL) {
+        $BackendUrl = $env:API_BASE_URL.TrimEnd('/')
+    } elseif ($env:BACKEND_HOST -and $env:BACKEND_PORT) {
+        $BackendUrl = "http://$($env:BACKEND_HOST):$($env:BACKEND_PORT)"
+    } else {
+        throw "Missing BackendUrl. Set API_BASE_URL (recommended) or BACKEND_HOST and BACKEND_PORT in .env."
+    }
+}
+
+if (-not $FrontendUrl) {
+    if ($env:FRONTEND_URL) {
+        $FrontendUrl = $env:FRONTEND_URL.TrimEnd('/')
+    } elseif ($env:FRONTEND_HOST -and $env:FRONTEND_PORT) {
+        $FrontendUrl = "http://$($env:FRONTEND_HOST):$($env:FRONTEND_PORT)"
+    } else {
+        throw "Missing FrontendUrl. Set FRONTEND_URL (recommended) or FRONTEND_HOST and FRONTEND_PORT in .env."
+    }
+}
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "MBSE Knowledge Graph - Health Check" -ForegroundColor Cyan
@@ -38,9 +93,22 @@ try {
 # Check 2: Backend API Docs
 Write-Host "[2/5] Checking Backend API Documentation..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "$BackendUrl/docs" -TimeoutSec 10 -ErrorAction Stop
-    if ($response.StatusCode -eq 200) {
+    # FastAPI docs path in this repo is /api/docs.
+    $docsOk = $false
+    try {
+        $response = Invoke-WebRequest -Uri "$BackendUrl/api/docs" -TimeoutSec 10 -ErrorAction Stop
+        if ($response.StatusCode -eq 200) { $docsOk = $true }
+    } catch {
+        # Fallback to older/default docs path
+        $response = Invoke-WebRequest -Uri "$BackendUrl/docs" -TimeoutSec 10 -ErrorAction Stop
+        if ($response.StatusCode -eq 200) { $docsOk = $true }
+    }
+
+    if ($docsOk) {
         Write-Host "      [PASS] API documentation is accessible" -ForegroundColor Green
+    } else {
+        Write-Host "      [FAIL] API documentation not accessible" -ForegroundColor Red
+        $allPassed = $false
     }
 } catch {
     Write-Host "      [FAIL] API docs not accessible: $($_.Exception.Message)" -ForegroundColor Red
@@ -111,7 +179,7 @@ Write-Host ""
 Write-Host "Endpoints:" -ForegroundColor Yellow
 Write-Host "  Frontend UI:    $FrontendUrl"
 Write-Host "  Backend API:    $BackendUrl"
-Write-Host "  API Docs:       $BackendUrl/docs"
+Write-Host "  API Docs:       $BackendUrl/api/docs"
 Write-Host "  Health Check:   $BackendUrl/api/health"
 Write-Host ""
 

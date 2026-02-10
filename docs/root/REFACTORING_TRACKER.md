@@ -32,6 +32,10 @@
 - ✅ **Simulation Engineering UI (Partial)**: Wired Workflow Studio validation to real backend endpoints and improved interactivity (run dialog, parameter fetch, validation call).
 - ✅ **Multi-Agent Orchestration (Backend)**: Implemented LangGraph workflow, specialized agents (PLM, Simulation), and FastAPI endpoint (`/api/agents/orchestrator/run`) for complex engineering task delegation.
 - ✅ **Workflow Studio Execution (Frontend)**: Connected the "Run" action to the Multi-Agent Orchestration endpoint (`/api/agents/orchestrator/run`), displaying real-time agent conversation and task results in the UI.
+- ✅ **EXPRESS Parser Package**: Modular reusable parser for ISO 10303-11 EXPRESS schemas with Pydantic models, analysis utilities, and Neo4j integration.
+- ✅ **EXPRESS Parser REST API**: FastAPI routes at `/api/express/*` for parsing, querying, analyzing, and exporting EXPRESS schemas.
+- ✅ **Knowledge Graph Ingesters**: Dedicated scripts for AP239, AP242, AP243 schema ingestion into Neo4j (`ingest_ap239_v2.py`, `ingest_ap242.py`, `ingest_ap243.py`).
+- ✅ **Master KG Orchestrator**: `ingest_all.py` script to orchestrate complete Knowledge Graph construction from all STEP schemas.
 
 ### Semantic Web & OSLC - Phase 2 (Late Jan 2026)
 - ✅ **OSLC Core Server**: Implemented Service Provider Catalog, Service Provider, and RootServices (`/oslc` endpoints).
@@ -44,6 +48,22 @@
 ### Open Items (January 2026)
 - ⏳ **Simulation Engineering UI (Complete Integration)**: Replace remaining mock/static data in Simulation pages with live API calls (Model Repository + Results Analysis) once endpoint contracts are confirmed.
 - ⏳ **Tailwind v4 Cleanup**: Remove remaining legacy utilities (e.g., `bg-gradient-to-*`, `flex-shrink-0`) across the frontend to eliminate warnings and ensure consistent styling.
+- ⏳ **AP239/AP242/AP243 Route Handlers**: Backend route handlers exist in implementation plan but need deployment (see `.github/IMPLEMENTATION_PLAN_AP239_AP242_AP243.md`)
+- ⏳ **OSLC Selection/Creation Dialogs (Frontend)**: UI dialogs for OSLC delegated UI not built
+- ⏳ **OSLC Client (Consumer)**: No OAuth flows for external PLM tools (DOORS/Windchill/Teamcenter)
+- ⏳ **RDFS Inference Engine**: Static ontology only, no semantic reasoning
+- ⏳ **Agents Vocabulary Awareness**: Integrate SKOS lookup in Agent search tools
+- ⏳ **Frontend Vocabulary Picker**: Component to browse SKOS concepts during data entry
+
+### Completed Items (Late January 2026) - Previously Untracked
+- ✅ **OSLC TRS Fully Implemented**: `/oslc/trs`, `/oslc/trs/base`, `/oslc/trs/changelog` endpoints live
+- ✅ **UI TRS Integration**: ResultsAnalysis.jsx displays live OSLC ChangeLog
+- ✅ **MoSSEC Templates Available**: `smrlv12/data/domain_models/mossec/` with XMI, OWL, JSON schemas
+- ✅ **SMRL v12 Schema Repository**: Full AP239/AP242/AP243 EXPRESS modules in `smrlv12/data/modules/`
+- ✅ **OSLC AM Domain**: Architecture Management namespace defined and wired in catalog
+- ✅ **Agent TRS Publishing**: SimulationAgent publishes events to TRS ChangeLog
+- ✅ **EXPRESS Parser Package**: Modular `backend/src/parsers/express/` with models, parser, utils
+- ✅ **Knowledge Graph Ingesters**: AP239/AP242/AP243 ingestion scripts with base class pattern
 
 ### ISO 10303-4443 SMRL Compliance Status
 **Current Alignment**: 100% (Dec 7, 2025) ✅
@@ -54,9 +74,83 @@
 - ✅ **Data Quality**: Zero issues (no missing UIDs, no duplicates, no missing timestamps)
 - ✅ **Type Mapping**: 15 UML/SysML to SMRL type mappings implemented
 
+### SMRL v12 Schema Repository (Discovered Jan 2026)
+**Location**: `smrlv12/data/`
+- ✅ **AP239 Modules**: 14+ modules (activity, document_management, requirements, work_definition, etc.)
+  - `smrlv12/data/modules/ap239_product_life_cycle_support/`
+  - `smrlv12/data/modules/ap239_document_management/`
+  - `smrlv12/data/modules/ap239_activity_recording/`
+- ✅ **AP242 Modules**: Managed Model-Based 3D Engineering
+  - `smrlv12/data/modules/ap242_managed_model_based_3d_engineering/`
+  - EXPRESS schemas: `arm.exp`, `mim.exp`, `arm_concatenated.exp`, `mim_concatenated.exp`
+- ✅ **AP243 External Reference Modules**:
+  - `smrlv12/data/modules/external_class/`
+  - `smrlv12/data/modules/external_unit/`
+- ✅ **MoSSEC Domain Model Templates**:
+  - `smrlv12/data/domain_models/mossec/Domain_model.xmi` - XMI source
+  - `smrlv12/data/domain_models/mossec/ap243_v1.owl` - AP243 ontology
+  - `smrlv12/data/domain_models/mossec/core_v1.owl` - Core ontology
+  - `smrlv12/data/domain_models/mossec/DomainModel.json` - 28,000+ line OpenAPI spec
+
 **Achievement**: Improved from 40% → 100% alignment in Phase 0
 - See [ISO_SMRL_API_COMPARISON.md](ISO_SMRL_API_COMPARISON.md) for detailed gap analysis
 - See [GRAPH_SMRL_ALIGNMENT.md](GRAPH_SMRL_ALIGNMENT.md) for graph schema alignment
+
+### Knowledge Graph Ingestion Toolkit (Jan 2026)
+**Location**: `backend/scripts/` and `backend/src/parsers/express/`
+
+#### EXPRESS Parser Package
+**Path**: `backend/src/parsers/express/`
+| File | Purpose |
+|------|---------|
+| `models.py` | Pydantic models (ExpressSchema, Entity, Type, Attribute, etc.) |
+| `parser.py` | Core parsing engine for ISO 10303-11 EXPRESS files |
+| `utils.py` | ExpressAnalyzer, ExpressNeo4jConverter, ExpressExporter |
+| `__init__.py` | Package exports for clean API |
+
+#### EXPRESS Parser REST API
+**Endpoints**: `/api/express/*`
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/express/parse/file` | Parse EXPRESS file from filesystem |
+| `POST /api/express/parse/content` | Parse EXPRESS from string |
+| `POST /api/express/parse/upload` | Parse uploaded .exp file |
+| `POST /api/express/parse/directory` | Parse all files in directory |
+| `GET /api/express/info` | Quick file info without full parsing |
+| `POST /api/express/query/entities` | Query entities with filters |
+| `POST /api/express/query/types` | Query types by kind |
+| `POST /api/express/analyze/statistics` | Schema statistics |
+| `POST /api/express/analyze/inheritance` | Entity inheritance tree |
+| `POST /api/express/export/json` | Export to JSON |
+| `POST /api/express/export/markdown` | Export documentation |
+| `POST /api/express/neo4j/cypher` | Generate Cypher statements |
+
+#### Knowledge Graph Ingestion Scripts
+**Path**: `backend/scripts/`
+| Script | Purpose |
+|--------|---------|
+| `base_ingester.py` | Abstract base class for schema ingestion |
+| `ingest_ap239_v2.py` | AP239 Product Life Cycle Support ingester |
+| `ingest_ap242.py` | AP242 Managed Model-Based 3D Engineering ingester |
+| `ingest_ap243.py` | AP243 MoSSEC Systems Engineering ingester |
+| `ingest_all.py` | Master orchestrator for complete KG construction |
+
+**Usage Examples**:
+```bash
+# Parse single file via API
+curl -X POST "http://localhost:5000/api/express/parse/file" \
+  -H "Content-Type: application/json" \
+  -d '{"file_path": "smrlv12/data/modules/ap239_product_life_cycle_support/arm.exp"}'
+
+# Run all ingesters (dry run)
+python backend/scripts/ingest_all.py --dry-run
+
+# Run specific schema
+python backend/scripts/ingest_ap239_v2.py --verbose
+
+# Run with database clear
+python backend/scripts/ingest_all.py --clear --schemas ap239 ap242
+```
 
 ---
 
@@ -1018,14 +1112,15 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
   - Added `validate_graph()` method using `pyshacl`
   - Configured for RDFS inference
 
-- [ ] **Data Dictionary Integration (SMRL)** (Priority: HIGH)
+- [x] **Data Dictionary Integration (SMRL)** (Priority: HIGH)
   - [x] **Ingest Pipeline**
     Created `scripts/ingest_smrl.py`
     - Parses `smrlv12` schema directories
     - Generates OWL Ontology & SKOS Vocabulary
-  - [ ] **Agents Vocabulary Awareness** (Backend)
+    - Output: `backend/data/ontologies/smrl.owl`
+  - [ ] **Agents Vocabulary Awareness** (Backend) ⏳
     - Integrate SKOS lookup in Agent `search` tools
-  - [ ] **Frontend Vocabulary Picker** (Frontend)
+  - [ ] **Frontend Vocabulary Picker** (Frontend) ⏳
     - Component to browse SKOS concepts during data entry
 
 ---
@@ -1046,20 +1141,28 @@ export const PackageTree: React.FC<PackageTreeProps> = ({ onSelectPackage }) => 
     - `/oslc/sp/{id}`: Service capabilities
   - [x] **FastAPI Registration**: Connected to main app
 
-- [ ] **Smart Linking (OSLC TRS) (Backend)**
+- [x] **Smart Linking (OSLC TRS) (Backend)** ✅ COMPLETE (Jan 2026)
   - [x] Refactored `link_ap_hierarchy.py` for semantic logic mapping
-  - [ ] Implement TRS ChangeLog Endpoint
-  - [ ] Implement TRS Base Endpoint
+  - [x] Implement TRS ChangeLog Endpoint (`/oslc/trs/changelog`)
+  - [x] Implement TRS Base Endpoint (`/oslc/trs/base`)
+  - [x] TRS Service: `backend/src/web/services/oslc_trs_service.py`
+  - [x] TRS Routes: `backend/src/web/routes/trs_fastapi.py`
+  - [x] Redis-backed ChangeLog for event publishing
+  - [x] Agent integration: SimulationAgent publishes TRS events
 
-- [ ] **Frontend OSLC Components (Frontend)**
-  - [ ] **Delegated UI**: React components for "Selection Dialog"
-  - [ ] **Creation Dialog**: React form for "Creation Dialog"
-  - [ ] **Resource Preview**: OSLC Compact Resource rendering (UI Preview)
+- [x] **Frontend OSLC/TRS Integration** (Partial) ✅
+  - [x] **Live TRS ChangeLog Display**: `ResultsAnalysis.jsx` shows `/oslc/trs/changelog`
+  - [x] **API Service Wiring**: `apiService.trs.getTRS()`, `.getBase()`, `.getChangeLog()`
+  - [ ] **Delegated UI**: React components for "Selection Dialog" ⏳
+  - [ ] **Creation Dialog**: React form for "Creation Dialog" ⏳
+  - [ ] **Resource Preview**: OSLC Compact Resource rendering (UI Preview) ⏳
 
-- [ ] **Agent Enhancement (SPDM/MoSSEC) (Backend)**
-  - [ ] Refactor `SimulationAgent` to use `h5py` for result parsing
-  - [ ] Implement "Agent as Adapter" pattern (Wrapper)
-  - [ ] Create `MoSSEC_Activity` and `MoSSEC_Context` nodes for traceability
+- [x] **Agent Enhancement (SPDM/MoSSEC) (Backend)** ✅ COMPLETE (Jan 2026)
+  - [x] Refactor `SimulationAgent` to use `h5py` for result parsing
+  - [x] Implement "Agent as Adapter" pattern (Wrapper)
+  - [x] Create `MoSSEC_Activity` and `MoSSEC_Context` nodes for traceability
+  - [x] Multi-Agent Orchestrator with LangGraph workflow
+  - [x] Specialized agents: MBSEAgent, PLMAgent, SimulationAgent
 
 
 **Deliverables**:
@@ -1919,6 +2022,7 @@ Current development model is split processes: Vite frontend (typically :3001) + 
 | 1.1 | Dec 8, 2025 | Single UI deployment (historical transition note) | System |
 | 2.0 | Dec 13, 2025 | Phase 2 complete - React frontend live + FastAPI backend | System |
 | 2.1 | Jan 4, 2026 | Simulation UI interactivity + Tailwind v4 alignment (partial), tracker updates | System |
+| 2.2 | Jan 30, 2026 | Audit: OSLC TRS marked complete, MoSSEC/AP239/AP242/AP243 schemas documented | System |
 | 3.0 | TBD | Phase 3 complete - Semantic web integrated | TBD |
 | 4.0 | TBD | Phase 4 complete - Production ready | TBD |
 
@@ -1933,5 +2037,5 @@ Current development model is split processes: Vite frontend (typically :3001) + 
 
 ---
 
-**Last Updated**: December 14, 2025  
+**Last Updated**: January 30, 2026  
 **Next Review**: Weekly during active development

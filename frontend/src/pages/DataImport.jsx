@@ -6,7 +6,7 @@ import { Button } from '@ui/button';
 import { Badge } from '@ui/badge';
 import { Progress } from '@ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ui/table';
-import { Upload, File, FileCode, FileSpreadsheet, FileJson, CheckCircle2, XCircle, Clock, Loader2, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { Upload, File, FileCode, FileSpreadsheet, FileJson, CheckCircle2, XCircle, Clock, Loader2, AlertCircle, Trash2, RefreshCw, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/services/api';
 import PageHeader from '@/components/PageHeader';
@@ -34,6 +34,18 @@ const FILE_TYPES = [{
   icon: FileJson,
   color: 'text-orange-500',
   desc: 'JSON Data'
+}, {
+  ext: '.exp',
+  name: 'EXPRESS',
+  icon: Database,
+  color: 'text-cyan-500',
+  desc: 'ISO 10303 Schemas'
+}, {
+  ext: '.xsd',
+  name: 'XSD',
+  icon: FileCode,
+  color: 'text-red-500',
+  desc: 'XML Schema Definition'
 }];
 export default function DataImport() {
   const [isDragging, setIsDragging] = useState(false);
@@ -180,11 +192,11 @@ export default function DataImport() {
               relative border-2 border-dashed rounded-lg p-12 text-center cursor-pointer
               transition-all duration-200
               ${isDragging ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-border hover:border-primary/50 hover:bg-accent/5'}
-            `}><input ref={fileInputRef} type="file" multiple accept=".xmi,.xml,.csv,.json" onChange={handleFileSelect} className="hidden" /><div className="space-y-4"><div className="flex justify-center"><div className={`
+            `}><input ref={fileInputRef} type="file" multiple accept=".xmi,.xml,.csv,.json,.exp" onChange={handleFileSelect} className="hidden" /><div className="space-y-4"><div className="flex justify-center"><div className={`
                   p-4 rounded-full bg-primary/10
                   ${isDragging ? 'scale-110' : 'scale-100'}
                   transition-transform duration-200
-                `}><Upload className="h-12 w-12 text-primary" /></div></div><div><p className="text-lg font-semibold">{isDragging ? 'Drop files here' : 'Drag & drop files here'}</p><p className="text-sm text-muted-foreground mt-1">or click to browse your computer</p></div>{uploadMutation.isPending && <div className="flex items-center justify-center gap-2 text-primary"><Loader2 className="h-5 w-5 animate-spin" /><span>Uploading...</span></div>}</div></div><div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">{FILE_TYPES.map(type => {
+                `}><Upload className="h-12 w-12 text-primary" /></div></div><div><p className="text-lg font-semibold">{isDragging ? 'Drop files here' : 'Drag & drop files here'}</p><p className="text-sm text-muted-foreground mt-1">or click to browse your computer</p></div>{uploadMutation.isPending && <div className="flex items-center justify-center gap-2 text-primary"><Loader2 className="h-5 w-5 animate-spin" /><span>Uploading...</span></div>}</div></div><div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">{FILE_TYPES.map(type => {
             const Icon = type.icon;
             return <Card className="border"><CardContent className="p-4 text-center space-y-2"><Icon className={`h-8 w-8 mx-auto ${type.color}`} /><div><div className="font-semibold">{type.name}</div><div className="text-xs text-muted-foreground">{type.desc}</div></div></CardContent></Card>;
           })}</div></CardContent></Card>{allJobs.length > 0 && <Card className="card-corporate border-2"><CardHeader className="border-b bg-linear-to-r from-accent/10 to-accent/5"><div className="flex items-center justify-between"><CardTitle>Upload History</CardTitle><Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button></div></CardHeader><CardContent className="pt-6"><div className="rounded-lg border-2 overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead>Status</TableHead><TableHead>Filename</TableHead><TableHead>Progress</TableHead><TableHead>Message</TableHead><TableHead className="w-[100px]">Actions</TableHead></TableRow></TableHeader><TableBody>{allJobs.map(job => <TableRow><TableCell><div className="flex items-center gap-2">{getStatusIcon(job.status)}{getStatusBadge(job.status)}</div></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><File className="h-4 w-4 text-muted-foreground" />{job.filename}</div></TableCell><TableCell><div className="space-y-2 min-w-[200px]"><Progress value={job.progress} className="h-2" /><span className="text-xs text-muted-foreground">{job.progress}%</span></div></TableCell><TableCell className="max-w-md"><div className="space-y-1">{job.message && <p className="text-sm">{job.message}</p>}{job.error && <p className="text-sm text-red-500 flex items-center gap-1"><AlertCircle className="h-4 w-4" />{job.error}</p>}{job.stats && job.status === 'completed' && <div className="text-xs text-muted-foreground">{JSON.stringify(job.stats).slice(0, 100)}...</div>}</div></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => {

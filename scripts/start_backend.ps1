@@ -54,7 +54,10 @@ function Resolve-AvailablePort {
 function Import-DotEnvIfPresent {
     param(
         [Parameter(Mandatory=$true)]
-        [string]$EnvPath
+        [string]$EnvPath,
+
+        # If set, values from .env overwrite any existing process env vars.
+        [switch]$Force
     )
 
     if (!(Test-Path -LiteralPath $EnvPath)) {
@@ -82,14 +85,14 @@ function Import-DotEnvIfPresent {
             }
         }
 
-        # Don't override explicitly-set env vars
-        if ([string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($key))) {
+        # Default behavior keeps explicitly set env vars; -Force makes .env authoritative for this process.
+        if ($Force -or [string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($key))) {
             [System.Environment]::SetEnvironmentVariable($key, $value)
         }
     }
 }
 
-Import-DotEnvIfPresent -EnvPath (Join-Path $repoRoot '.env')
+Import-DotEnvIfPresent -EnvPath (Join-Path $repoRoot '.env') -Force
 
 # Normalize legacy names (older templates used API_HOST/API_PORT or FLASK_HOST/FLASK_PORT)
 if ([string]::IsNullOrWhiteSpace($env:BACKEND_HOST)) {

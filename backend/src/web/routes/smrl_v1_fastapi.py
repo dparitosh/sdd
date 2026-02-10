@@ -14,11 +14,32 @@ from loguru import logger
 
 from src.web.services import get_neo4j_service
 from src.web.dependencies import get_api_key
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services.smrl_adapter import SMRLAdapter, neo4j_list_to_smrl, neo4j_to_smrl
-from src.web.services.oslc_trs_service import OSLCTRSService
+from src.web.utils.runtime_config import get_public_base_url
+
+# Optional import for OSLC TRS (requires rdflib)
+try:
+    from src.web.services.oslc_trs_service import OSLCTRSService
+    HAS_OSLC_TRS = True
+except ImportError:
+    OSLCTRSService = None
+    HAS_OSLC_TRS = False
 
 router = APIRouter()
+
+
+def _resolve_smrl_label(resource_type: str) -> str:
+    """Map an SMRL resource type to a Neo4j label, raising 400 for unknown types."""
+    reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
+    node_label = reverse_mapping.get(resource_type)
+    if not node_label:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown SMRL resource type: {resource_type}. "
+                   f"Valid types: {', '.join(sorted(reverse_mapping.keys()))}",
+        )
+    return node_label
 
 # Import sub-routers to include under /api/v1 for test compatibility
 try:
@@ -233,9 +254,8 @@ async def get_resources(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(resource_type, resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(resource_type)
 
         query = f"""
         MATCH (n:{node_label})
@@ -280,9 +300,8 @@ async def get_resource(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(resource_type, resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(resource_type)
 
         query = f"""
         MATCH (n:{node_label})
@@ -335,9 +354,8 @@ async def create_resource(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(resource_type, resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(resource_type)
 
         # Generate UID if not provided
         uid = data.get("uid", f"{resource_type}-{uuid4()}")
@@ -375,13 +393,14 @@ async def create_resource(
         resource = neo4j_to_smrl(node_data, node_labels)
 
         # OSLC TRS Notification
-        try:
-            trs = OSLCTRSService()
-            # Construct absolute URI (Mocking host for now, should use config)
-            res_uri = f"http://localhost:8000{href}"
-            await trs.publish_event(res_uri, "create")
-        except Exception as e:
-            logger.warning(f"Failed to publish TRS event: {e}")
+        if HAS_OSLC_TRS:
+            try:
+                trs = OSLCTRSService()
+                base_url = get_public_base_url()
+                res_uri = f"{base_url}{href}"
+                await trs.publish_event(res_uri, "create")
+            except Exception as e:
+                logger.warning(f"Failed to publish TRS event: {e}")
 
         return resource
 
@@ -414,9 +433,8 @@ async def replace_resource(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(resource_type, resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(resource_type)
 
         # Check if resource exists
         check_query = f"""
@@ -456,12 +474,14 @@ async def replace_resource(
         resource = neo4j_to_smrl(node_data, node_labels)
 
         # OSLC TRS Notification
-        try:
-            trs = OSLCTRSService()
-            res_uri = f"http://localhost:8000/api/v1/{resource_type}/{uid}"
-            await trs.publish_event(res_uri, "update")
-        except Exception as e:
-            logger.warning(f"Failed to publish TRS event: {e}")
+        if HAS_OSLC_TRS:
+            try:
+                trs = OSLCTRSService()
+                base_url = get_public_base_url()
+                res_uri = f"{base_url}/api/v1/{resource_type}/{uid}"
+                await trs.publish_event(res_uri, "update")
+            except Exception as e:
+                logger.warning(f"Failed to publish TRS event: {e}")
 
         return resource
 
@@ -496,9 +516,8 @@ async def update_resource(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(resource_type, resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(resource_type)
 
         # Build SET clause for partial update
         set_clauses = ["n.last_modified = datetime()"]
@@ -531,12 +550,14 @@ async def update_resource(
         resource = neo4j_to_smrl(node_data, node_labels)
 
         # OSLC TRS Notification
-        try:
-            trs = OSLCTRSService()
-            res_uri = f"http://localhost:8000/api/v1/{resource_type}/{uid}"
-            await trs.publish_event(res_uri, "update")
-        except Exception as e:
-            logger.warning(f"Failed to publish TRS event: {e}")
+        if HAS_OSLC_TRS:
+            try:
+                trs = OSLCTRSService()
+                base_url = get_public_base_url()
+                res_uri = f"{base_url}/api/v1/{resource_type}/{uid}"
+                await trs.publish_event(res_uri, "update")
+            except Exception as e:
+                logger.warning(f"Failed to publish TRS event: {e}")
 
         return resource
 
@@ -569,9 +590,8 @@ async def delete_resource(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(resource_type, resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(resource_type)
 
         query = f"""
         MATCH (n:{node_label})
@@ -629,9 +649,8 @@ async def smrl_match(
     try:
         neo4j = get_neo4j_service()
 
-        # Map SMRL type to Neo4j label
-        reverse_mapping = {v: k for k, v in SMRLAdapter.SMRL_TYPE_MAPPING.items()}
-        node_label = reverse_mapping.get(request.resource_type, request.resource_type)
+        # Map SMRL type to Neo4j label (validated)
+        node_label = _resolve_smrl_label(request.resource_type)
 
         # Build WHERE clause
         where_clauses = []

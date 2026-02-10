@@ -11,14 +11,16 @@ from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, XSD
 from src.web.services import get_neo4j_service
 from src.web.services.redis_service import get_redis_service, is_redis_enabled
+from src.web.utils.runtime_config import get_public_base_url
 
 # Namespaces
 OSLC = Namespace("http://open-services.net/ns/core#")
 TRS = Namespace("http://open-services.net/ns/core/trs#")
 
 class OSLCTRSService:
-    def __init__(self, base_url: str = "http://localhost:8000"):
-        self.base_url = base_url.rstrip("/")
+    def __init__(self, base_url: str | None = None):
+        resolved = base_url or get_public_base_url()
+        self.base_url = resolved.rstrip("/")
         self.neo4j = get_neo4j_service()
         self.redis_enabled = is_redis_enabled()
 
@@ -102,7 +104,8 @@ class OSLCTRSService:
             # Fetch last 20 events
             events_data = await redis.client.lrange("oslc:changelog", 0, 19)
             if events_data:
-                events = [eval(e) for e in events_data] # Careful with eval/json
+                import json as _json
+                events = [_json.loads(e) for e in events_data]
         
         # Process Events
         for event in events:
@@ -140,7 +143,8 @@ class OSLCTRSService:
         try:
             redis = await get_redis_service()
             # Push to head of list, trim to keep history manageable (e.g., 1000 events)
-            await redis.client.lpush("oslc:changelog", str(event))
+            import json as _json
+            await redis.client.lpush("oslc:changelog", _json.dumps(event))
             await redis.client.ltrim("oslc:changelog", 0, 999)
             logger.info(f"Published TRS Event: {event_type} on {resource_uri}")
         except Exception as e:

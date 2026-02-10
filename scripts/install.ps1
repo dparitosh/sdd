@@ -168,7 +168,7 @@ BACKEND_PORT=5000
 # Frontend Configuration
 FRONTEND_HOST=0.0.0.0
 FRONTEND_PORT=3001
-API_BASE_URL=http://localhost:5000
+API_BASE_URL=http://127.0.0.1:5000
 
 # Logging
 LOG_LEVEL=INFO
@@ -367,9 +367,16 @@ Write-Host "2. Start the services:"
 Write-Host "   .\scripts\service_manager.ps1 start"
 Write-Host ""
 Write-Host "3. Access the application:"
-Write-Host "   Frontend UI:  http://localhost:3001"
-Write-Host "   Backend API:  http://localhost:5000"
-Write-Host "   API Docs:     http://localhost:5000/docs"
+$frontendPortForDisplay = if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { $env:FRONTEND_PORT } else { "3001" }
+$backendBaseUrlForDisplay = if (-not [string]::IsNullOrWhiteSpace($env:API_BASE_URL)) { $env:API_BASE_URL.TrimEnd('/') } else { "" }
+
+Write-Host "   Frontend UI:  http://localhost:$frontendPortForDisplay"
+if (-not [string]::IsNullOrWhiteSpace($backendBaseUrlForDisplay)) {
+    Write-Host "   Backend API:  $backendBaseUrlForDisplay"
+    Write-Host "   API Docs:     $backendBaseUrlForDisplay/docs"
+} else {
+    Write-Host "   Backend API:  (set API_BASE_URL in .env)" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "4. Run health check:"
 Write-Host "   .\scripts\health_check.ps1"

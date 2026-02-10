@@ -11,10 +11,29 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory
   const repoRoot = resolve(__dirname, '..')
   const env = loadEnv(mode, repoRoot, '')
-  const API_BASE_URL = env.API_BASE_URL || env.VITE_API_BASE_URL || env.VITE_API_URL || 'http://127.0.0.1:5000'
-  const HOST = env.FRONTEND_HOST || env.VITE_HOST || '0.0.0.0'
-  const PORT_RAW = env.FRONTEND_PORT || env.VITE_PORT || '3001'
+
+  const HOST = env.FRONTEND_HOST || env.VITE_HOST
+  const PORT_RAW = env.FRONTEND_PORT || env.VITE_PORT
   const STRICT_PORT = (env.VITE_STRICT_PORT || env.STRICT_PORT || '').toLowerCase() === 'true'
+
+  if (!HOST) {
+    throw new Error('Missing FRONTEND_HOST (or VITE_HOST). Set it in your .env.')
+  }
+  if (!PORT_RAW) {
+    throw new Error('Missing FRONTEND_PORT (or VITE_PORT). Set it in your .env.')
+  }
+
+  const API_BASE_URL =
+    env.API_BASE_URL ||
+    env.VITE_API_BASE_URL ||
+    env.VITE_API_URL ||
+    (env.BACKEND_HOST && env.BACKEND_PORT ? `http://${env.BACKEND_HOST}:${env.BACKEND_PORT}` : undefined)
+
+  if (!API_BASE_URL) {
+    throw new Error(
+      'Missing backend API URL configuration. Set API_BASE_URL (recommended) or set BACKEND_HOST and BACKEND_PORT in your .env.'
+    )
+  }
 
   const VITE_PORT = parseInt(PORT_RAW, 10)
   if (Number.isNaN(VITE_PORT)) {

@@ -1,57 +1,82 @@
-"""Reload database with enhanced Association properties"""
+"""Reload database with enhanced Association properties.
 
-import os
+This is a DESTRUCTIVE script (clears all nodes) and is intentionally guarded.
+Safe for smoke testing: `--help` should not connect to Neo4j.
+"""
+
+from __future__ import annotations
+
+import argparse
 import sys
-
-# Add backend directory to path so we can import src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from loguru import logger
+from pathlib import Path
 
 from dotenv import load_dotenv
-from src.graph.connection import Neo4jConnection
-from src.parsers.semantic_loader import SemanticXMILoader
-from src.utils.config import Config
+from loguru import logger
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def main():
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Reload Neo4j database using SemanticXMILoader (DESTRUCTIVE: clears DB)"
+    )
+    parser.add_argument(
+        "--xmi-file",
+        default="data/raw/Domain_model.xmi",
+        help="Path to XMI file to load (default: data/raw/Domain_model.xmi)",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Confirm deletion of ALL nodes in the target database",
+    )
+    args = parser.parse_args()
+
+    if not args.yes:
+        logger.error("Refusing to reload database without --yes (safety guard).")
+        return 2
+
     load_dotenv()
-    logger.info("🔄 Reloading database with enhanced Association properties...")
 
-    # Load config
+    from backend.src.graph.connection import Neo4jConnection
+    from backend.src.parsers.semantic_loader import SemanticXMILoader
+    from backend.src.utils.config import Config
+
+    logger.info("Reloading database with enhanced Association properties...")
+
     config = Config()
-
-    # Connect to Neo4j
-    with Neo4jConnection(config.neo4j_uri, config.neo4j_user, config.neo4j_password) as conn:
-        conn.connect()
-
-        # Clear existing data
-        logger.info("Clearing existing data...")
+    conn = Neo4jConnection(config.neo4j_uri, config.neo4j_user, config.neo4j_password)
+    conn.connect()
+    try:
+        logger.warning("Clearing existing data (DETACH DELETE all nodes)...")
         conn.execute_query("MATCH (n) DETACH DELETE n")
         logger.info("Database cleared.")
 
-        # Load with enhanced semantic loader
-        loader = SemanticXMILoader(conn, enable_versioning=True)
-        xmi_file = "data/raw/Domain_model.xmi"
+        xmi_file = args.xmi_file
+        logger.info(f"Loading XMI: {xmi_file}")
 
-        logger.info(f"Loading {xmi_file}...")
+        loader = SemanticXMILoader(conn, enable_versioning=True)
         stats = loader.load_xmi_file(xmi_file)
 
-        logger.info("\n✅ Database reload complete!")
-        logger.info(f"Statistics:")
-        logger.info(f"  Nodes: {stats['nodes_created']}")
-        logger.info(f"  Containment Relationships: {stats['containment_relationships']}")
-        logger.info(f"  Semantic Relationships: {stats['semantic_relationships']}")
-        logger.info(f"  Type Relationships: {stats['type_relationships']}")
-        logger.info(f"  Metadata Attached: {stats['metadata_attached']}")
+        logger.success("Database reload complete.")
+        logger.info("Statistics:")
+        logger.info(f"  Nodes: {stats.get('nodes_created')}")
+        logger.info(f"  Containment Relationships: {stats.get('containment_relationships')}")
+        logger.info(f"  Semantic Relationships: {stats.get('semantic_relationships')}")
+        logger.info(f"  Type Relationships: {stats.get('type_relationships')}")
+        logger.info(f"  Metadata Attached: {stats.get('metadata_attached')}")
 
         total_rels = (
-            stats["containment_relationships"]
-            + stats["semantic_relationships"]
-            + stats["type_relationships"]
+            (stats.get("containment_relationships") or 0)
+            + (stats.get("semantic_relationships") or 0)
+            + (stats.get("type_relationships") or 0)
         )
         logger.info(f"  Total Relationships: {total_rels}")
+        return 0
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

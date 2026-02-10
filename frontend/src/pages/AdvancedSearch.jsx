@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import ForceGraph2D from 'react-force-graph-2d';
 import { apiService } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
 import { Input } from '@ui/input';
@@ -209,8 +210,8 @@ export default function AdvancedSearch({
       // Use apiService.client to ensure auth headers are present, but need to handle full URL
       // Actually fetch is simpler if we include headers.
       // Better: reuse apiService's axios instance but manual GET
-      const token = localStorage.getItem('auth-storage') 
-        ? JSON.parse(localStorage.getItem('auth-storage')).state?.token 
+      const token = localStorage.getItem('mbse-auth-storage') 
+        ? JSON.parse(localStorage.getItem('mbse-auth-storage')).state?.token 
         : null;
 
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -321,5 +322,119 @@ export default function AdvancedSearch({
                               window.alert(`View ${artifact.type} "${artifact.name}" in Graph Browser or use the REST API Explorer to query by ID: ${artifactId}`);
                             }
                           }
-                        }}><ExternalLink className="h-4 w-4" /></Button></TableCell></TableRow>)}</TableBody></Table></div></TabsContent><TabsContent value="graph" className="mt-0"><div className="border rounded-lg p-8 bg-muted/20 min-h-[400px]"><div className="flex flex-col items-center justify-center h-full text-center"><Network className="h-16 w-16 text-muted-foreground mb-4" /><h3 className="text-lg font-semibold mb-2">Graph Visualization</h3><p className="text-sm text-muted-foreground max-w-md">Interactive graph view showing relationships between nodes.{results.length} nodes ready to visualize.</p><div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{paginatedResults.slice(0, 12).map((artifact, index) => <Card key={artifact.id || artifact.uid || index} className="card-corporate"><CardContent className="p-4 text-center"><Badge variant="outline" className="mb-2">{artifact.type}</Badge><div className="text-sm font-medium truncate">{artifact.name || '(unnamed)'}</div></CardContent></Card>)}</div><p className="text-xs text-muted-foreground mt-4">Full graph visualization with D3.js coming soon</p></div></div></TabsContent></Tabs><div className="mt-6 pt-4 border-t-2"><PaginationControls /></div></> : <div className="flex h-32 items-center justify-center text-muted-foreground">{results ? 'No results found' : 'Enter search criteria and click Search'}</div>}</CardContent></Card></div>;
+                        }}><ExternalLink className="h-4 w-4" /></Button></TableCell></TableRow>)}</TableBody></Table></div></TabsContent><TabsContent value="graph" className="mt-0"><div className="border rounded-lg bg-muted/20 min-h-[500px] relative"><SearchResultsGraph results={paginatedResults} /></div></TabsContent></Tabs><div className="mt-6 pt-4 border-t-2"><PaginationControls /></div></> : <div className="flex h-32 items-center justify-center text-muted-foreground">{results ? 'No results found' : 'Enter search criteria and click Search'}</div>}</CardContent></Card></div>;
+}
+
+// Graph visualization component for search results
+function SearchResultsGraph({ results }) {
+  const fgRef = useRef(null);
+  const containerRef = useRef(null);
+  const [selectedNode, setSelectedNode] = useState(null);
+  
+  const TYPE_COLORS = {
+    'Class': '#22c55e',
+    'Package': '#3b82f6',
+    'Property': '#f59e0b',
+    'Association': '#8b5cf6',
+    'Connector': '#ec4899',
+    'Constraint': '#ef4444',
+    'Port': '#06b6d4',
+    'InstanceSpecification': '#14b8a6',
+    'XSDComplexType': '#6366f1',
+    'XSDElement': '#84cc16',
+    'DomainConcept': '#f97316'
+  };
+  
+  const graphData = useMemo(() => {
+    if (!results || results.length === 0) return { nodes: [], links: [] };
+    
+    const nodes = results.map((r, i) => ({
+      id: r.id || r.uid || `node-${i}`,
+      name: r.name || '(unnamed)',
+      type: r.type || 'Unknown',
+      val: 3
+    }));
+    
+    // Build links between nodes that share the same type (co-occurrence links)
+    const links = [];
+    const typeGroups = {};
+    nodes.forEach(n => {
+      if (!typeGroups[n.type]) typeGroups[n.type] = [];
+      typeGroups[n.type].push(n.id);
+    });
+    Object.values(typeGroups).forEach(group => {
+      for (let i = 0; i < group.length - 1 && i < 10; i++) {
+        links.push({ source: group[i], target: group[i + 1] });
+      }
+    });
+    
+    return { nodes, links };
+  }, [results]);
+  
+  const getNodeColor = useCallback((node) => {
+    return TYPE_COLORS[node.type] || '#6b7280';
+  }, []);
+  
+  const handleNodeClick = useCallback((node) => {
+    setSelectedNode(node);
+    if (fgRef.current) {
+      fgRef.current.centerAt(node.x, node.y, 400);
+      fgRef.current.zoom(2, 400);
+    }
+  }, []);
+  
+  if (!results || results.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[500px] text-muted-foreground">
+        <Network className="h-8 w-8 mr-2" />
+        No results to visualize
+      </div>
+    );
+  }
+  
+  return (
+    <div ref={containerRef} className="relative h-[500px]">
+      <ForceGraph2D
+        ref={fgRef}
+        graphData={graphData}
+        width={800}
+        height={500}
+        nodeLabel={node => `${node.type}: ${node.name}`}
+        nodeColor={getNodeColor}
+        nodeRelSize={8}
+        nodeCanvasObject={(node, ctx, globalScale) => {
+          const label = node.name.length > 15 ? node.name.substring(0, 15) + '...' : node.name;
+          const fontSize = 10 / globalScale;
+          ctx.font = `${fontSize}px Sans-Serif`;
+          
+          // Draw node circle
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
+          ctx.fillStyle = getNodeColor(node);
+          ctx.fill();
+          
+          // Draw label
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = '#374151';
+          ctx.fillText(label, node.x, node.y + 8);
+        }}
+        onNodeClick={handleNodeClick}
+        cooldownTicks={50}
+        d3VelocityDecay={0.4}
+      />
+      {selectedNode && (
+        <div className="absolute top-4 left-4 bg-background border rounded-lg p-3 shadow-lg max-w-xs">
+          <div className="flex items-center gap-2 mb-2">
+            <Badge style={{ backgroundColor: getNodeColor(selectedNode) }}>{selectedNode.type}</Badge>
+            <Button variant="ghost" size="sm" className="ml-auto h-6 w-6 p-0" onClick={() => setSelectedNode(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="text-sm font-medium">{selectedNode.name}</div>
+          <div className="text-xs text-muted-foreground mt-1 font-mono">{selectedNode.id}</div>
+        </div>
+      )}
+    </div>
+  );
 }

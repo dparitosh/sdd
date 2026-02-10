@@ -2,15 +2,34 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, FileText, Share2, Eye, Loader2 } from 'lucide-react';
-import GraphBrowser from './GraphBrowser'; // Importing the existing GraphBrowser component
+import { Loader2 } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AdvancedSearch from './AdvancedSearch';
 
+// AP243 MoSSEC node types - actual labels from ingested XMI/XSD data
+const AP243_TYPES = [
+    'XSDComplexType',
+    'XSDSimpleType', 
+    'XSDElement',
+    'XSDGroup',
+    'XSDAttribute',
+    'XSDSchema',
+    'Class',
+    'InstanceSpecification',
+    'DomainConcept',
+    'Property',
+    'Association',
+    'Generalization',
+    'Connector',
+    'Port',
+    'Constraint',
+    'Package'
+];
+
+// Semantic MoSSEC type names (for display/search - may not exist as labels yet)
 const MOSSEC_TYPES = [
     'ModelInstance', 
     'Study', 
@@ -184,10 +203,9 @@ export default function MossecDashboard() {
       </div>
 
       <Tabs defaultValue="views" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="views">Domain Views</TabsTrigger>
           <TabsTrigger value="search">Search</TabsTrigger>
-          <TabsTrigger value="graph">Graph</TabsTrigger>
         </TabsList>
         
         <TabsContent value="views" className="space-y-4">
@@ -215,18 +233,10 @@ export default function MossecDashboard() {
         
         <TabsContent value="search" className="space-y-4">
             <AdvancedSearch 
-                title="MoSSEC Resource Search" 
-                allowedTypes={MOSSEC_TYPES} 
-                defaultType="ModelInstance"
+                title="AP243 MoSSEC Resource Search" 
+                allowedTypes={AP243_TYPES} 
+                defaultType="Class"
             />
-        </TabsContent>
-        
-        <TabsContent value="graph" className="h-[800px]">
-           <Card className="h-full border-0 shadow-none">
-             <CardContent className="p-0 h-full">
-               <GraphBrowser fixedNodeTypes={MOSSEC_TYPES} />
-             </CardContent>
-           </Card>
         </TabsContent>
       </Tabs>
     </div>

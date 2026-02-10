@@ -21,10 +21,25 @@ const API_BASE_URL =
   process.env.VITE_API_BASE_URL ||
   // older deployment scripts
   process.env.VITE_API_URL ||
-  'http://127.0.0.1:5000'
+  (process.env.BACKEND_HOST && process.env.BACKEND_PORT
+    ? `http://${process.env.BACKEND_HOST}:${process.env.BACKEND_PORT}`
+    : undefined)
 
-const VITE_HOST = process.env.FRONTEND_HOST || process.env.VITE_HOST || '0.0.0.0'
-const VITE_PORT_RAW = process.env.FRONTEND_PORT || process.env.VITE_PORT || '3001'
+if (!API_BASE_URL) {
+  throw new Error(
+    'Missing backend API URL configuration. Set API_BASE_URL (recommended) or set BACKEND_HOST and BACKEND_PORT in your .env.'
+  )
+}
+
+const VITE_HOST = process.env.FRONTEND_HOST || process.env.VITE_HOST
+const VITE_PORT_RAW = process.env.FRONTEND_PORT || process.env.VITE_PORT
+
+if (!VITE_HOST) {
+  throw new Error('Missing FRONTEND_HOST (or VITE_HOST). Set it in your .env.')
+}
+if (!VITE_PORT_RAW) {
+  throw new Error('Missing FRONTEND_PORT (or VITE_PORT). Set it in your .env.')
+}
 const VITE_PORT = parseInt(VITE_PORT_RAW, 10)
 if (Number.isNaN(VITE_PORT)) {
   throw new Error(`Invalid FRONTEND_PORT/VITE_PORT value: ${VITE_PORT_RAW}`)

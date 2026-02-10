@@ -193,6 +193,31 @@ class Neo4jService:
         Returns:
             List of record dictionaries
         """
+        def _safe_params_for_log(params: Dict[str, Any]) -> Dict[str, Any]:
+            """Return a redacted/truncated copy of params for logs.
+
+            This service is sometimes used for bulk UNWIND operations (e.g.
+            rows=[{...}, {...}, ...]). Logging raw params can explode logs and
+            even crash terminals.
+            """
+            if not isinstance(params, dict):
+                return {"_params": str(type(params))}
+
+            safe: Dict[str, Any] = {}
+            for k, v in params.items():
+                if k.lower() in {"password", "neo4j_password", "api_key", "openai_api_key"}:
+                    safe[k] = "***"
+                    continue
+                if k == "rows" and isinstance(v, list):
+                    safe[k] = f"<list len={len(v)}>"
+                    continue
+                # Avoid huge string dumps
+                if isinstance(v, str) and len(v) > 500:
+                    safe[k] = v[:500] + "…"
+                    continue
+                safe[k] = v
+            return safe
+
         # Preserve whether caller supplied params; tests expect passing None
         # through to `session.run(query, None)`.
         parameters_provided = parameters is not None
@@ -255,12 +280,12 @@ class Neo4jService:
         except Neo4jError as e:
             logger.error(f"Neo4j Error: {e.code} - {e.message}")
             logger.error(f"Query: {query}")
-            logger.error(f"Parameters: {parameters}")
+            logger.error(f"Parameters: {_safe_params_for_log(parameters)}")
             raise
         except Exception as e:
             logger.error(f"Query execution failed: {e}")
             logger.error(f"Query: {query}")
-            logger.error(f"Parameters: {parameters}")
+            logger.error(f"Parameters: {_safe_params_for_log(parameters)}")
             raise
 
     def execute_write(

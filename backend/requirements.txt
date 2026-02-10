@@ -61,6 +61,16 @@ psutil>=5.9.0
 # Rate Limiting
 slowapi>=0.1.9
 
+# ============================================================================
+# Semantic Web & Ontology ingestion
+# (Used by OSLC, SHACL validation, and OWL/RDF -> Neo4j ingestion)
+# ============================================================================
+rdflib>=7.0.0
+owlrl>=6.0.2
+pyshacl>=0.25.0
+skosprovider>=1.2.0
+isodate>=0.6.1
+
 # Development dependencies
 pytest>=7.4.0
 pytest-cov>=4.1.0

@@ -1,87 +1,127 @@
-"""Fix comment properties in Neo4j by replacing | with newlines"""
+"""Fix comment properties in Neo4j by replacing ` | ` with newlines.
 
-import os
+Safe for smoke testing: `--help` should not connect to Neo4j.
+"""
+
+from __future__ import annotations
+
+import argparse
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
-
+from dotenv import load_dotenv
 from loguru import logger
 
-from graph.connection import Neo4jConnection
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
-# Use the Neo4j Aura connection (same as used in web app)
-NEO4J_URI = os.getenv("NEO4J_URI")
-NEO4J_USER = os.getenv("NEO4J_USER")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
-if not NEO4J_URI or not NEO4J_USER or not NEO4J_PASSWORD:
-    raise RuntimeError(
-        "Missing Neo4j configuration. Set NEO4J_URI, NEO4J_USER, and NEO4J_PASSWORD in your .env or environment."
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Replace comment delimiters (' | ') with newlines in Neo4j node comment properties"
     )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=10,
+        help="How many sample nodes to display before update (default: 10)",
+    )
+    parser.add_argument(
+        "--verify",
+        type=int,
+        default=5,
+        help="How many updated nodes to display after update (default: 5)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Do not update, only report counts and samples",
+    )
+    args = parser.parse_args()
 
+    load_dotenv()
 
-def fix_comment_newlines():
-    """Replace | with newlines in all comment properties"""
+    from backend.src.graph.connection import Neo4jConnection
+    from backend.src.utils.config import Config
 
-    with Neo4jConnection(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD) as db:
-        db.connect()
+    config = Config()
+    conn = Neo4jConnection(
+        uri=config.neo4j_uri, user=config.neo4j_user, password=config.neo4j_password
+    )
+    conn.connect()
+    try:
+        sample = max(0, int(args.sample))
+        verify = max(0, int(args.verify))
 
-        # Query to find all nodes with comment properties containing |
-        query = """
-        MATCH (n)
-        WHERE n.comment IS NOT NULL AND n.comment CONTAINS '|'
-        RETURN id(n) as node_id, n.comment as original_comment, labels(n) as labels
-        LIMIT 10
-        """
+        logger.info("Scanning for nodes with '|' in comment...")
 
-        with db._driver.session() as session:
-            # First, check how many nodes need updating
-            result = session.run(query)
-            samples = list(result)
+        sample_rows = conn.execute_query(
+            """
+            MATCH (n)
+            WHERE n.comment IS NOT NULL AND n.comment CONTAINS '|'
+            RETURN id(n) as node_id, n.comment as original_comment, labels(n) as labels
+            LIMIT $limit
+            """,
+            {"limit": sample},
+        )
 
-            logger.info(f"Sample of {len(samples)} nodes with | in comments:")
-            for record in samples:
-                logger.info(f"  {record['labels'][0]}: {record['original_comment'][:100]}...")
+        logger.info(f"Sample of {len(sample_rows)} nodes with | in comments:")
+        for r in sample_rows:
+            labels = r.get("labels") or []
+            label0 = labels[0] if labels else "(no-label)"
+            comment = (r.get("original_comment") or "")
+            logger.info(f"  {label0}: {comment[:100]}...")
 
-            # Count all nodes that need updating
-            count_query = """
+        count_rows = conn.execute_query(
+            """
             MATCH (n)
             WHERE n.comment IS NOT NULL AND n.comment CONTAINS '|'
             RETURN count(n) as total
             """
-            result = session.run(count_query)
-            total = result.single()["total"]
-            logger.info(f"Total nodes with | in comments: {total}")
+        )
+        total = count_rows[0]["total"] if count_rows else 0
+        logger.info(f"Total nodes with | in comments: {total}")
 
-            # Update all comment properties to replace | with newline
-            update_query = """
+        if args.dry_run:
+            logger.info("Dry run enabled; skipping update.")
+            return 0
+
+        update_rows = conn.execute_query(
+            """
             MATCH (n)
             WHERE n.comment IS NOT NULL AND n.comment CONTAINS '|'
             SET n.comment = replace(n.comment, ' | ', '\n')
             RETURN count(n) as updated
             """
+        )
+        updated = update_rows[0]["updated"] if update_rows else 0
+        logger.success(
+            f"Updated {updated} nodes - replaced ' | ' with newlines in comment properties"
+        )
 
-            result = session.run(update_query)
-            updated = result.single()["updated"]
-            logger.success(
-                f"Updated {updated} nodes - replaced | with newlines in comment properties"
+        if verify > 0:
+            verify_rows = conn.execute_query(
+                """
+                MATCH (n)
+                WHERE n.comment IS NOT NULL AND n.comment CONTAINS '\n'
+                RETURN n.name as name, n.comment as comment, labels(n) as labels
+                LIMIT $limit
+                """,
+                {"limit": verify},
             )
-
-            # Verify a few updated records
-            verify_query = """
-            MATCH (n)
-            WHERE n.comment IS NOT NULL AND n.comment CONTAINS '\n'
-            RETURN n.name as name, n.comment as comment, labels(n) as labels
-            LIMIT 5
-            """
-            result = session.run(verify_query)
             logger.info("Sample of updated comments:")
-            for record in result:
-                logger.info(f"  {record['labels'][0]} - {record['name']}:")
-                logger.info(f"    {record['comment'][:200]}...")
+            for r in verify_rows:
+                labels = r.get("labels") or []
+                label0 = labels[0] if labels else "(no-label)"
+                name = r.get("name")
+                comment = (r.get("comment") or "")
+                logger.info(f"  {label0} - {name}:")
+                logger.info(f"    {comment[:200]}...")
+
+        return 0
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
-    logger.info("Starting comment newline fix...")
-    fix_comment_newlines()
-    logger.info("Fix complete!")
+    raise SystemExit(main())

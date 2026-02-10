@@ -191,6 +191,11 @@ function Show-Usage {
 }
 
 function Import-DotEnvIfPresent {
+    param(
+        # If set, values from .env overwrite any existing process env vars.
+        # This makes iterative local setup predictable (edit .env -> restart -> takes effect).
+        [switch]$Force
+    )
     $envPath = Join-Path $ProjectRoot ".env"
     if (!(Test-Path -LiteralPath $envPath)) {
         return
@@ -215,7 +220,7 @@ function Import-DotEnvIfPresent {
             }
         }
 
-        if ([string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($key))) {
+        if ($Force -or [string]::IsNullOrWhiteSpace([System.Environment]::GetEnvironmentVariable($key))) {
             [System.Environment]::SetEnvironmentVariable($key, $value)
         }
     }
@@ -261,7 +266,7 @@ function Start-Backend {
             Write-Host "[WARN] Created .env from .env.example; edit with your credentials" -ForegroundColor Yellow
         }
 
-        Import-DotEnvIfPresent
+        Import-DotEnvIfPresent -Force
         Set-RuntimeEnvCompatibility
         Assert-RequiredEnv -Names @('NEO4J_URI','NEO4J_USER','NEO4J_PASSWORD','BACKEND_HOST','BACKEND_PORT')
 
@@ -344,7 +349,7 @@ function Start-Frontend {
             Remove-Item $frontendProcessIdPath -ErrorAction SilentlyContinue
         }
 
-        Import-DotEnvIfPresent
+        Import-DotEnvIfPresent -Force
         Set-RuntimeEnvCompatibility
         Assert-RequiredEnv -Names @('FRONTEND_HOST','FRONTEND_PORT','API_BASE_URL')
 
@@ -430,7 +435,10 @@ function Stop-Backend {
     Write-Host "Stopping backend..." -ForegroundColor Blue
     Import-DotEnvIfPresent
     Set-RuntimeEnvCompatibility
-    $backendPort = if (-not [string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) { [int]$env:BACKEND_PORT } else { 5000 }
+    if ([string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) {
+        throw "BACKEND_PORT is not set. Set it in .env (recommended) or as an environment variable."
+    }
+    $backendPort = [int]$env:BACKEND_PORT
     $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
     
     if (Test-Path $backendProcessIdPath) {
@@ -459,7 +467,10 @@ function Stop-Frontend {
     Write-Host "Stopping frontend..." -ForegroundColor Blue
     Import-DotEnvIfPresent
     Set-RuntimeEnvCompatibility
-    $frontendPort = if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { [int]$env:FRONTEND_PORT } else { 3001 }
+    if ([string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) {
+        throw "FRONTEND_PORT is not set. Set it in .env (recommended) or as an environment variable."
+    }
+    $frontendPort = [int]$env:FRONTEND_PORT
     $frontendProcessIdPath = Join-Path $ProcessIdDir "frontend.pid"
     
     if (Test-Path $frontendProcessIdPath) {
@@ -493,8 +504,14 @@ function Show-Status {
 
     Import-DotEnvIfPresent
     Set-RuntimeEnvCompatibility
-    $backendPort = if (-not [string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) { [int]$env:BACKEND_PORT } else { 5000 }
-    $frontendPort = if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) { [int]$env:FRONTEND_PORT } else { 3001 }
+    if ([string]::IsNullOrWhiteSpace($env:BACKEND_PORT)) {
+        throw "BACKEND_PORT is not set. Set it in .env (recommended) or as an environment variable."
+    }
+    if ([string]::IsNullOrWhiteSpace($env:FRONTEND_PORT)) {
+        throw "FRONTEND_PORT is not set. Set it in .env (recommended) or as an environment variable."
+    }
+    $backendPort = [int]$env:BACKEND_PORT
+    $frontendPort = [int]$env:FRONTEND_PORT
     
     # Check backend
     $backendProcessIdPath = Join-Path $ProcessIdDir "backend.pid"
@@ -542,11 +559,31 @@ function Show-Status {
     
     Write-Host ""
     if ($backendRunning) {
-        Write-Host ("Backend API:  http://localhost:$backendPort") -ForegroundColor Cyan
-        Write-Host ("API Docs:     http://localhost:$backendPort/docs") -ForegroundColor Cyan
+        $backendBaseUrl = $null
+        if (-not [string]::IsNullOrWhiteSpace($env:API_BASE_URL)) {
+            $backendBaseUrl = $env:API_BASE_URL.TrimEnd('/')
+        } elseif (-not [string]::IsNullOrWhiteSpace($env:BACKEND_HOST)) {
+            $hostForDisplay = if ($env:BACKEND_HOST -eq '0.0.0.0') { 'localhost' } else { $env:BACKEND_HOST }
+            $backendBaseUrl = "http://$hostForDisplay`:$backendPort"
+        } else {
+            $backendBaseUrl = "http://localhost`:$backendPort"
+        }
+
+        Write-Host ("Backend API:  $backendBaseUrl") -ForegroundColor Cyan
+        Write-Host ("API Docs:     $backendBaseUrl/api/docs") -ForegroundColor Cyan
     }
     if ($frontendRunning) {
-        Write-Host ("Frontend UI:  http://localhost:$frontendPort") -ForegroundColor Cyan
+        $frontendBaseUrl = $null
+        if (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_URL)) {
+            $frontendBaseUrl = $env:FRONTEND_URL.TrimEnd('/')
+        } elseif (-not [string]::IsNullOrWhiteSpace($env:FRONTEND_HOST)) {
+            $hostForDisplay = if ($env:FRONTEND_HOST -eq '0.0.0.0') { 'localhost' } else { $env:FRONTEND_HOST }
+            $frontendBaseUrl = "http://$hostForDisplay`:$frontendPort"
+        } else {
+            $frontendBaseUrl = "http://localhost`:$frontendPort"
+        }
+
+        Write-Host ("Frontend UI:  $frontendBaseUrl") -ForegroundColor Cyan
     }
     Write-Host ""
 }
