@@ -426,7 +426,15 @@ export const apiService = {
     getTRS: () => apiClient.get<any>('/oslc/trs'),
     getBase: (page: number = 1) => apiClient.get<any>(`/oslc/trs/base?page=${page}`),
     getChangeLog: () => apiClient.get<any>('/oslc/trs/changelog'),
-  }
+  },
+
+  // OSLC Client (Consumer)
+  oslcClient: {
+    connect: (providerData: { root_url: string; auth_type?: string; username?: string; password?: string }) =>
+      apiClient.post<any>('/oslc/client/connect', providerData),
+    query: (params: { resource_url: string; properties?: string }) =>
+      apiClient.get<any>('/oslc/client/query', { params }),
+  },
 };
 
 export default apiClient;

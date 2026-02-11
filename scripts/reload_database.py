@@ -67,6 +67,43 @@ def main():
         )
         logger.info(f"  Total Relationships: {total_rels}")
 
+        # --- OSLC Seeding ---
+        logger.info("\nChecking for OSLC schemas to seed...")
+        try:
+            # We import specific services here to avoid circular deps or verify path availability
+            from src.web.services.ontology_ingest_service import OntologyIngestService, OntologyIngestConfig
+            
+            # Re-verify backend path relative to this script
+            # script_dir = ...scripts/
+            # backend_path = ...backend/
+            # data/seed/oslc is inside backend/
+            oslc_dir = os.path.join(backend_path, "data", "seed", "oslc")
+            
+            oslc_files = [
+                ("oslc-core.ttl", "OSLC-Core"),
+                ("oslc-rm.ttl", "OSLC-RM")
+            ]
+            
+            # Since OntologyIngestService uses the global Neo4jService (singleton),
+            # we ensure it's initialized or just let it initialize itself from env vars.
+            # load_dotenv() was called at start of main.
+            
+            svc = OntologyIngestService(OntologyIngestConfig())
+            
+            for fname, oname in oslc_files:
+                fpath = os.path.join(oslc_dir, fname)
+                if os.path.exists(fpath):
+                    logger.info(f"Seeding {oname} from {fname}...")
+                    # ingest_file expects a Path object or string
+                    stats = svc.ingest_file(fpath, ontology_name=oname)
+                    logger.info(f"  Loaded {oname}: {stats.classes_upserted} classes")
+                else:
+                    logger.warning(f"  Skipping {oname}: File not found at {fpath}")
+
+        except Exception as e:
+            logger.error(f"Error validating/seeding OSLC ontologies: {e}")
+            logger.info("  (Proceeding, as the main graph load was successful.)")
+
 
 if __name__ == "__main__":
     main()

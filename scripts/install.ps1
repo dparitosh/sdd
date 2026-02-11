@@ -373,7 +373,7 @@ $backendBaseUrlForDisplay = if (-not [string]::IsNullOrWhiteSpace($env:API_BASE_
 Write-Host "   Frontend UI:  http://localhost:$frontendPortForDisplay"
 if (-not [string]::IsNullOrWhiteSpace($backendBaseUrlForDisplay)) {
     Write-Host "   Backend API:  $backendBaseUrlForDisplay"
-    Write-Host "   API Docs:     $backendBaseUrlForDisplay/docs"
+    Write-Host "   API Docs:     $backendBaseUrlForDisplay/api/docs"
 } else {
     Write-Host "   Backend API:  (set API_BASE_URL in .env)" -ForegroundColor Yellow
 }

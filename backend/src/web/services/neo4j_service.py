@@ -84,12 +84,15 @@ class Neo4jService:
             max_retries = 3
             retry_delay = 2  # seconds
 
+            last_exception = None
+
             for attempt in range(max_retries):
+                temp_driver = None
                 try:
                     logger.debug(
                         f"Creating Neo4j driver for {self.uri} (attempt {attempt + 1}/{max_retries})"
                     )
-                    self._driver = GraphDatabase.driver(
+                    temp_driver = GraphDatabase.driver(
                         self.uri,
                         auth=(self.user, self.password),
                         max_connection_pool_size=50,
@@ -99,23 +102,40 @@ class Neo4jService:
                         max_connection_lifetime=3600,  # Close connections after 1 hour
                         keep_alive=True,  # Keep connections alive
                     )
-                    # Driver-level connectivity check (matches neo4j driver API)
-                    # and keeps unit tests from needing to call verify_connectivity.
-                    self._driver.verify_connectivity()
+                    
+                    # Verify connectivity before assigning to self._driver
+                    temp_driver.verify_connectivity()
+                    
+                    self._driver = temp_driver
                     self._connection_verified = True
                     logger.info("Neo4j driver created successfully")
-                    break
+                    return self._driver
+                    
                 except Exception as e:
+                    last_exception = e
                     logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
+                    
+                    # Clean up the failed driver instance if it was created
+                    if temp_driver:
+                        try:
+                            temp_driver.close()
+                        except Exception:
+                            pass
+                            
                     if attempt < max_retries - 1:
                         time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-                    else:
-                        logger.error(
-                            f"Failed to create Neo4j driver after {max_retries} attempts"
-                        )
-                        raise ServiceUnavailable(
-                            f"Cannot connect to Neo4j at {self.uri}: {e}"
-                        )
+            
+            # If we get here, all retries failed
+            logger.error(
+                f"Failed to create Neo4j driver after {max_retries} attempts"
+            )
+            if last_exception:
+                raise ServiceUnavailable(
+                    f"Cannot connect to Neo4j at {self.uri}: {last_exception}"
+                ) from last_exception
+            else:
+                raise ServiceUnavailable(f"Cannot connect to Neo4j at {self.uri}")
+                
         return self._driver
 
     def verify_connectivity(self) -> bool:

@@ -60,8 +60,8 @@ class OSLCService:
         catalog_uri = URIRef(f"{self.base_url}/oslc/catalog")
         g.add((catalog_uri, RDF.type, OSLC.ServiceProviderCatalog))
         g.add((catalog_uri, DCTERMS.title, Literal("MBSE Service Provider Catalog")))
-        g.add((catalog_uri, OSLC.domain, OSLC_RM.entry_uri))
-        g.add((catalog_uri, OSLC.domain, OSLC_AM.entry_uri))
+        g.add((catalog_uri, OSLC.domain, URIRef(str(OSLC_RM))))
+        # g.add((catalog_uri, OSLC.domain, URIRef(str(OSLC_AM)))) # Uncomment when AM is ready
         
         # In a real scenario, we would loop through "Projects" in Neo4j
         # For now, we expose a single "Default Project" Service Provider
@@ -91,8 +91,8 @@ class OSLCService:
         rm_service = URIRef(f"{sp_uri}/service/rm")
         g.add((sp_uri, OSLC.service, rm_service))
         g.add((rm_service, RDF.type, OSLC.Service))
-        g.add((rm_service, OSLC.domain, OSLC_RM.entry_uri))
-        
+        g.add((rm_service, OSLC.domain, URIRef(str(OSLC_RM))))
+
         # Query Capability
         query_cap = URIRef(f"{rm_service}/query")
         g.add((rm_service, OSLC.queryCapability, query_cap))

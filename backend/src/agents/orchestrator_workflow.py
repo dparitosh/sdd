@@ -206,7 +206,9 @@ def create_engineering_workflow():
 
 async def execute_engineering_workflow(user_query: str, task_type: str = "impact_analysis") -> dict:
     """Execute the multi-agent workflow"""
-    workflow = create_engineering_workflow()
+    # create_engineering_workflow now returns a compiled graph (CompiledStateGraph)
+    # due to 'return workflow.compile()' at line 203
+    app = create_engineering_workflow()
     
     initial_state = {
         "user_query": user_query,
@@ -222,7 +224,7 @@ async def execute_engineering_workflow(user_query: str, task_type: str = "impact
         "error": None
     }
     
-    app = workflow.compile()
+    # app is already compiled, so we call ainvoke directly
     result = await app.ainvoke(initial_state)
     return result
 

@@ -518,10 +518,19 @@ except ImportError as e:
 
 try:
     from src.web.routes.trs_fastapi import router as trs_router
-    app.include_router(trs_router, tags=["OSLC Tracked Resource Set"])
+    # The frontend expects /api/oslc/trs/* but the router sends /oslc/trs/*
+    # We must prefix it with /api to match frontend expectations
+    app.include_router(trs_router, prefix="/api", tags=["OSLC Tracked Resource Set"])
     logger.info("✓ Registered OSLC TRS routes (FastAPI)")
 except ImportError as e:
     logger.warning(f"OSLC TRS routes not available: {e}")
+
+try:
+    from src.web.routes.oslc_client_fastapi import router as oslc_client_router
+    app.include_router(oslc_client_router, prefix="/api", tags=["OSLC Client"])
+    logger.info("✓ Registered OSLC Client routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"OSLC Client routes not available: {e}")
 
 try:
     from src.web.routes.express_parser_fastapi import router as express_parser_router

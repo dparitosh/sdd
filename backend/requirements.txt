@@ -42,6 +42,9 @@ langsmith>=0.1.0
 # PLM Integration
 httpx>=0.25.2
 aiohttp>=3.9.1
+rdflib>=7.1.0
+owlrl>=5.2.3
+pyshacl>=0.25.0
 
 # FastAPI Framework
 fastapi>=0.110.0
@@ -49,6 +52,7 @@ uvicorn[standard]>=0.27.0
 python-multipart>=0.0.9
 websockets>=12.0
 strawberry-graphql[fastapi]>=0.270.0
+slowapi>=0.1.9
 
 # Redis (Session Management & Caching)
 redis[hiredis]>=5.0.1
@@ -65,13 +69,6 @@ slowapi>=0.1.9
 # Semantic Web & Ontology ingestion
 # (Used by OSLC, SHACL validation, and OWL/RDF -> Neo4j ingestion)
 # ============================================================================
-rdflib>=7.0.0
-owlrl>=6.0.2
-pyshacl>=0.25.0
-skosprovider>=1.2.0
-isodate>=0.6.1
-
-# Development dependencies
 pytest>=7.4.0
 pytest-cov>=4.1.0
 black>=23.11.0
