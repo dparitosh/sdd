@@ -1,0 +1,65 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oslc_rm: <http://open-services.net/ns/rm#> .
+@prefix mbse: <http://mbse-mossec.com/ns/core#> .
+
+#
+# SHACL Shape for AP239 Requirement nodes.
+# Validates that Requirement resources contain the minimum
+# properties expected by the ISO 10303-239 standard.
+#
+
+mbse:RequirementShape
+    a sh:NodeShape ;
+    sh:targetClass oslc_rm:Requirement ;
+    rdfs:label "AP239 Requirement Shape" ;
+    rdfs:comment "Validates that a Requirement has required properties per AP239." ;
+
+    # Every Requirement MUST have a title (dcterms:title)
+    sh:property [
+        sh:path dcterms:title ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "title" ;
+        sh:message "A Requirement must have exactly one dcterms:title (string)." ;
+    ] ;
+
+    # Every Requirement MUST have an identifier (dcterms:identifier)
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "identifier" ;
+        sh:message "A Requirement must have exactly one dcterms:identifier." ;
+    ] ;
+
+    # Description is OPTIONAL but if present must be a string
+    sh:property [
+        sh:path dcterms:description ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "description" ;
+        sh:message "dcterms:description must be a string if present." ;
+    ] ;
+
+    # Priority is OPTIONAL (AP239 allows priority annotation)
+    sh:property [
+        sh:path mbse:priority ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "priority" ;
+        sh:message "mbse:priority must be a string if present." ;
+    ] ;
+
+    # Status is OPTIONAL
+    sh:property [
+        sh:path mbse:status ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "status" ;
+        sh:message "mbse:status must be a string if present." ;
+    ] .

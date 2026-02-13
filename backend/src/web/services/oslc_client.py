@@ -8,6 +8,7 @@ Compliant with OSLC Core 3.0.
 """
 
 from typing import Dict, List, Optional, Any
+import json
 import httpx
 from rdflib import Graph, URIRef, RDF, Namespace
 from rdflib.namespace import DCTERMS
@@ -94,7 +95,7 @@ class OSLCClient:
         if not catalog_uris:
             # Maybe the base_url IS the catalog?
             if (None, RDF.type, OSLC.ServiceProviderCatalog) in g:
-               catalog_uris.append(self.base_url)
+                catalog_uris.append(self.base_url)
 
         self.catalogs = catalog_uris
         logger.info(f"Discovered {len(catalog_uris)} catalogs")
@@ -130,9 +131,9 @@ class OSLCClient:
 
         # Find nested Catalogs
         for cat in g.subjects(RDF.type, OSLC.ServiceProviderCatalog):
-             # Avoid infinite loops if self-referential
-             if str(cat) != catalog_url:
-                 await self._parse_catalog(str(cat))
+            # Avoid infinite loops if self-referential
+            if str(cat) != catalog_url:
+                await self._parse_catalog(str(cat))
 
     async def _parse_service_provider(self, sp_url: str):
         """Parse a Service Provider resource to find its Services (Selection, Creation, Query)."""
@@ -192,5 +193,3 @@ class OSLCClient:
         # Logic to extract members specifically would depend on response structure
         # returning the graph serialization for now
         return json.loads(g.serialize(format="json-ld"))
-
-import json

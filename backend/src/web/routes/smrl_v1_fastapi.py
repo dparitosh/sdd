@@ -608,6 +608,16 @@ async def delete_resource(
             )
             raise HTTPException(status_code=404, detail=error)
 
+        # OSLC TRS Notification
+        if HAS_OSLC_TRS:
+            try:
+                trs = OSLCTRSService()
+                base_url = get_public_base_url()
+                res_uri = f"{base_url}/api/v1/{resource_type}/{uid}"
+                await trs.publish_event(res_uri, "delete")
+            except Exception as e:
+                logger.warning(f"Failed to publish TRS event: {e}")
+
         return {"message": f"Resource deleted: {resource_type}/{uid}"}
 
     except HTTPException:

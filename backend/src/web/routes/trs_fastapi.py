@@ -3,17 +3,22 @@ OSLC TRS Routes
 Endpoints for Tracked Resource Set (Smart Linking).
 """
 
-from fastapi import APIRouter, Header, Response, Request
+from fastapi import APIRouter, Depends, Header, Response, Request
 from src.web.services.oslc_trs_service import OSLCTRSService
 
 router = APIRouter(prefix="/oslc/trs", tags=["OSLC TRS"])
 
-# Initialize Service
-# In production, use dependency injection
-trs_service = OSLCTRSService()
+
+def get_trs_service() -> OSLCTRSService:
+    """Lazy initialization to avoid crash if Neo4j is not yet connected at import time."""
+    return OSLCTRSService()
+
 
 @router.get("")
-async def get_tracked_resource_set(accept: str = Header("text/turtle", alias="Accept")):
+async def get_tracked_resource_set(
+    accept: str = Header("text/turtle", alias="Accept"),
+    trs_service: OSLCTRSService = Depends(get_trs_service),
+):
     """
     Get the Tracked Resource Set (TRS) description.
     """
@@ -29,7 +34,11 @@ async def get_tracked_resource_set(accept: str = Header("text/turtle", alias="Ac
     return Response(content=content, media_type=media_type)
 
 @router.get("/base")
-async def get_base(page: int = 1, accept: str = Header("text/turtle", alias="Accept")):
+async def get_base(
+    page: int = 1,
+    accept: str = Header("text/turtle", alias="Accept"),
+    trs_service: OSLCTRSService = Depends(get_trs_service),
+):
     """
     Get the Base (Initial Load) of the TRS.
     Paged collection of all resources.
@@ -46,7 +55,10 @@ async def get_base(page: int = 1, accept: str = Header("text/turtle", alias="Acc
     return Response(content=content, media_type=media_type)
 
 @router.get("/changelog")
-async def get_changelog(accept: str = Header("text/turtle", alias="Accept")):
+async def get_changelog(
+    accept: str = Header("text/turtle", alias="Accept"),
+    trs_service: OSLCTRSService = Depends(get_trs_service),
+):
     """
     Get the Change Log (Recent Events).
     """

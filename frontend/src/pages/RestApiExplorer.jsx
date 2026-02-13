@@ -314,6 +314,64 @@ const API_ENDPOINTS = [{
   description: 'Execute Cypher query',
   blueprint: 'Query',
   body: '{\n  "query": "MATCH (n) RETURN n LIMIT 10"\n}'
+}, {
+  method: 'GET',
+  path: '/api/export/schema',
+  description: 'Export database schema and metadata',
+  blueprint: 'Export'
+}, {
+  method: 'GET',
+  path: '/api/export/graphml',
+  description: 'Export graph as GraphML (XML)',
+  blueprint: 'Export',
+  params: [{
+    name: 'node_types',
+    type: 'string',
+    required: false,
+    description: 'Comma separated types'
+  }, {
+    name: 'limit',
+    type: 'number',
+    required: false,
+    description: 'Max nodes (default 10000)'
+  }]
+}, {
+  method: 'GET',
+  path: '/api/export/jsonld',
+  description: 'Export graph as JSON-LD (Semantic Linked Data)',
+  blueprint: 'Export'
+}, {
+  method: 'GET',
+  path: '/api/export/csv',
+  description: 'Export nodes as CSV (ZIP archive)',
+  blueprint: 'Export',
+  params: [{
+    name: 'node_type',
+    type: 'string',
+    required: false,
+    description: 'Specific node type'
+  }]
+}, {
+  method: 'GET',
+  path: '/api/export/step',
+  description: 'Export as STEP AP242 (CAD/PLM)',
+  blueprint: 'Export'
+}, {
+  method: 'GET',
+  path: '/api/export/rdf',
+  description: 'Export as RDF/Turtle (Semantic Web)',
+  blueprint: 'Export'
+}, {
+  method: 'GET',
+  path: '/api/export/plantuml',
+  description: 'Export as PlantUML Class Diagram',
+  blueprint: 'Export',
+  params: [{
+    name: 'package',
+    type: 'string',
+    required: false,
+    description: 'Filter by package name'
+  }]
 }];
 const METHOD_COLORS = {
   GET: 'bg-blue-500',

@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 from src.web.dependencies import get_api_key
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services.ontology_ingest_service import (
     OntologyIngestService,
     OntologyIngestConfig,

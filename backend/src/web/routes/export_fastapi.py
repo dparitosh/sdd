@@ -14,12 +14,14 @@ import xml.etree.ElementTree as ET
 import zipfile
 from typing import List, Optional
 from xml.dom import minidom
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from loguru import logger
 from pydantic import BaseModel
 
 from src.web.services import get_neo4j_service
+from src.web.services.export_service import ExportService
 
 # ============================================================================
 # ROUTER CONFIGURATION
@@ -510,11 +512,14 @@ async def export_step(
 
         result = neo4j.execute_query(query, {"limit": limit})
 
+        # Current timestamp for STEP header
+        current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
         step_lines = [
             "ISO-10303-21;",
             "HEADER;",
             "FILE_DESCRIPTION(('MBSE Model Export'), '2;1');",
-            "FILE_NAME('model_export.stp', '2025-12-13T00:00:00', ('Author'), ('Organization'), 'Neo4j MBSE Exporter', 'Neo4j', '');",
+            f"FILE_NAME('model_export.stp', '{current_time}', ('Author'), ('Organization'), 'Neo4j MBSE Exporter', 'Neo4j', '');",
             "FILE_SCHEMA(('AP242'));",
             "ENDSEC;",
             "DATA;",
@@ -545,3 +550,82 @@ async def export_step(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to export STEP: {str(e)}",
         )
+
+
+# ============================================================================
+# PLANTUML EXPORT ENDPOINT
+# ============================================================================
+
+
+@router.get("/plantuml")
+async def export_plantuml(
+    package: Optional[str] = Query(
+        None, description="Package name to filter the class diagram"
+    )
+):
+    """
+    Export as PlantUML Class Diagram
+    
+    Returns a text file compatible with PlantUML.
+    """
+    try:
+        neo4j = get_neo4j_service()
+        service = ExportService(neo4j)
+        result = service.export_plantuml(package_name=package)
+        
+        return Response(
+            content=result,
+            media_type="text/plain",
+            headers={"Content-Disposition": "attachment; filename=model.puml"},
+        )
+    except Exception as e:
+        logger.error(f"PlantUML export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# RDF/TURTLE EXPORT ENDPOINT
+# ============================================================================
+
+
+@router.get("/rdf")
+async def export_rdf():
+    """
+    Export as RDF (Turtle format)
+    """
+    try:
+        neo4j = get_neo4j_service()
+        service = ExportService(neo4j)
+        result = service.export_rdf()
+        
+        return Response(
+            content=result,
+            media_type="text/turtle",
+            headers={"Content-Disposition": "attachment; filename=graph.ttl"},
+        )
+    except Exception as e:
+        logger.error(f"RDF export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# CYTOSCAPE EXPORT ENDPOINT
+# ============================================================================
+
+
+@router.get("/cytoscape")
+async def export_cytoscape():
+    """
+    Export as Cytoscape.js JSON
+    
+    Returns a generic JSON structure suitable for Cytoscape.js visualization.
+    """
+    try:
+        neo4j = get_neo4j_service()
+        service = ExportService(neo4j)
+        result = service.export_cytoscape()
+        
+        return result  # Returns JSON directly
+    except Exception as e:
+        logger.error(f"Cytoscape export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

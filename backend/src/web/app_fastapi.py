@@ -548,6 +548,14 @@ except ImportError as e:
     logger.warning(f"Ontology ingestion routes not available: {e}")
 
 try:
+    from src.web.routes.shacl_fastapi import router as shacl_router
+
+    app.include_router(shacl_router)
+    logger.info("✓ Registered SHACL Validation routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"SHACL Validation routes not available: {e}")
+
+try:
     from src.web.routes.step_ingest_fastapi import router as step_ingest_router
 
     app.include_router(step_ingest_router)

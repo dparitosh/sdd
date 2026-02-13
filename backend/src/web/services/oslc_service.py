@@ -5,13 +5,10 @@ Generates Service Provider Catalogs, Service Providers, and Resource Shapes.
 Supports Content Negotiation (RDF/XML, Turtle, JSON-LD).
 """
 
-from typing import Dict, List, Optional, Union
-from datetime import datetime
-import json
+from typing import Dict
 from loguru import logger
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.namespace import DCTERMS, FOAF, XSD
-from fastapi import Request
+from rdflib.namespace import DCTERMS
 
 from src.web.utils.runtime_config import get_public_base_url
 
@@ -82,6 +79,8 @@ class OSLCService:
         """
         g = Graph()
         g.bind("oslc", OSLC)
+        g.bind("dcterms", DCTERMS)
+        g.bind("rm", OSLC_RM)
         
         sp_uri = URIRef(f"{self.base_url}/oslc/sp/{project_id}")
         g.add((sp_uri, RDF.type, OSLC.ServiceProvider))
@@ -106,6 +105,14 @@ class OSLCService:
         g.add((sel_dialog, RDF.type, OSLC.Dialog))
         g.add((sel_dialog, DCTERMS.title, Literal("Select Requirement")))
         g.add((sel_dialog, OSLC.dialogURI, URIRef(f"{self.base_url}/oslc/dialogs/rm/select")))
+
+        # Creation Factory
+        creation_factory = URIRef(f"{rm_service}/creation")
+        g.add((rm_service, OSLC.creationFactory, creation_factory))
+        g.add((creation_factory, RDF.type, OSLC.CreationFactory))
+        g.add((creation_factory, DCTERMS.title, Literal("Requirement Creation Factory")))
+        g.add((creation_factory, OSLC.creation, URIRef(f"{self.base_url}/oslc/rm/requirements")))
+        g.add((creation_factory, OSLC.resourceType, OSLC_RM.Requirement))
         
         return g
 

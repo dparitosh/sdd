@@ -142,11 +142,13 @@ export const UI_CONFIG = {
 
 // Export Formats
 export const EXPORT_FORMATS = [
-  { value: 'rdf', label: 'RDF/Turtle', extension: '.ttl' },
-  { value: 'owl', label: 'OWL/XML', extension: '.owl' },
-  { value: 'json-ld', label: 'JSON-LD', extension: '.jsonld' },
-  { value: 'csv', label: 'CSV', extension: '.csv' },
-  { value: 'graphml', label: 'GraphML', extension: '.graphml' },
+  { value: 'rdf', label: 'RDF/Turtle', extension: '.ttl', endpoint: '/api/export/rdf', description: 'Semantic Web (Turtle)' },
+  { value: 'json-ld', label: 'JSON-LD', extension: '.jsonld', endpoint: '/api/export/jsonld', description: 'Linked Data JSON' },
+  { value: 'csv', label: 'CSV Archive', extension: '.zip', endpoint: '/api/export/csv', description: 'Tabular Data (ZIP)' },
+  { value: 'graphml', label: 'GraphML', extension: '.graphml', endpoint: '/api/export/graphml', description: 'Graph Visualization' },
+  { value: 'step', label: 'STEP AP242', extension: '.stp', endpoint: '/api/export/step', description: 'CAD/PLM Exchange' },
+  { value: 'plantuml', label: 'PlantUML', extension: '.puml', endpoint: '/api/export/plantuml', description: 'Class Diagrams' },
+  { value: 'cytoscape', label: 'Cytoscape', extension: '.json', endpoint: '/api/export/cytoscape', description: 'Web Visualization' },
 ] as const;
 
 // Local Storage Keys

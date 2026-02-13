@@ -1,0 +1,65 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix mbse: <http://mbse-mossec.com/ns/core#> .
+@prefix step: <urn:iso:std:iso:10303:242:ed-3:tech:schema#> .
+
+#
+# SHACL Shape for AP242 Part nodes.
+# Validates that Part resources contain the minimum
+# properties expected by the ISO 10303-242 standard.
+#
+
+mbse:PartShape
+    a sh:NodeShape ;
+    sh:targetClass step:Part ;
+    rdfs:label "AP242 Part Shape" ;
+    rdfs:comment "Validates that a Part has required properties per AP242." ;
+
+    # Every Part MUST have a name
+    sh:property [
+        sh:path dcterms:title ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "name" ;
+        sh:message "A Part must have exactly one dcterms:title (name)." ;
+    ] ;
+
+    # Every Part MUST have an identifier
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "identifier" ;
+        sh:message "A Part must have exactly one dcterms:identifier." ;
+    ] ;
+
+    # Part Number (AP242 specific)
+    sh:property [
+        sh:path mbse:partNumber ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "partNumber" ;
+        sh:message "mbse:partNumber must be a string if present." ;
+    ] ;
+
+    # Material specification (OPTIONAL)
+    sh:property [
+        sh:path mbse:material ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "material" ;
+        sh:message "mbse:material must be a string if present." ;
+    ] ;
+
+    # Mass (OPTIONAL, numeric)
+    sh:property [
+        sh:path mbse:mass ;
+        sh:datatype xsd:decimal ;
+        sh:maxCount 1 ;
+        sh:name "mass" ;
+        sh:message "mbse:mass must be a decimal if present." ;
+    ] .

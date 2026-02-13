@@ -1,4 +1,3 @@
-from pyoslc.resources.mixins import OSLCResource
 from rdflib import Graph
 from loguru import logger
 import pyshacl
