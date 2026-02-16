@@ -103,6 +103,38 @@ function Get-PythonExe {
     return "python"
 }
 
+function Get-NpmExe {
+    <#
+    .SYNOPSIS
+        Resolve the npm executable path, ensuring it points to a valid Win32 binary.
+        On Windows, Get-Command npm may return the extensionless Unix shell script
+        instead of npm.cmd, which causes "not a valid Win32 application" errors
+        with Start-Process. This helper tries npm.cmd first.
+    #>
+
+    # 1. Prefer npm.cmd next to node.exe (standard Node.js installer layout)
+    $nodeExe = (Get-Command node -ErrorAction SilentlyContinue).Source
+    if ($nodeExe) {
+        $nodeDir = Split-Path $nodeExe -Parent
+        $npmCmd = Join-Path $nodeDir "npm.cmd"
+        if (Test-Path -LiteralPath $npmCmd) {
+            return $npmCmd
+        }
+    }
+
+    # 2. Ask Get-Command but filter to .cmd / .exe only
+    $candidates = Get-Command npm -All -ErrorAction SilentlyContinue |
+        Where-Object { $_.Source -match '\.(cmd|exe)$' } |
+        Select-Object -First 1
+    if ($candidates) {
+        return $candidates.Source
+    }
+
+    # 3. Fallback: let PowerShell resolve at runtime (may still hit the shell-script bug)
+    $fallback = (Get-Command npm -ErrorAction Stop).Source
+    return $fallback
+}
+
 function Format-MaskedValue {
     param(
         [AllowNull()]
@@ -383,7 +415,7 @@ function Start-Frontend {
         }
 
         # Prefer invoking npm directly with an argument list to avoid PowerShell -Command parsing and npm config warnings.
-        $npmExe = (Get-Command npm -ErrorAction Stop).Source
+        $npmExe = Get-NpmExe
         $npmArgs = @(
             "run",
             "dev",

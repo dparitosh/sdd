@@ -201,7 +201,7 @@ if "%FRONTEND_HOST%"=="" (echo [ERROR] Missing FRONTEND_HOST in .env & goto :eof
 if "%FRONTEND_PORT%"=="" (echo [ERROR] Missing FRONTEND_PORT in .env & goto :eof)
 if "%API_BASE_URL%"=="" (echo [ERROR] Missing API_BASE_URL in .env & goto :eof)
 
-for /f %%a in ('powershell -NoProfile -Command "$p=Start-Process -FilePath npm -ArgumentList @('run','dev','--','--host','%FRONTEND_HOST%','--port','%FRONTEND_PORT%') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
+for /f %%a in ('powershell -NoProfile -Command "$npmCmd = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source; if (-not $npmCmd) { $npmCmd = (Get-Command npm -ErrorAction Stop).Source }; $p=Start-Process -FilePath $npmCmd -ArgumentList @('run','dev','--','--host','%FRONTEND_HOST%','--port','%FRONTEND_PORT%') -RedirectStandardOutput '%TEMP%\mbse-frontend.log' -RedirectStandardError '%TEMP%\mbse-frontend-error.log' -PassThru -WindowStyle Hidden; $p.Id"') do (
     echo %%a > "%PID_DIR%\frontend.pid"
 )
 if exist "%PID_DIR%\frontend.pid" (
