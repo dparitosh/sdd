@@ -41,7 +41,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ParentPath,
 
-    [string]$Branch = 'chore/audit-cleanup',
+    [string]$Branch = 'main',
 
     [string]$RepoUrl = 'https://github.com/dparitosh/mbse-neo4j-graph-rep.git',
 

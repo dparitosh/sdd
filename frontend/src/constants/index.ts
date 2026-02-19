@@ -33,25 +33,25 @@ export const QUERY_CONFIG = {
 // Pagination
 export const PAGINATION = {
   /** Default page size */
-  DEFAULT_PAGE_SIZE: 20,
+  DEFAULT_PAGE_SIZE: 50,
   
   /** Maximum page size */
-  MAX_PAGE_SIZE: 100,
+  MAX_PAGE_SIZE: 100000,
   
   /** Requirements default limit */
-  REQUIREMENTS_DEFAULT_LIMIT: 100,
+  REQUIREMENTS_DEFAULT_LIMIT: 200,
   
   /** Requirements max limit */
-  REQUIREMENTS_MAX_LIMIT: 500,
+  REQUIREMENTS_MAX_LIMIT: 100000,
 } as const;
 
 // Graph Visualization
 export const GRAPH_CONFIG = {
   /** Maximum nodes to display in graph */
-  MAX_NODES: 1000,
+  MAX_NODES: 100000,
   
   /** Default node limit for queries */
-  DEFAULT_NODE_LIMIT: 100,
+  DEFAULT_NODE_LIMIT: 500,
   
   /** Force simulation settings */
   FORCE_STRENGTH: -300,
@@ -68,7 +68,7 @@ export const UPLOAD_CONFIG = {
   MAX_FILE_SIZE: 50 * 1024 * 1024,
   
   /** Allowed file types */
-  ALLOWED_FILE_TYPES: ['.xmi', '.xml', '.csv', '.uml'] as const,
+  ALLOWED_FILE_TYPES: ['.xmi', '.xml', '.csv', '.uml', '.owl', '.rdf', '.ttl', '.nq', '.step', '.stp', '.stpx', '.exp', '.xsd'] as const,
   
   /** Status polling interval in milliseconds */
   POLL_INTERVAL: 1000, // 1 second

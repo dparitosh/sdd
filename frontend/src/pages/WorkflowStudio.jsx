@@ -503,7 +503,7 @@ export default function WorkflowStudio() {
                     Agent Orchestration
                   </div>
                   <Badge variant={executionResults.status === 'success' ? 'default' : 'destructive'}>
-                    {executionResults.status.toUpperCase()}
+                    {(executionResults.status || 'unknown').toUpperCase()}
                   </Badge>
                 </div>
                 

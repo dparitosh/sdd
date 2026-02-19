@@ -3,16 +3,17 @@ Script to create sample test data for PLM and Simulation endpoints.
 Adds requirements, traceability links, parameters, and constraints.
 """
 
-import os
 import sys
 from pathlib import Path
 
-# Add parent directory to path
-parent_dir = str(Path(__file__).parent.parent)
-sys.path.insert(0, parent_dir)
-os.chdir(parent_dir)
+# Add project root to path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(BACKEND_ROOT))
 
-from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv(PROJECT_ROOT / ".env")
 
 from src.graph.connection import Neo4jConnection
 from src.utils.config import Config

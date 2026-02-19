@@ -41,11 +41,6 @@ SAFE_HELP_SCRIPTS: list[str] = [
     "backend/scripts/reload_database.py",
 
     # Ingesters / orchestrators: smoke-test only `--help` (no ingestion is run).
-    "backend/scripts/ingest_all.py",
-    "backend/scripts/ingest_ap239.py",
-    "backend/scripts/ingest_ap239_v2.py",
-    "backend/scripts/ingest_ap242.py",
-    "backend/scripts/ingest_ap243.py",
     "backend/scripts/ingest_schemas.py",
     "backend/scripts/ingest_semantic_layer.py",
     "backend/scripts/ingest_xmi.py",
@@ -59,9 +54,6 @@ SAFE_HELP_SCRIPTS: list[str] = [
 # Scripts intentionally skipped from `--help` smoke testing for now.
 # Every script in backend/scripts must appear either here or in SAFE_HELP_SCRIPTS.
 SKIPPED_SCRIPTS: dict[str, str] = {
-    # Library-like module (not a CLI tool).
-    "backend/scripts/base_ingester.py": "Library module used by other ingesters; not a CLI.",
-
     # Non-CLI / special-purpose scripts.
     "backend/scripts/create_sample_data.py": "Integration script; does not provide a stable CLI yet.",
     "backend/scripts/run_migration.py": "Integration script; does not provide a stable CLI yet.",

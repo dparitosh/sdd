@@ -17,7 +17,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.web.dependencies import get_api_key
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services.step_ingest_service import StepIngestConfig, StepIngestService
 
 

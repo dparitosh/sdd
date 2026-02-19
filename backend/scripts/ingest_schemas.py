@@ -5,9 +5,8 @@ Master Ingestion Controller
 Orchestrate ingestion from multiple schema formats into Neo4j Knowledge Graph.
 
 Supports:
-    - XMI: UML/SysML Domain Models
+    - XMI: UML/SysML Domain Models (primary MoSSEC/AP243 source)
     - XSD: XML Schema Definitions (STEP, ISO 10303)
-    - EXPRESS: ISO 10303 EXPRESS schemas (AP239, AP242, AP243)
 
 Usage:
     # Ingest all schema types
@@ -16,7 +15,6 @@ Usage:
     # Ingest specific formats
     python backend/scripts/ingest_schemas.py --xmi
     python backend/scripts/ingest_schemas.py --xsd
-    python backend/scripts/ingest_schemas.py --express
     
     # Clear and re-ingest
     python backend/scripts/ingest_schemas.py --all --clear
@@ -103,34 +101,16 @@ def ingest_xsd(conn: Neo4jConnection, clear: bool = False) -> Dict[str, Any]:
     return ingester.stats
 
 
-def ingest_express(conn: Neo4jConnection, clear: bool = False) -> Dict[str, Any]:
-    """Run EXPRESS ingestion"""
-    from backend.scripts.ingest_all import AllSchemasIngester
-    
-    logger.info("\n" + "=" * 70)
-    logger.info("STARTING EXPRESS INGESTION")
-    logger.info("=" * 70)
-    
-    ingester = AllSchemasIngester(
-        conn=conn,
-        clear_existing=clear
-    )
-    
-    return ingester.run()
-
-
 def print_database_summary(conn: Neo4jConnection):
     """Print summary of database contents"""
     logger.info("\n" + "=" * 70)
     logger.info("DATABASE SUMMARY")
     logger.info("=" * 70)
     
-    # Count by label
+    # Count by label (APOC-free query)
     result = conn.execute_query("""
-        CALL db.labels() YIELD label
-        CALL apoc.cypher.run('MATCH (n:' + label + ') RETURN count(n) as count', {})
-        YIELD value
-        RETURN label, value.count as count
+        MATCH (n)
+        RETURN labels(n)[0] AS label, count(*) AS count
         ORDER BY count DESC
     """)
     
@@ -155,7 +135,7 @@ def main():
     parser.add_argument(
         '--all', '-a',
         action='store_true',
-        help='Ingest all schema types (XMI, XSD, EXPRESS)'
+        help='Ingest all schema types (XMI, XSD)'
     )
     parser.add_argument(
         '--xmi',
@@ -166,11 +146,6 @@ def main():
         '--xsd',
         action='store_true',
         help='Ingest XSD schema files'
-    )
-    parser.add_argument(
-        '--express',
-        action='store_true',
-        help='Ingest EXPRESS schemas (AP239, AP242, AP243)'
     )
     parser.add_argument(
         '--clear',
@@ -191,11 +166,11 @@ def main():
     args = parser.parse_args()
     
     # If no specific format selected, default to --all
-    if not any([args.all, args.xmi, args.xsd, args.express, args.summary]):
+    if not any([args.all, args.xmi, args.xsd, args.summary]):
         args.all = True
     
     # Initialize connection
-    load_dotenv()
+    load_dotenv(PROJECT_ROOT / ".env")
     config = Config()
     conn = Neo4jConnection(
         uri=config.neo4j_uri,
@@ -219,9 +194,6 @@ def main():
         
         if args.all or args.xsd:
             results['xsd'] = ingest_xsd(conn, clear=args.clear)
-        
-        if args.all or args.express:
-            results['express'] = ingest_express(conn, clear=args.clear)
         
         # Print final summary
         print_database_summary(conn)

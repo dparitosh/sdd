@@ -37,7 +37,7 @@ def main() -> int:
         logger.error("Refusing to reload database without --yes (safety guard).")
         return 2
 
-    load_dotenv()
+    load_dotenv(PROJECT_ROOT / ".env")
 
     from backend.src.graph.connection import Neo4jConnection
     from backend.src.parsers.semantic_loader import SemanticXMILoader

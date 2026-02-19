@@ -141,7 +141,7 @@ Or the convenience wrapper:
 ```
 
 - **Frontend UI**: [http://localhost:3001](http://localhost:3001)
-- **Backend API Docs**: [http://localhost:5000/docs](http://localhost:5000/docs)
+- **Backend API Docs**: [http://localhost:5000/api/docs](http://localhost:5000/api/docs)
 
 ### Service Management Commands
 
@@ -314,7 +314,7 @@ After starting services and configuring firewall rules:
 
 - **Frontend UI**: `http://<public-ip>:3001`
 - **Backend API**: `http://<public-ip>:5000`
-- **API Docs**: `http://<public-ip>:5000/docs`
+- **API Docs**: `http://<public-ip>:5000/api/docs`
 
 ### 9.5 Production Considerations
 

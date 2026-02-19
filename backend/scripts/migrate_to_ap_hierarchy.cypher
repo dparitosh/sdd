@@ -55,216 +55,196 @@ CREATE INDEX idx_value_type_name IF NOT EXISTS FOR (n:ValueType) ON (n.name);
 // Level 3: AP243 (Ontologies, Units, Reference Types)
 
 // Level 1: AP239 Requirements Layer
-MATCH (n:Requirement) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:RequirementVersion) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:Analysis) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:AnalysisModel) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:Approval) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:Document) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:Activity) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:Breakdown) SET n.ap_level = 1, n.ap_schema = 'AP239';
-MATCH (n:Event) SET n.ap_level = 1, n.ap_schema = 'AP239';
+MATCH (n:Requirement) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:RequirementVersion) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:Analysis) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:AnalysisModel) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:Approval) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:Document) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:Activity) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:Breakdown) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
+MATCH (n:Event) SET n.ap_level = 'AP239', n.ap_schema = 'AP239';
 
 // Level 2: AP242 Engineering Layer
-MATCH (n:Part) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:PartVersion) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:Assembly) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:GeometricModel) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:ShapeRepresentation) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:Material) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:MaterialProperty) SET n.ap_level = 2, n.ap_schema = 'AP242';
-MATCH (n:ComponentPlacement) SET n.ap_level = 2, n.ap_schema = 'AP242';
+MATCH (n:Part) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:PartVersion) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:Assembly) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:GeometricModel) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:ShapeRepresentation) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:Material) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:MaterialProperty) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
+MATCH (n:ComponentPlacement) SET n.ap_level = 'AP242', n.ap_schema = 'AP242';
 
 // Level 3: AP243 Reference Data Layer
-MATCH (n:ExternalOwlClass) SET n.ap_level = 3, n.ap_schema = 'AP243';
-MATCH (n:ExternalUnit) SET n.ap_level = 3, n.ap_schema = 'AP243';
-MATCH (n:ExternalPropertyDefinition) SET n.ap_level = 3, n.ap_schema = 'AP243';
-MATCH (n:Classification) SET n.ap_level = 3, n.ap_schema = 'AP243';
-MATCH (n:ValueType) SET n.ap_level = 3, n.ap_schema = 'AP243';
+MATCH (n:ExternalOwlClass) SET n.ap_level = 'AP243', n.ap_schema = 'AP243';
+MATCH (n:ExternalUnit) SET n.ap_level = 'AP243', n.ap_schema = 'AP243';
+MATCH (n:ExternalPropertyDefinition) SET n.ap_level = 'AP243', n.ap_schema = 'AP243';
+MATCH (n:Classification) SET n.ap_level = 'AP243', n.ap_schema = 'AP243';
+MATCH (n:ValueType) SET n.ap_level = 'AP243', n.ap_schema = 'AP243';
 
 // ============================================================================
 // PHASE 5: CREATE SAMPLE AP239 DATA (Requirements Layer)
 // ============================================================================
 
 // Sample Requirement with version
-CREATE (req1:Requirement {
-    id: 'REQ-001',
-    name: 'Maximum Operating Temperature',
-    description: 'System shall operate continuously at temperatures up to 85°C',
-    type: 'Performance',
-    priority: 'High',
-    status: 'Approved',
-    ap_level: 1,
-    ap_schema: 'AP239',
-    created_at: datetime()
-});
+MERGE (req1:Requirement {id: 'REQ-001'})
+ON CREATE SET
+    req1.name = 'Maximum Operating Temperature',
+    req1.description = 'System shall operate continuously at temperatures up to 85°C',
+    req1.type = 'Performance',
+    req1.priority = 'High',
+    req1.status = 'Approved',
+    req1.ap_level = 'AP239',
+    req1.ap_schema = 'AP239',
+    req1.created_at = datetime();
 
-CREATE (reqv1:RequirementVersion {
-    name: 'Maximum Operating Temperature v1.2',
-    version: '1.2',
-    description: 'Updated thermal requirement with extended range',
-    status: 'Current',
-    ap_level: 1,
-    ap_schema: 'AP239',
-    created_at: datetime()
-});
+MERGE (reqv1:RequirementVersion {version: '1.2', name: 'Maximum Operating Temperature v1.2'})
+ON CREATE SET
+    reqv1.description = 'Updated thermal requirement with extended range',
+    reqv1.status = 'Current',
+    reqv1.ap_level = 'AP239',
+    reqv1.ap_schema = 'AP239',
+    reqv1.created_at = datetime();
 
 // Sample Analysis
-CREATE (ana1:Analysis {
-    name: 'Thermal Analysis - Steady State',
-    type: 'ThermalSimulation',
-    method: 'Finite Element Method',
-    status: 'Completed',
-    ap_level: 1,
-    ap_schema: 'AP239',
-    created_at: datetime()
-});
+MERGE (ana1:Analysis {name: 'Thermal Analysis - Steady State'})
+ON CREATE SET
+    ana1.type = 'ThermalSimulation',
+    ana1.method = 'Finite Element Method',
+    ana1.status = 'Completed',
+    ana1.ap_level = 'AP239',
+    ana1.ap_schema = 'AP239',
+    ana1.created_at = datetime();
 
-CREATE (model1:AnalysisModel {
-    name: 'Thermal FEM Model - Rev A',
-    mesh_size: 5000,
-    solver: 'ANSYS Mechanical',
-    ap_level: 1,
-    ap_schema: 'AP239'
-});
+MERGE (model1:AnalysisModel {name: 'Thermal FEM Model - Rev A'})
+ON CREATE SET
+    model1.mesh_size = 5000,
+    model1.solver = 'ANSYS Mechanical',
+    model1.ap_level = 'AP239',
+    model1.ap_schema = 'AP239';
 
 // Sample Approval
-CREATE (appr1:Approval {
-    name: 'Design Review Board Approval',
-    status: 'Approved',
-    approved_by: 'Engineering Director',
-    approval_date: date('2024-01-15'),
-    ap_level: 1,
-    ap_schema: 'AP239'
-});
+MERGE (appr1:Approval {name: 'Design Review Board Approval'})
+ON CREATE SET
+    appr1.status = 'Approved',
+    appr1.approved_by = 'Engineering Director',
+    appr1.approval_date = date('2024-01-15'),
+    appr1.ap_level = 'AP239',
+    appr1.ap_schema = 'AP239';
 
 // Sample Document
-CREATE (doc1:Document {
-    name: 'System Requirements Specification',
-    document_id: 'SRS-2024-001',
-    version: '2.0',
-    type: 'Specification',
-    ap_level: 1,
-    ap_schema: 'AP239'
-});
+MERGE (doc1:Document {name: 'System Requirements Specification'})
+ON CREATE SET
+    doc1.document_id = 'SRS-2024-001',
+    doc1.version = '2.0',
+    doc1.type = 'Specification',
+    doc1.ap_level = 'AP239',
+    doc1.ap_schema = 'AP239';
 
 // ============================================================================
 // PHASE 6: CREATE SAMPLE AP242 DATA (Engineering Layer)
 // ============================================================================
 
 // Sample Part
-CREATE (part1:Part {
-    id: 'PRT-1001',
-    name: 'Heat Sink Assembly',
-    description: 'Aluminum heat sink with thermal interface',
-    part_number: 'HS-AL-500',
-    status: 'Released',
-    ap_level: 2,
-    ap_schema: 'AP242',
-    created_at: datetime()
-});
+MERGE (part1:Part {id: 'PRT-1001'})
+ON CREATE SET
+    part1.name = 'Heat Sink Assembly',
+    part1.description = 'Aluminum heat sink with thermal interface',
+    part1.part_number = 'HS-AL-500',
+    part1.status = 'Released',
+    part1.ap_level = 'AP242',
+    part1.ap_schema = 'AP242',
+    part1.created_at = datetime();
 
-CREATE (partv1:PartVersion {
-    name: 'Heat Sink Assembly Rev B',
-    version: 'B',
-    status: 'Current',
-    ap_level: 2,
-    ap_schema: 'AP242'
-});
+MERGE (partv1:PartVersion {version: 'B', name: 'Heat Sink Assembly Rev B'})
+ON CREATE SET
+    partv1.status = 'Current',
+    partv1.ap_level = 'AP242',
+    partv1.ap_schema = 'AP242';
 
 // Sample Assembly
-CREATE (asm1:Assembly {
-    name: 'Cooling System Assembly',
-    assembly_type: 'Mechanical',
-    component_count: 5,
-    ap_level: 2,
-    ap_schema: 'AP242'
-});
+MERGE (asm1:Assembly {name: 'Cooling System Assembly'})
+ON CREATE SET
+    asm1.assembly_type = 'Mechanical',
+    asm1.component_count = 5,
+    asm1.ap_level = 'AP242',
+    asm1.ap_schema = 'AP242';
 
 // Sample Geometric Model
-CREATE (geo1:GeometricModel {
-    name: 'Heat Sink CAD Model',
-    model_type: 'Solid',
-    units: 'millimeters',
-    ap_level: 2,
-    ap_schema: 'AP242'
-});
+MERGE (geo1:GeometricModel {name: 'Heat Sink CAD Model'})
+ON CREATE SET
+    geo1.model_type = 'Solid',
+    geo1.units = 'millimeters',
+    geo1.ap_level = 'AP242',
+    geo1.ap_schema = 'AP242';
 
-CREATE (shape1:ShapeRepresentation {
-    name: 'Heat Sink External Shape',
-    representation_type: 'BRep',
-    ap_level: 2,
-    ap_schema: 'AP242'
-});
+MERGE (shape1:ShapeRepresentation {name: 'Heat Sink External Shape'})
+ON CREATE SET
+    shape1.representation_type = 'BRep',
+    shape1.ap_level = 'AP242',
+    shape1.ap_schema = 'AP242';
 
 // Sample Material
-CREATE (mat1:Material {
-    name: 'Aluminum 6061-T6',
-    material_type: 'Metal',
-    specification: 'ASTM B221',
-    ap_level: 2,
-    ap_schema: 'AP242'
-});
+MERGE (mat1:Material {name: 'Aluminum 6061-T6'})
+ON CREATE SET
+    mat1.material_type = 'Metal',
+    mat1.specification = 'ASTM B221',
+    mat1.ap_level = 'AP242',
+    mat1.ap_schema = 'AP242';
 
-CREATE (prop1:MaterialProperty {
-    name: 'Thermal Conductivity',
-    value: 167.0,
-    unit: 'W/(m·K)',
-    temperature: 20.0,
-    ap_level: 2,
-    ap_schema: 'AP242'
-});
+MERGE (prop1:MaterialProperty {name: 'Thermal Conductivity'})
+ON CREATE SET
+    prop1.value = 167.0,
+    prop1.unit = 'W/(m·K)',
+    prop1.temperature = 20.0,
+    prop1.ap_level = 'AP242',
+    prop1.ap_schema = 'AP242';
 
 // ============================================================================
 // PHASE 7: CREATE SAMPLE AP243 DATA (Reference Data Layer)
 // ============================================================================
 
 // Sample External Ontology Class
-CREATE (owl1:ExternalOwlClass {
-    name: 'ThermalMaterial',
-    ontology: 'EMMO (Elementary Multiperspective Material Ontology)',
-    uri: 'http://emmo.info/emmo#EMMO_ThermalMaterial',
-    description: 'Material with defined thermal properties',
-    ap_level: 3,
-    ap_schema: 'AP243'
-});
+MERGE (owl1:ExternalOwlClass {name: 'ThermalMaterial'})
+ON CREATE SET
+    owl1.ontology = 'EMMO (Elementary Multiperspective Material Ontology)',
+    owl1.uri = 'http://emmo.info/emmo#EMMO_ThermalMaterial',
+    owl1.description = 'Material with defined thermal properties',
+    owl1.ap_level = 'AP243',
+    owl1.ap_schema = 'AP243';
 
 // Sample External Unit
-CREATE (unit1:ExternalUnit {
-    name: 'Watt per meter Kelvin',
-    symbol: 'W/(m·K)',
-    unit_type: 'ThermalConductivity',
-    si_conversion: 1.0,
-    ap_level: 3,
-    ap_schema: 'AP243'
-});
+MERGE (unit1:ExternalUnit {symbol: 'W/(m·K)'})
+ON CREATE SET
+    unit1.name = 'Watt per meter Kelvin',
+    unit1.unit_type = 'ThermalConductivity',
+    unit1.si_conversion = 1.0,
+    unit1.ap_level = 'AP243',
+    unit1.ap_schema = 'AP243';
 
-CREATE (unit2:ExternalUnit {
-    name: 'Degree Celsius',
-    symbol: '°C',
-    unit_type: 'Temperature',
-    si_conversion: 1.0,
-    ap_level: 3,
-    ap_schema: 'AP243'
-});
+MERGE (unit2:ExternalUnit {symbol: '°C'})
+ON CREATE SET
+    unit2.name = 'Degree Celsius',
+    unit2.unit_type = 'Temperature',
+    unit2.si_conversion = 1.0,
+    unit2.ap_level = 'AP243',
+    unit2.ap_schema = 'AP243';
 
 // Sample Classification
-CREATE (class1:Classification {
-    name: 'Thermal Management Components',
-    classification_system: 'ISO 13584-501',
-    code: 'TMC-100',
-    ap_level: 3,
-    ap_schema: 'AP243'
-});
+MERGE (class1:Classification {name: 'Thermal Management Components'})
+ON CREATE SET
+    class1.classification_system = 'ISO 13584-501',
+    class1.code = 'TMC-100',
+    class1.ap_level = 'AP243',
+    class1.ap_schema = 'AP243';
 
 // Sample Value Type
-CREATE (vt1:ValueType {
-    name: 'TemperatureValue',
-    data_type: 'double',
-    unit_reference: 'degC',
-    ap_level: 3,
-    ap_schema: 'AP243'
-});
+MERGE (vt1:ValueType {name: 'TemperatureValue'})
+ON CREATE SET
+    vt1.data_type = 'double',
+    vt1.unit_reference = 'degC',
+    vt1.ap_level = 'AP243',
+    vt1.ap_schema = 'AP243';
 
 // ============================================================================
 // PHASE 8: CREATE AP239 INTERNAL RELATIONSHIPS
@@ -272,23 +252,23 @@ CREATE (vt1:ValueType {
 
 MATCH (req:Requirement {id: 'REQ-001'})
 MATCH (reqv:RequirementVersion {version: '1.2'})
-CREATE (req)-[:HAS_VERSION]->(reqv);
+MERGE (req)-[:HAS_VERSION]->(reqv);
 
 MATCH (req:Requirement {id: 'REQ-001'})
 MATCH (ana:Analysis {name: 'Thermal Analysis - Steady State'})
-CREATE (req)-[:VERIFIES]->(ana);
+MERGE (req)-[:VERIFIES]->(ana);
 
 MATCH (ana:Analysis {name: 'Thermal Analysis - Steady State'})
 MATCH (model:AnalysisModel {name: 'Thermal FEM Model - Rev A'})
-CREATE (ana)-[:USES_MODEL]->(model);
+MERGE (ana)-[:USES_MODEL]->(model);
 
 MATCH (req:Requirement {id: 'REQ-001'})
 MATCH (appr:Approval {name: 'Design Review Board Approval'})
-CREATE (req)-[:APPROVES]->(appr);
+MERGE (req)-[:APPROVES]->(appr);
 
 MATCH (req:Requirement {id: 'REQ-001'})
 MATCH (doc:Document {name: 'System Requirements Specification'})
-CREATE (doc)-[:DOCUMENTS]->(req);
+MERGE (doc)-[:DOCUMENTS]->(req);
 
 // ============================================================================
 // PHASE 9: CREATE AP242 INTERNAL RELATIONSHIPS
@@ -296,27 +276,27 @@ CREATE (doc)-[:DOCUMENTS]->(req);
 
 MATCH (part:Part {id: 'PRT-1001'})
 MATCH (partv:PartVersion {version: 'B'})
-CREATE (part)-[:HAS_VERSION]->(partv);
+MERGE (part)-[:HAS_VERSION]->(partv);
 
 MATCH (part:Part {id: 'PRT-1001'})
 MATCH (asm:Assembly {name: 'Cooling System Assembly'})
-CREATE (asm)-[:ASSEMBLES_WITH]->(part);
+MERGE (asm)-[:ASSEMBLES_WITH]->(part);
 
 MATCH (part:Part {id: 'PRT-1001'})
 MATCH (geo:GeometricModel {name: 'Heat Sink CAD Model'})
-CREATE (part)-[:HAS_GEOMETRY]->(geo);
+MERGE (part)-[:HAS_GEOMETRY]->(geo);
 
 MATCH (geo:GeometricModel {name: 'Heat Sink CAD Model'})
 MATCH (shape:ShapeRepresentation {name: 'Heat Sink External Shape'})
-CREATE (geo)-[:HAS_REPRESENTATION]->(shape);
+MERGE (geo)-[:HAS_REPRESENTATION]->(shape);
 
 MATCH (part:Part {id: 'PRT-1001'})
 MATCH (mat:Material {name: 'Aluminum 6061-T6'})
-CREATE (part)-[:USES_MATERIAL]->(mat);
+MERGE (part)-[:USES_MATERIAL]->(mat);
 
 MATCH (mat:Material {name: 'Aluminum 6061-T6'})
 MATCH (prop:MaterialProperty {name: 'Thermal Conductivity'})
-CREATE (mat)-[:HAS_PROPERTY]->(prop);
+MERGE (mat)-[:HAS_PROPERTY]->(prop);
 
 // ============================================================================
 // PHASE 10: CREATE AP243 INTERNAL RELATIONSHIPS
@@ -324,19 +304,19 @@ CREATE (mat)-[:HAS_PROPERTY]->(prop);
 
 MATCH (mat:Material {name: 'Aluminum 6061-T6'})
 MATCH (owl:ExternalOwlClass {name: 'ThermalMaterial'})
-CREATE (mat)-[:CLASSIFIED_AS]->(owl);
+MERGE (mat)-[:CLASSIFIED_AS]->(owl);
 
 MATCH (prop:MaterialProperty {name: 'Thermal Conductivity'})
 MATCH (unit:ExternalUnit {symbol: 'W/(m·K)'})
-CREATE (prop)-[:HAS_UNIT]->(unit);
+MERGE (prop)-[:HAS_UNIT]->(unit);
 
 MATCH (part:Part {id: 'PRT-1001'})
 MATCH (class:Classification {name: 'Thermal Management Components'})
-CREATE (part)-[:CLASSIFIED_AS]->(class);
+MERGE (part)-[:CLASSIFIED_AS]->(class);
 
 MATCH (prop:MaterialProperty {name: 'Thermal Conductivity'})
 MATCH (vt:ValueType {name: 'TemperatureValue'})
-CREATE (prop)-[:HAS_VALUE_TYPE]->(vt);
+MERGE (prop)-[:HAS_VALUE_TYPE]->(vt);
 
 // ============================================================================
 // PHASE 11: CREATE CROSS-LEVEL RELATIONSHIPS (AP239 → AP242 → AP243)
@@ -345,32 +325,32 @@ CREATE (prop)-[:HAS_VALUE_TYPE]->(vt);
 // Requirement → Part (Level 1 → Level 2)
 MATCH (req:Requirement {id: 'REQ-001'})
 MATCH (part:Part {id: 'PRT-1001'})
-CREATE (req)-[:SATISFIED_BY_PART]->(part);
+MERGE (req)-[:SATISFIED_BY_PART]->(part);
 
 // Analysis → Material (Level 1 → Level 2)
 MATCH (ana:Analysis {name: 'Thermal Analysis - Steady State'})
 MATCH (mat:Material {name: 'Aluminum 6061-T6'})
-CREATE (ana)-[:ANALYZED_BY_MODEL {notes: 'Thermal conductivity validated'}]->(mat);
+MERGE (ana)-[:ANALYZED_BY_MODEL {notes: 'Thermal conductivity validated'}]->(mat);
 
 // Approval → PartVersion (Level 1 → Level 2)
 MATCH (appr:Approval {name: 'Design Review Board Approval'})
 MATCH (partv:PartVersion {version: 'B'})
-CREATE (appr)-[:APPROVED_FOR_VERSION]->(partv);
+MERGE (appr)-[:APPROVED_FOR_VERSION]->(partv);
 
 // Material → Ontology (Level 2 → Level 3)
 MATCH (mat:Material {name: 'Aluminum 6061-T6'})
 MATCH (owl:ExternalOwlClass {name: 'ThermalMaterial'})
-CREATE (mat)-[:MATERIAL_CLASSIFIED_AS]->(owl);
+MERGE (mat)-[:MATERIAL_CLASSIFIED_AS]->(owl);
 
 // MaterialProperty → Unit (Level 2 → Level 3)
 MATCH (prop:MaterialProperty {name: 'Thermal Conductivity'})
 MATCH (unit:ExternalUnit {symbol: 'W/(m·K)'})
-CREATE (prop)-[:USES_UNIT]->(unit);
+MERGE (prop)-[:USES_UNIT]->(unit);
 
 // Requirement → Unit (Level 1 → Level 3 - direct skip)
 MATCH (req:Requirement {id: 'REQ-001'})
 MATCH (unit:ExternalUnit {symbol: '°C'})
-CREATE (req)-[:REQUIREMENT_VALUE_TYPE {context: 'Temperature specification'}]->(unit);
+MERGE (req)-[:REQUIREMENT_VALUE_TYPE {context: 'Temperature specification'}]->(unit);
 
 // ============================================================================
 // PHASE 12: VALIDATION QUERIES
@@ -391,7 +371,7 @@ CREATE (req)-[:REQUIREMENT_VALUE_TYPE {context: 'Temperature specification'}]->(
 
 // Find complete traceability chains (AP239 → AP242 → AP243)
 // MATCH path = (req:Requirement)-[*1..3]->(part:Part)-[*1..3]->(owl:ExternalOwlClass)
-// WHERE req.ap_level = 1 AND part.ap_level = 2 AND owl.ap_level = 3
+// WHERE req.ap_level = 'AP239' AND part.ap_level = 'AP242' AND owl.ap_level = 'AP243'
 // RETURN req.name, part.name, owl.name, length(path) AS chain_length
 // LIMIT 5;
 

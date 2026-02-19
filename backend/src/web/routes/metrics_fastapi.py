@@ -1,10 +1,15 @@
 """
 System Metrics API (FastAPI)
-Endpoints for application metrics, monitoring, and health data
+Endpoints for application metrics, monitoring, and health data.
+
+All metrics are derived from real runtime state — no hardcoded / mock values.
 """
 
+from collections import deque
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
+import asyncio
+import threading
 import time
 import psutil
 
@@ -13,46 +18,129 @@ from loguru import logger
 
 from src.web.dependencies import get_api_key
 from src.web.services import get_neo4j_service
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 
 router = APIRouter()
 
-# Global metrics storage (in production, use Redis or Prometheus)
+# ---------------------------------------------------------------------------
+# Real in-process metrics tracking
+# ---------------------------------------------------------------------------
 _request_count = 0
 _error_count = 0
 _start_time = time.time()
+_response_times: deque = deque(maxlen=500)       # last 500 response-time samples (ms)
+_response_times_lock = threading.Lock()
+
+# History ring-buffer: one snapshot per minute, keep 24 h worth
+_MAX_HISTORY = 1440
+_history: deque = deque(maxlen=_MAX_HISTORY)
+_history_lock = threading.Lock()
 
 
-def get_cache_metrics() -> Dict[str, Any]:
-    """Get cache performance metrics from React Query cache statistics"""
-    # In production, integrate with actual cache backend (Redis, etc.)
+def record_request(duration_ms: float, is_error: bool = False) -> None:
+    """Call from middleware / route wrappers to record a request."""
+    global _request_count, _error_count
+    _request_count += 1
+    if is_error:
+        _error_count += 1
+    with _response_times_lock:
+        _response_times.append(duration_ms)
+
+
+def _snapshot_metrics() -> Dict[str, Any]:
+    """Capture a lightweight metrics snapshot (used by history sampler)."""
+    cpu = psutil.cpu_percent(interval=0)
+    mem = psutil.virtual_memory()
+    # Calculate avg response time from recent samples
+    with _response_times_lock:
+        avg_rt = round(sum(_response_times) / len(_response_times), 2) if _response_times else 0
+    # Calculate error rate
+    error_rate = round((_error_count / _request_count) * 100, 2) if _request_count > 0 else 0
     return {
-        "hit_rate": 0.87,  # 87% cache hit rate
-        "miss_rate": 0.13,
-        "total_requests": 3421,
-        "hits": 2976,
-        "misses": 445,
-        "evictions": 12,
-        "size_mb": 24.5,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "cpu": cpu,
+        "memory_mb": mem.used / (1024 * 1024),
+        "memory_percent": mem.percent,
+        "api_requests": _request_count,
+        "avg_response_time_ms": avg_rt,
+        "error_rate": error_rate,
+    }
+
+
+def _history_sampler() -> None:
+    """Background thread that appends one snapshot per minute."""
+    while True:
+        try:
+            snap = _snapshot_metrics()
+            with _history_lock:
+                _history.append(snap)
+        except Exception:
+            pass
+        time.sleep(60)
+
+
+# Start the sampler thread once on import
+_sampler_thread = threading.Thread(target=_history_sampler, daemon=True)
+_sampler_thread.start()
+
+
+# ---------------------------------------------------------------------------
+# Metric collector functions
+# ---------------------------------------------------------------------------
+
+async def get_cache_metrics() -> Dict[str, Any]:
+    """Get cache performance metrics from the real QueryCache (Redis-backed)."""
+    try:
+        from src.web.container import ServiceContainer
+        qc = ServiceContainer.instance().query_cache
+        if qc and getattr(qc, "enabled", False):
+            stats = await qc.get_statistics()
+            return {
+                "source": "redis",
+                "hit_rate": round(stats.get("hit_rate_percent", 0) / 100, 4),
+                "miss_rate": round(1 - stats.get("hit_rate_percent", 0) / 100, 4),
+                "total_requests": stats.get("total_requests", 0),
+                "hits": stats.get("hits", 0),
+                "misses": stats.get("misses", 0),
+                "cached_queries": stats.get("cached_queries", 0),
+                "redis_memory": stats.get("redis_memory_used", "unknown"),
+            }
+    except Exception as exc:
+        logger.debug(f"Cache metrics unavailable: {exc}")
+
+    # Fallback: no cache backend configured
+    return {
+        "source": "none",
+        "hit_rate": 0,
+        "miss_rate": 0,
+        "total_requests": 0,
+        "hits": 0,
+        "misses": 0,
+        "note": "No cache backend configured (Redis disabled)",
     }
 
 
 def get_api_metrics() -> Dict[str, Any]:
-    """Get API request metrics"""
+    """Get API request metrics from real in-process counters."""
     global _request_count, _error_count, _start_time
     uptime_seconds = time.time() - _start_time
+
+    with _response_times_lock:
+        avg_rt = (sum(_response_times) / len(_response_times)) if _response_times else 0
+        sample_count = len(_response_times)
 
     return {
         "total_requests": _request_count,
         "error_count": _error_count,
         "success_rate": (_request_count - _error_count) / max(_request_count, 1),
-        "requests_per_second": _request_count / max(uptime_seconds, 1),
-        "avg_response_time_ms": 127.5,
+        "requests_per_second": round(_request_count / max(uptime_seconds, 1), 2),
+        "avg_response_time_ms": round(avg_rt, 2),
+        "response_time_samples": sample_count,
     }
 
 
 def get_database_metrics() -> Dict[str, Any]:
-    """Get Neo4j database metrics"""
+    """Get Neo4j database metrics from the driver."""
     try:
         neo4j = get_neo4j_service()
 
@@ -64,12 +152,24 @@ def get_database_metrics() -> Dict[str, Any]:
         result = neo4j.execute_query("MATCH ()-[r]->() RETURN count(r) as count")
         rel_count = result[0]["count"] if result else 0
 
+        # Real connection pool info from the Neo4j driver
+        driver = getattr(neo4j, "driver", None)
+        active_connections: int = 0
+        if driver is not None:
+            try:
+                pool = getattr(driver, "_pool", None)
+                if pool is not None:
+                    raw = getattr(pool, "in_use_connection_count", 0)
+                    # The pool attribute may be a counter object; coerce to int
+                    active_connections = int(raw) if isinstance(raw, (int, float)) else 0
+            except Exception:
+                pass
+
         return {
             "connected": True,
             "node_count": node_count,
             "relationship_count": rel_count,
-            "avg_query_time_ms": 45.2,
-            "active_connections": 3,
+            "active_connections": active_connections,
         }
     except Exception as e:
         logger.error(f"Error getting database metrics: {e}")
@@ -116,7 +216,7 @@ async def get_metrics_summary(api_key: str = Depends(get_api_key)):
     try:
         summary = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
-            "cache": get_cache_metrics(),
+            "cache": await get_cache_metrics(),
             "api": get_api_metrics(),
             "database": get_database_metrics(),
             "system": get_system_metrics(),
@@ -139,6 +239,9 @@ async def get_metrics_history(
     """
     Get time-series metrics data for graphing.
 
+    Data is collected from a real background sampler (one snapshot / minute).
+    Available history depends on server uptime (max 24 h in-memory).
+
     Query Parameters:
         window: Time window (1h, 6h, 24h, 7d, 30d)
         metric: Specific metric to retrieve (cpu, memory, api_requests, cache_hit_rate)
@@ -146,54 +249,48 @@ async def get_metrics_history(
     Returns:
         {
             "window": "1h",
+            "metric": "cpu",
             "interval": "1m",
-            "datapoints": [
-                {
-                    "timestamp": "2025-01-15T10:00:00Z",
-                    "value": 45.2
-                },
-                ...
-            ]
+            "count": 42,
+            "datapoints": [ { "timestamp": ..., "value": ... }, ... ]
         }
     """
     try:
-        # Parse window
+        # Parse window to minutes
         window_map = {"1h": 60, "6h": 360, "24h": 1440, "7d": 10080, "30d": 43200}
         minutes = window_map.get(window, 60)
 
-        # Generate mock time-series data
-        # In production, pull from Prometheus or time-series database
-        now = datetime.utcnow()
-        interval_minutes = max(1, minutes // 60)  # Sample every minute for 1h
+        cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+        cutoff_iso = cutoff.isoformat() + "Z"
+
+        metric_key_map = {
+            "cpu": "cpu",
+            "memory": "memory_mb",
+            "api_requests": "api_requests",
+            "cache_hit_rate": None,  # not tracked per-minute yet
+        }
+        key = metric_key_map.get(metric)
 
         datapoints = []
-        for i in range(60):  # 60 data points
-            timestamp = now - timedelta(minutes=i * interval_minutes)
-
-            # Generate realistic mock values
-            if metric == "cpu":
-                value = 35 + (i % 20) + (i // 10) * 5
-            elif metric == "memory":
-                value = 2400 + (i % 100) + (i // 5) * 20
-            elif metric == "api_requests":
-                value = 50 + (i % 30)
-            elif metric == "cache_hit_rate":
-                value = 0.82 + (i % 10) * 0.01
-            else:
-                value = 0
-
-            datapoints.append(
-                {"timestamp": timestamp.isoformat() + "Z", "value": value}
-            )
-
-        datapoints.reverse()  # Oldest to newest
+        with _history_lock:
+            for snap in _history:
+                if snap["timestamp"] >= cutoff_iso and key and key in snap:
+                    dp = {"timestamp": snap["timestamp"], "value": snap[key]}
+                    # Always include latency + error rate so charts can use them
+                    if "avg_response_time_ms" in snap:
+                        dp["latency"] = snap["avg_response_time_ms"]
+                    if "error_rate" in snap:
+                        dp["errors"] = snap["error_rate"]
+                    datapoints.append(dp)
 
         return {
             "window": window,
             "metric": metric,
-            "interval": f"{interval_minutes}m",
+            "interval": "1m",
             "count": len(datapoints),
             "datapoints": datapoints,
+            "note": "Real sampled data. History limited to server uptime (max 24 h in-memory)."
+                    if datapoints else "No history yet — data is collected once per minute after server start.",
         }
 
     except Exception as e:

@@ -374,7 +374,7 @@ const RequirementsDashboard = () => {
           status: statusFilter,
           priority: priorityFilter,
           search: debouncedSearchQuery
-        }} /></CardHeader><CardContent><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><div className="relative"><Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search requirements..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8" /></div><Select value={typeFilter} onValueChange={setTypeFilter}><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger><SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="Performance">Performance</SelectItem><SelectItem value="Functional">Functional</SelectItem><SelectItem value="Safety">Safety</SelectItem><SelectItem value="Interface">Interface</SelectItem></SelectContent></Select><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Draft">Draft</SelectItem><SelectItem value="Approved">Approved</SelectItem><SelectItem value="Obsolete">Obsolete</SelectItem></SelectContent></Select><Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All Priorities</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Low">Low</SelectItem></SelectContent></Select></div></CardContent></Card><Tabs defaultValue="requirements" className="w-full"><TabsList><TabsTrigger value="requirements">Requirements List</TabsTrigger><TabsTrigger value="traceability">Traceability Matrix</TabsTrigger></TabsList><TabsContent value="requirements"><Card><CardHeader><CardTitle>Requirements ({requirements.length})</CardTitle></CardHeader><CardContent>{loadingRequirements ? <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div> : requirements.length === 0 ? <div className="text-center py-8 text-muted-foreground">No requirements found. Try adjusting your filters.</div> : <><div className="rounded-md border">
+        }} /></CardHeader><CardContent><div className="grid grid-cols-1 md:grid-cols-4 gap-4"><div className="relative"><Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search requirements..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8" /></div><Select value={typeFilter} onValueChange={setTypeFilter}><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger><SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="Performance">Performance</SelectItem><SelectItem value="Functional">Functional</SelectItem><SelectItem value="Safety">Safety</SelectItem><SelectItem value="Interface">Interface</SelectItem></SelectContent></Select><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Draft">Draft</SelectItem><SelectItem value="Approved">Approved</SelectItem><SelectItem value="Implemented">Implemented</SelectItem><SelectItem value="Verified">Verified</SelectItem><SelectItem value="Obsolete">Obsolete</SelectItem></SelectContent></Select><Select value={priorityFilter} onValueChange={setPriorityFilter}><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All Priorities</SelectItem><SelectItem value="Critical">Critical</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Low">Low</SelectItem></SelectContent></Select></div></CardContent></Card><Tabs defaultValue="requirements" className="w-full"><TabsList><TabsTrigger value="requirements">Requirements List</TabsTrigger><TabsTrigger value="traceability">Traceability Matrix</TabsTrigger></TabsList><TabsContent value="requirements"><Card><CardHeader><CardTitle>Requirements ({requirements.length})</CardTitle></CardHeader><CardContent>{loadingRequirements ? <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div> : requirements.length === 0 ? <div className="text-center py-8 text-muted-foreground">No requirements found. Try adjusting your filters.</div> : <><div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         {table.getHeaderGroups().map(headerGroup => (
@@ -502,8 +502,7 @@ const RequirementsDashboard = () => {
                                 <SelectItem value="Low">Low</SelectItem>
                                 <SelectItem value="Medium">Medium</SelectItem>
                                 <SelectItem value="High">High</SelectItem>
-                                <SelectItem value="Critical">Critical</SelectItem>
-                            </SelectContent>
+                                <SelectItem value="Critical">Critical</SelectItem>                                <SelectItem value="Critical">Critical</SelectItem>                            </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
@@ -519,8 +518,10 @@ const RequirementsDashboard = () => {
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent>
                                 <SelectItem value="Draft">Draft</SelectItem>
-                                <SelectItem value="Reviewed">Reviewed</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
+                                <SelectItem value="Implemented">Implemented</SelectItem>
+                                <SelectItem value="Verified">Verified</SelectItem>
+                                <SelectItem value="Obsolete">Obsolete</SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -595,8 +596,7 @@ const RequirementsDashboard = () => {
                                 <SelectItem value="Low">Low</SelectItem>
                                 <SelectItem value="Medium">Medium</SelectItem>
                                 <SelectItem value="High">High</SelectItem>
-                                <SelectItem value="Critical">Critical</SelectItem>
-                            </SelectContent>
+                                <SelectItem value="Critical">Critical</SelectItem>                                <SelectItem value="Critical">Critical</SelectItem>                            </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
@@ -612,8 +612,10 @@ const RequirementsDashboard = () => {
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent>
                                 <SelectItem value="Draft">Draft</SelectItem>
-                                <SelectItem value="Reviewed">Reviewed</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
+                                <SelectItem value="Implemented">Implemented</SelectItem>
+                                <SelectItem value="Verified">Verified</SelectItem>
+                                <SelectItem value="Obsolete">Obsolete</SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />

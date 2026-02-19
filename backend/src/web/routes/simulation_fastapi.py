@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services import get_neo4j_service
 
 # ============================================================================
@@ -223,11 +223,11 @@ async def get_simulation_parameters(
             query += " WHERE " + " AND ".join(where_clauses)
 
         query += """
-        RETURN coalesce(p.id, p.uid, toString(id(p))) as id,
+        RETURN coalesce(p.id, p.uid, elementId(p)) as id,
                p.name as name,
                p.type as property_type,
                type.name as data_type,
-               coalesce(type.id, type.uid, (CASE WHEN type IS NULL THEN NULL ELSE toString(id(type)) END)) as type_id,
+               coalesce(type.id, type.uid, (CASE WHEN type IS NULL THEN NULL ELSE elementId(type) END)) as type_id,
                p.visibility as visibility,
                toString(p.lower) as multiplicity_lower,
                toString(p.upper) as multiplicity_upper,
@@ -237,9 +237,9 @@ async def get_simulation_parameters(
                p.isDerived as is_derived,
                p.isReadOnly as is_read_only,
                owner.name as owner_class,
-               coalesce(owner.id, owner.uid, (CASE WHEN owner IS NULL THEN NULL ELSE toString(id(owner)) END)) as owner_id,
+               coalesce(owner.id, owner.uid, (CASE WHEN owner IS NULL THEN NULL ELSE elementId(owner) END)) as owner_id,
                COLLECT(DISTINCT {
-                   id: coalesce(constraint.id, constraint.uid, (CASE WHEN constraint IS NULL THEN NULL ELSE toString(id(constraint)) END)),
+                   id: coalesce(constraint.id, constraint.uid, (CASE WHEN constraint IS NULL THEN NULL ELSE elementId(constraint) END)),
                    name: constraint.name,
                    body: constraint.body,
                    type: constraint.type
@@ -455,7 +455,7 @@ async def get_simulation_models(
         query = """
         MATCH (c:Class)-[:HAS_ATTRIBUTE]->(p:Property)
         OPTIONAL MATCH (p)-[:HAS_RULE]->(constraint:Constraint)
-        RETURN coalesce(c.id, c.uid, toString(id(c))) as id,
+        RETURN coalesce(c.id, c.uid, elementId(c)) as id,
                c.name as name,
                count(DISTINCT p) as parameter_count,
                count(DISTINCT constraint) as constraint_count
@@ -508,7 +508,7 @@ async def get_simulation_results(
 
         query = """
         MATCH (r:SimulationResult)
-        RETURN coalesce(r.id, r.uid, toString(id(r))) as id,
+        RETURN coalesce(r.id, r.uid, elementId(r)) as id,
                r.name as name,
                r.status as status,
                toString(r.created_on) as created_on,

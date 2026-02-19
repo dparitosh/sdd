@@ -46,32 +46,73 @@ export default function TraceabilityMatrix() {
     isLoading: traceLoading,
     refetch
   } = useQuery({
-    queryKey: ['traceability-all', requirements],
+    queryKey: ['traceability-all', requirements.map(r => r.uid).join(',')],
     queryFn: async () => {
+      const reqSlice = requirements.slice(0, 200);
+      const uids = reqSlice.map(r => r.uid).filter(Boolean);
+      if (uids.length === 0) return [];
+
+      // Use bulk endpoint if available, fall back to parallel batch
       const traces = [];
-      for (const req of requirements.slice(0, 50)) {
-        try {
-          const response = await apiService.requirements.getTraceability(req.uid);
-          const links = Array.isArray(response) ? response : (response.data || []);
-          links.forEach(link => {
-            traces.push({
-              requirement: {
-                uid: req.uid,
-                name: req.name,
-                status: req.status
-              },
-              target: {
-                uid: link.target?.uid || link.uid,
-                name: link.target?.name || link.name,
-                type: link.target?.type || link.type || 'Unknown'
-              },
-              relationship: link.relationship || 'traces',
-              satisfied: link.satisfied !== false
+      try {
+        if (apiService.ap239?.getBulkRequirementTraceability) {
+          const bulkResponse = await apiService.ap239.getBulkRequirementTraceability(uids);
+          const bulkData = Array.isArray(bulkResponse) ? bulkResponse : (bulkResponse.data || []);
+          const reqByUid = Object.fromEntries(reqSlice.map(r => [r.uid, r]));
+          bulkData.forEach(item => {
+            const req = reqByUid[item.requirement_uid || item.uid];
+            const links = Array.isArray(item.links) ? item.links : (item.traces || []);
+            links.forEach(link => {
+              traces.push({
+                requirement: {
+                  uid: req?.uid || item.requirement_uid,
+                  name: req?.name || item.name,
+                  status: req?.status || 'Unknown'
+                },
+                target: {
+                  uid: link.target?.uid || link.uid,
+                  name: link.target?.name || link.name,
+                  type: link.target?.type || link.type || 'Unknown'
+                },
+                relationship: link.relationship || 'traces',
+                satisfied: link.satisfied !== false
+              });
             });
           });
-        } catch (error) {
-          logger.error(`Failed to fetch traceability for ${req.uid}:`, error);
+        } else {
+          // Fallback: parallel batch (up to 10 concurrent)
+          const batchSize = 10;
+          for (let i = 0; i < reqSlice.length; i += batchSize) {
+            const batch = reqSlice.slice(i, i + batchSize);
+            const results = await Promise.allSettled(
+              batch.map(req => apiService.requirements.getTraceability(req.uid))
+            );
+            results.forEach((result, idx) => {
+              if (result.status !== 'fulfilled') return;
+              const links = Array.isArray(result.value) ? result.value : (result.value?.data || []);
+              const req = batch[idx];
+              links.forEach(link => {
+                traces.push({
+                  requirement: {
+                    uid: req.uid,
+                    name: req.name,
+                    status: req.status
+                  },
+                  target: {
+                    uid: link.target?.uid || link.uid,
+                    name: link.target?.name || link.name,
+                    type: link.target?.type || link.type || 'Unknown'
+                  },
+                  relationship: link.relationship || 'traces',
+                  satisfied: link.satisfied !== false
+                });
+              });
+            });
+          }
         }
+      } catch (error) {
+        logger.error('Failed to fetch traceability data:', error);
+        toast.error('Some traceability data could not be loaded');
       }
       return traces;
     },

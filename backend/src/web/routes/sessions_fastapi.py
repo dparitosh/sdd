@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 from src.web.middleware.jwt_middleware import (
     get_current_user_from_request,
     require_role,

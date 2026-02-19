@@ -26,6 +26,7 @@ import {
   Workflow,
   Boxes,
   Sparkles,
+  Share2,
 } from 'lucide-react';
 
 const navigationGroups = [
@@ -57,8 +58,15 @@ const navigationGroups = [
         name: 'Graph Explorer',
         href: '/graph',
         icon: Network,
+        badge: 'Unified',
+        description: 'Multi-view graph visualization',
+      },
+      {
+        name: 'Advanced Search',
+        href: '/search',
+        icon: Search,
         badge: null,
-        description: 'Interactive graph visualization',
+        description: 'Complex queries & filtering',
       },
       {
         name: 'Requirements Management',

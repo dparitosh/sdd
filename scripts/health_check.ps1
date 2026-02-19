@@ -48,7 +48,9 @@ if (-not $BackendUrl) {
     if ($env:API_BASE_URL) {
         $BackendUrl = $env:API_BASE_URL.TrimEnd('/')
     } elseif ($env:BACKEND_HOST -and $env:BACKEND_PORT) {
-        $BackendUrl = "http://$($env:BACKEND_HOST):$($env:BACKEND_PORT)"
+        # Replace 0.0.0.0 with 127.0.0.1 — 0.0.0.0 is not routable on Windows
+        $host_ = if ($env:BACKEND_HOST -eq '0.0.0.0') { '127.0.0.1' } else { $env:BACKEND_HOST }
+        $BackendUrl = "http://$($host_):$($env:BACKEND_PORT)"
     } else {
         throw "Missing BackendUrl. Set API_BASE_URL (recommended) or BACKEND_HOST and BACKEND_PORT in .env."
     }
@@ -58,7 +60,9 @@ if (-not $FrontendUrl) {
     if ($env:FRONTEND_URL) {
         $FrontendUrl = $env:FRONTEND_URL.TrimEnd('/')
     } elseif ($env:FRONTEND_HOST -and $env:FRONTEND_PORT) {
-        $FrontendUrl = "http://$($env:FRONTEND_HOST):$($env:FRONTEND_PORT)"
+        # Replace 0.0.0.0 with 127.0.0.1 — 0.0.0.0 is not routable on Windows
+        $fhost = if ($env:FRONTEND_HOST -eq '0.0.0.0') { '127.0.0.1' } else { $env:FRONTEND_HOST }
+        $FrontendUrl = "http://$($fhost):$($env:FRONTEND_PORT)"
     } else {
         throw "Missing FrontendUrl. Set FRONTEND_URL (recommended) or FRONTEND_HOST and FRONTEND_PORT in .env."
     }
@@ -118,7 +122,9 @@ try {
 # Check 3: Graph Data Endpoint
 Write-Host "[3/5] Checking Graph Data Endpoint..." -ForegroundColor Yellow
 try {
-    $response = Invoke-RestMethod -Uri "$BackendUrl/api/graph/node-types" -TimeoutSec 15 -ErrorAction Stop
+    $headers = @{}
+    if ($env:API_KEY) { $headers['X-API-Key'] = $env:API_KEY }
+    $response = Invoke-RestMethod -Uri "$BackendUrl/api/graph/node-types" -Headers $headers -TimeoutSec 15 -ErrorAction Stop
     $nodeTypes = $response.node_types
     if ($nodeTypes -and $nodeTypes.Count -gt 0) {
         Write-Host "      [PASS] Graph API working - Found $($nodeTypes.Count) node types" -ForegroundColor Green

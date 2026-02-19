@@ -54,6 +54,8 @@ export interface MetricsSummary {
 export interface MetricDatapoint {
   timestamp: string;
   value: number;
+  latency?: number;
+  errors?: number;
 }
 
 export interface MetricsHistory {

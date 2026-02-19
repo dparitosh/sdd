@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 from src.agents.orchestrator_workflow import execute_engineering_workflow
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 
 # ============================================================================
 # ROUTER CONFIGURATION

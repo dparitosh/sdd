@@ -1,6 +1,5 @@
 import i18n from '../i18n';
-
-const GRAPHQL_ENDPOINT = '/api/graphql';
+import { apiClient } from './api';
 
 type GraphQLError = {
   message: string;
@@ -11,38 +10,21 @@ type GraphQLResponse<T> = {
   errors?: GraphQLError[];
 };
 
+/**
+ * Execute a GraphQL request via the shared apiClient.
+ *
+ * Using apiClient ensures the JWT Bearer token and X-API-Key header are
+ * automatically injected by the axios request interceptor, and all error/
+ * retry logic from the response interceptor applies.
+ */
 export async function graphqlRequest<TData, TVariables extends Record<string, unknown> | undefined = undefined>(
   query: string,
   variables?: TVariables
 ): Promise<TData> {
-  const apiKey = import.meta.env.VITE_API_KEY;
+  const payload: GraphQLResponse<TData> = await apiClient.post('/graphql', { query, variables });
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (apiKey) {
-    headers['X-API-Key'] = apiKey;
-  }
-
-  const response = await fetch(GRAPHQL_ENDPOINT, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query, variables }),
-  });
-
-  const payload = (await response.json()) as GraphQLResponse<TData>;
-
-  if (!response.ok) {
-    if (!apiKey && (response.status === 401 || response.status === 403)) {
-      throw new Error(i18n.t('errors.apiKeyNotConfigured'));
-    }
-    const message = payload.errors?.[0]?.message || `GraphQL request failed (${response.status})`;
-    throw new Error(message);
-  }
-
-  if (payload.errors && payload.errors.length > 0) {
-    throw new Error(payload.errors[0].message);
+  if ((payload as any).errors && (payload as any).errors.length > 0) {
+    throw new Error((payload as any).errors[0].message);
   }
 
   if (!payload.data) {

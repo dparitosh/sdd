@@ -165,7 +165,7 @@ class XMIIngesterV2:
         if connection:
             self.conn = connection
         elif not dry_run:
-            load_dotenv()
+            load_dotenv(PROJECT_ROOT / ".env")
             config = Config()
             self.conn = Neo4jConnection(
                 uri=config.neo4j_uri,

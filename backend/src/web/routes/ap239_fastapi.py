@@ -14,7 +14,7 @@ from loguru import logger
 
 from src.web.services import get_neo4j_service
 from src.web.dependencies import get_api_key
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 
 router = APIRouter()
 

@@ -200,7 +200,7 @@ export const apiService = {
       logger.error(`Invalid parameters: type=${type}, id=${id}`);
       return Promise.reject(new Error('Type and ID are required'));
     }
-    return apiClient.get<any>(`/${type.toLowerCase()}/${encodeURIComponent(id)}`);
+    return apiClient.get<any>(`/artifacts/${type.toLowerCase()}/${encodeURIComponent(id)}`);
   },
 
   // Graph Visualization
@@ -210,7 +210,7 @@ export const apiService = {
      * @param params - Optional filter parameters (node_types, limit, etc.)
      * @returns Graph data object
      */
-    getData: (params?: { limit?: number; node_types?: string }) =>
+    getData: (params?: { limit?: number; node_types?: string; ap_level?: string }) =>
       apiClient.get<any>('/graph/data', { params }),
 
     /**
@@ -357,22 +357,46 @@ export const apiService = {
       apiClient.get<any>('/ap242/statistics'),
   },
 
-  // AP243 - Reference Data
+  // AP243 - Reference Data & Domain Model
   ap243: {
+    getOverview: () =>
+      apiClient.get<any>('/ap243/overview'),
+    getDomainClasses: (params?: { search?: string; stereotype?: string; is_abstract?: boolean; package?: string; skip?: number; limit?: number }) =>
+      apiClient.get<{ count: number; classes: any[] }>('/ap243/domain-classes', { params }),
+    getDomainClassDetail: (name: string) =>
+      apiClient.get<any>(`/ap243/domain-classes/${encodeURIComponent(name)}`),
+    domainSearch: (params: { q: string; node_type?: string; skip?: number; limit?: number }) =>
+      apiClient.get<{ count: number; results: any[] }>('/ap243/domain-search', { params }),
+    getPackages: () =>
+      apiClient.get<{ count: number; packages: any[] }>('/ap243/packages'),
+    getStereotypes: () =>
+      apiClient.get<{ count: number; stereotypes: any[] }>('/ap243/stereotypes'),
+    getOntologies: (params?: { ontology?: string; search?: string }) =>
+      apiClient.get<{ count: number; ontologies: any[] }>('/ap243/ontologies', { params }),
+    getOntologyDetail: (name: string) =>
+      apiClient.get<any>(`/ap243/ontologies/${encodeURIComponent(name)}`),
     getUnits: () =>
       apiClient.get<{ count: number; units: any[] }>('/ap243/units'),
     getUnit: (id: string) =>
       apiClient.get<any>(`/ap243/units/${encodeURIComponent(id)}`),
+    getValueTypes: () =>
+      apiClient.get<{ count: number; value_types: any[] }>('/ap243/value-types'),
+    getClassifications: (params?: { system?: string }) =>
+      apiClient.get<{ count: number; classifications: any[] }>('/ap243/classifications', { params }),
+    getStatistics: () =>
+      apiClient.get<any>('/ap243/statistics'),
   },
 
   // Hierarchy Navigation
   hierarchy: {
-    search: (params: { query: string; level?: number }) =>
+    search: (params: { q: string; levels?: string }) =>
       apiClient.get<any[]>('/hierarchy/search', { params }),
     getTraceabilityMatrix: () =>
       apiClient.get<{ count: number; matrix: any[] }>('/hierarchy/traceability-matrix'),
-    trace: (sourceType: string, sourceId: string) =>
-      apiClient.get<any>(`/hierarchy/trace/${encodeURIComponent(sourceType)}/${encodeURIComponent(sourceId)}`),
+    navigate: (nodeType: string, nodeId: string, params?: { depth?: number; direction?: string }) =>
+      apiClient.get<any>(`/hierarchy/navigate/${encodeURIComponent(nodeType)}/${encodeURIComponent(nodeId)}`, { params }),
+    impact: (nodeType: string, nodeId: string) =>
+      apiClient.get<any>(`/hierarchy/impact/${encodeURIComponent(nodeType)}/${encodeURIComponent(nodeId)}`),
   },
 
   // PLM Operations - Fixed paths to match backend implementation
@@ -432,8 +456,29 @@ export const apiService = {
   oslcClient: {
     connect: (providerData: { root_url: string; auth_type?: string; username?: string; password?: string }) =>
       apiClient.post<any>('/oslc/client/connect', providerData),
-    query: (params: { resource_url: string; properties?: string }) =>
-      apiClient.get<any>('/oslc/client/query', { params }),
+    query: (params: { provider_url: string; resource_type?: string; query?: string }) =>
+      apiClient.post<any>('/oslc/client/query', params),
+  },
+
+  // File Upload
+  upload: {
+    uploadFile: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return apiClient.post<{ job_id: string; status: string }>('/upload/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+    getStatus: (jobId: string) =>
+      apiClient.get<{ job_id: string; status: string; progress?: number; error?: string }>(`/upload/status/${encodeURIComponent(jobId)}`),
+    getJobs: () =>
+      apiClient.get<any[]>('/upload/jobs'),
+  },
+
+  // Cypher Query
+  query: {
+    executeCypher: (query: string, params?: Record<string, any>) =>
+      apiClient.post<any>('/cypher', { query, params }),
   },
 };
 

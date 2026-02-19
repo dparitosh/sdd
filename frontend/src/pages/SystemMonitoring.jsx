@@ -30,7 +30,7 @@ export default function SystemMonitoring() {
     apiRequestRate: Math.round(metricsSummary.api.requests_per_second * 60),
     p95Latency: metricsSummary.api.avg_response_time_ms,
     cacheHitRate: metricsSummary.cache.hit_rate * 100,
-    activeConnections: metricsSummary.database.active_connections || 0,
+    activeConnections: typeof metricsSummary.database.active_connections === 'number' ? metricsSummary.database.active_connections : 0,
     errorRate: (1 - metricsSummary.api.success_rate) * 100,
     neo4jQueryTime: metricsSummary.database.avg_query_time_ms || 0
   } : undefined;
@@ -41,11 +41,11 @@ export default function SystemMonitoring() {
     queryFn: () => getMetricsHistory('api_requests', '1h'),
     refetchInterval: 60000
   });
-  const historicalData = historicalMetrics?.datapoints.map(dp => ({
+  const historicalData = historicalMetrics?.datapoints?.map(dp => ({
     timestamp: new Date(dp.timestamp).toLocaleTimeString(),
-    requests: dp.value,
-    latency: dp.latency ?? metrics?.p95Latency ?? 0,
-    errors: dp.errors ?? metrics?.errorRate ?? 0
+    requests: typeof dp.value === 'number' ? dp.value : 0,
+    latency: typeof dp.latency === 'number' ? dp.latency : (metrics?.p95Latency ?? 0),
+    errors: typeof dp.errors === 'number' ? dp.errors : (metrics?.errorRate ?? 0)
   }));
   const metricCards = [{
     title: 'API Request Rate',

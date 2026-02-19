@@ -96,13 +96,31 @@ export default function AdvancedSearch({
     isLoading,
     refetch
   } = useQuery({
-    queryKey: ['artifacts', searchParams],
-    queryFn: () => apiService.searchArtifacts({
-      type: searchParams.type !== 'All' ? searchParams.type : undefined,
-      name: searchParams.name || undefined,
-      comment: searchParams.comment || undefined,
-      limit: 100
-    }),
+    queryKey: ['artifacts', searchParams, searchCriteria],
+    queryFn: () => {
+      // Build query params from the advanced search criteria
+      const params = {
+        type: searchParams.type !== 'All' ? searchParams.type : undefined,
+        limit: 100
+      };
+
+      // Extract name and comment filters from searchCriteria rows
+      for (const criterion of searchCriteria) {
+        if (criterion.value.trim()) {
+          if (criterion.property === 'name') {
+            params.name = criterion.value.trim();
+          } else if (criterion.property === 'comment') {
+            params.comment = criterion.value.trim();
+          }
+        }
+      }
+
+      // Also include top-level name/comment if set (backward compat)
+      if (searchParams.name) params.name = params.name || searchParams.name;
+      if (searchParams.comment) params.comment = params.comment || searchParams.comment;
+
+      return apiService.searchArtifacts(params);
+    },
     enabled: false
   });
   const handleSearch = () => {

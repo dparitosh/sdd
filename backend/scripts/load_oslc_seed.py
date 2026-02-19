@@ -39,20 +39,37 @@ def ingest_graph(neo4j, g: Graph, source_label: str):
     - rdfs:Class  → :OntologyClass node
     - rdf:Property → :OntologyProperty node
     - owl:Ontology → :Ontology node (metadata)
+    
+    Adds ap_level based on the namespace prefix of each term.
     """
     stats = {"classes": 0, "properties": 0, "ontologies": 0}
+
+    def _detect_ap_level(uri_str: str) -> str:
+        """Detect AP level from URI namespace."""
+        uri_lower = uri_str.lower()
+        if "ap239" in uri_lower:
+            return "AP239"
+        elif "ap242" in uri_lower:
+            return "AP242"
+        elif "ap243" in uri_lower or "mossec" in uri_lower:
+            return "AP243"
+        elif "open-services.net" in uri_lower:
+            return "AP243"  # OSLC core maps to foundation layer
+        return "AP243"  # Default
 
     for subj in g.subjects(RDF.type, OWL.Ontology):
         title = str(g.value(subj, DCTERMS.title) or str(subj))
         desc = str(g.value(subj, DCTERMS.description) or "")
+        ap_level = _detect_ap_level(str(subj))
         neo4j.execute_query(
             """
             MERGE (o:Ontology {uri: $uri})
             SET o.title = $title,
                 o.description = $desc,
-                o.source = $source
+                o.source = $source,
+                o.ap_level = $ap_level
             """,
-            {"uri": str(subj), "title": title, "desc": desc, "source": source_label},
+            {"uri": str(subj), "title": title, "desc": desc, "source": source_label, "ap_level": ap_level},
         )
         stats["ontologies"] += 1
 
@@ -60,13 +77,18 @@ def ingest_graph(neo4j, g: Graph, source_label: str):
         label = str(g.value(subj, RDFS.label) or str(subj).split("#")[-1].split("/")[-1])
         comment = str(g.value(subj, RDFS.comment) or "")
         defined_by = str(g.value(subj, RDFS.isDefinedBy) or "")
+        ap_level = _detect_ap_level(str(subj))
+        # Check for rdfs:subClassOf
+        superclass = str(g.value(subj, RDFS.subClassOf) or "")
         neo4j.execute_query(
             """
             MERGE (c:OntologyClass {uri: $uri})
             SET c.label = $label,
                 c.comment = $comment,
                 c.definedBy = $defined_by,
-                c.source = $source
+                c.source = $source,
+                c.ap_level = $ap_level,
+                c.superclass = $superclass
             """,
             {
                 "uri": str(subj),
@@ -74,6 +96,8 @@ def ingest_graph(neo4j, g: Graph, source_label: str):
                 "comment": comment,
                 "defined_by": defined_by,
                 "source": source_label,
+                "ap_level": ap_level,
+                "superclass": superclass,
             },
         )
         stats["classes"] += 1
@@ -82,13 +106,15 @@ def ingest_graph(neo4j, g: Graph, source_label: str):
         label = str(g.value(subj, RDFS.label) or str(subj).split("#")[-1].split("/")[-1])
         comment = str(g.value(subj, RDFS.comment) or "")
         defined_by = str(g.value(subj, RDFS.isDefinedBy) or "")
+        ap_level = _detect_ap_level(str(subj))
         neo4j.execute_query(
             """
             MERGE (p:OntologyProperty {uri: $uri})
             SET p.label = $label,
                 p.comment = $comment,
                 p.definedBy = $defined_by,
-                p.source = $source
+                p.source = $source,
+                p.ap_level = $ap_level
             """,
             {
                 "uri": str(subj),
@@ -96,6 +122,7 @@ def ingest_graph(neo4j, g: Graph, source_label: str):
                 "comment": comment,
                 "defined_by": defined_by,
                 "source": source_label,
+                "ap_level": ap_level,
             },
         )
         stats["properties"] += 1

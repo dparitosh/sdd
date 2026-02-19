@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 import time
 
 from src.web.services import get_neo4j_service
-from src.web.app_fastapi import Neo4jJSONResponse, limiter
+from src.web.utils.responses import Neo4jJSONResponse
+from src.web.utils.rate_limit import limiter
 from src.web.dependencies import get_api_key
 
 router = APIRouter()
@@ -404,6 +405,12 @@ async def get_artifacts(
     type: Optional[str] = Query(
         None, description="Filter by artifact type (Class, Package, etc.)"
     ),
+    name: Optional[str] = Query(
+        None, description="Filter by name (case-insensitive substring match)"
+    ),
+    comment: Optional[str] = Query(
+        None, description="Filter by comment (case-insensitive substring match)"
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     api_key: str = Depends(get_api_key),
 ):
@@ -412,6 +419,8 @@ async def get_artifacts(
 
     Args:
         type: Optional filter by artifact type (Class, Package, Property, etc.)
+        name: Optional filter by name (case-insensitive contains)
+        comment: Optional filter by comment (case-insensitive contains)
         limit: Maximum number of results (default: 100, max: 1000)
         api_key: API key for authentication
 
@@ -424,32 +433,36 @@ async def get_artifacts(
     try:
         neo4j = get_neo4j_service()
 
+        # Build dynamic WHERE clauses
+        where_clauses = ["n.name IS NOT NULL"]
+        params: dict = {"limit": limit}
+
         if type:
-            # Filter by specific type
-            query = """
-            MATCH (n)
-            WHERE $type IN labels(n) AND n.name IS NOT NULL
-            RETURN coalesce(n.id, toString(id(n))) AS id,
-                   n.name AS name,
-                   labels(n)[0] AS type,
-                   n.comment AS comment
-            ORDER BY n.name
-            LIMIT $limit
-            """
-            result = neo4j.execute_query(query, {"type": type, "limit": limit})
-        else:
-            # Get all artifacts
-            query = """
-            MATCH (n)
-            WHERE n.name IS NOT NULL
-            RETURN coalesce(n.id, toString(id(n))) AS id,
-                   n.name AS name,
-                   labels(n)[0] AS type,
-                   n.comment AS comment
-            ORDER BY labels(n)[0], n.name
-            LIMIT $limit
-            """
-            result = neo4j.execute_query(query, {"limit": limit})
+            where_clauses.append("$type IN labels(n)")
+            params["type"] = type
+
+        if name:
+            where_clauses.append("toLower(n.name) CONTAINS toLower($name)")
+            params["name"] = name
+
+        if comment:
+            where_clauses.append("toLower(coalesce(n.comment, '')) CONTAINS toLower($comment)")
+            params["comment"] = comment
+
+        where_str = " AND ".join(where_clauses)
+        order_by = "n.name" if type else "labels(n)[0], n.name"
+
+        query = f"""
+        MATCH (n)
+        WHERE {where_str}
+        RETURN coalesce(n.id, elementId(n)) AS id,
+               n.name AS name,
+               labels(n)[0] AS type,
+               n.comment AS comment
+        ORDER BY {order_by}
+        LIMIT $limit
+        """
+        result = neo4j.execute_query(query, params)
 
         artifacts = [
             {

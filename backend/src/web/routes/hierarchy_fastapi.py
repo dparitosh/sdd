@@ -11,7 +11,7 @@ from loguru import logger
 
 from src.web.services import get_neo4j_service
 from src.web.dependencies import get_api_key
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 
 router = APIRouter()
 
@@ -454,6 +454,19 @@ async def analyze_impact(
     """
     try:
         neo4j = get_neo4j_service()
+
+        # Validate node_type against whitelist to prevent Cypher injection
+        VALID_IMPACT_TYPES = {
+            "Requirement", "Part", "Class", "Package", "Property",
+            "Association", "Port", "Constraint", "Assembly", "Material",
+            "Document", "ModelInstance", "Study", "Component", "System",
+            "MBSEElement", "InstanceSpecification",
+        }
+        if node_type not in VALID_IMPACT_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid node type: {node_type}"
+            )
 
         id_prop = "id" if node_type in ["Requirement", "Part"] else "name"
 

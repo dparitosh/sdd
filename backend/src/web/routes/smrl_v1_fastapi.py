@@ -41,23 +41,10 @@ def _resolve_smrl_label(resource_type: str) -> str:
         )
     return node_label
 
-# Import sub-routers to include under /api/v1 for test compatibility
-try:
-    from src.web.routes.hierarchy_fastapi import router as hierarchy_router
-    from src.web.routes.plm_fastapi import router as plm_router
-    from src.web.routes.simulation_fastapi import router as simulation_router
-    from src.web.routes.export_fastapi import router as export_router
-    from src.web.routes.version_fastapi import router as version_router
-
-    # Include sub-routers (they have their own prefixes like /simulation, /export, etc.)
-    router.include_router(hierarchy_router, tags=["SMRL v1 - Hierarchy"])
-    router.include_router(plm_router, tags=["SMRL v1 - PLM"])
-    router.include_router(simulation_router, tags=["SMRL v1 - Simulation"])
-    router.include_router(export_router, tags=["SMRL v1 - Export"])
-    router.include_router(version_router, tags=["SMRL v1 - Version Control"])
-    logger.info("✓ Included sub-routers in SMRL v1 for /api/v1 compatibility")
-except Exception as e:
-    logger.warning(f"Could not include all sub-routers in SMRL v1: {e}")
+# NOTE: Sub-routers (hierarchy, plm, simulation, export, version) are
+# registered directly in app_fastapi.py under their canonical prefixes.
+# They were previously also included here, which caused every endpoint
+# to be duplicated under /api/v1.  Removed to eliminate the duplicates.
 
 
 # ============================================================================

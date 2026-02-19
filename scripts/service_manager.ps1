@@ -475,9 +475,11 @@ function Stop-Backend {
     
     if (Test-Path $backendProcessIdPath) {
         $procId = [int](Get-Content $backendProcessIdPath)
+        # Kill the process tree (uvicorn spawns worker processes)
+        Get-CimInstance Win32_Process -Filter "ParentProcessId=$procId" -ErrorAction SilentlyContinue | 
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
         Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
         Remove-Item $backendProcessIdPath -ErrorAction SilentlyContinue
-        Write-Host "[OK] Backend stopped" -ForegroundColor Green
     } else {
         # Try to find by port
         $netstat = netstat -ano 2>$null | Select-String ":$backendPort\s+.*LISTENING"
@@ -485,13 +487,28 @@ function Stop-Backend {
             $pids = $netstat | ForEach-Object { ($_ -split '\s+')[-1] } | Sort-Object -Unique
             foreach ($p in $pids) {
                 if ($p -match '^\d+$' -and [int]$p -gt 4) {
+                    # Kill child processes first
+                    Get-CimInstance Win32_Process -Filter "ParentProcessId=$p" -ErrorAction SilentlyContinue | 
+                        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
                     Stop-Process -Id ([int]$p) -Force -ErrorAction SilentlyContinue
                 }
             }
-            Write-Host "[OK] Backend stopped" -ForegroundColor Green
-        } else {
-            Write-Host "[OK] Backend was not running" -ForegroundColor Green
         }
+    }
+
+    # Verify port is freed (up to 5 seconds)
+    $freed = $false
+    for ($i = 0; $i -lt 10; $i++) {
+        if (-not (Test-PortListening -Port $backendPort)) {
+            $freed = $true
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if ($freed) {
+        Write-Host "[OK] Backend stopped" -ForegroundColor Green
+    } else {
+        Write-Host "[WARN] Backend stopped but port $backendPort may still be held by a dying process" -ForegroundColor Yellow
     }
 }
 

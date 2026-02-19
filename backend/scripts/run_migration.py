@@ -4,7 +4,19 @@ Execute AP239/AP242/AP243 migration script using Python Neo4j driver
 """
 
 import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
 from loguru import logger
+
+# Ensure `import src...` works when running from repo root.
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_ROOT = REPO_ROOT / "backend"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
+load_dotenv(REPO_ROOT / ".env")
+
 from src.web.services import get_neo4j_service
 
 
@@ -15,7 +27,7 @@ def execute_migration():
     neo4j = get_neo4j_service()
     
     # Read migration script
-    with open('scripts/migrate_to_ap_hierarchy.cypher', 'r') as f:
+    with open(BACKEND_ROOT / 'scripts' / 'migrate_to_ap_hierarchy.cypher', 'r', encoding='utf-8') as f:
         migration_script = f.read()
     
     # Split into individual statements (separated by semicolons)

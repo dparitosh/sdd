@@ -420,6 +420,13 @@ async def export_csv(
         neo4j = get_neo4j_service()
 
         if node_type:
+            # Validate node_type against whitelist to prevent Cypher injection
+            from src.web.routes.graph_fastapi import ALLOWED_NODE_TYPES
+            if node_type not in ALLOWED_NODE_TYPES:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid node_type: {node_type}. Must be one of: {', '.join(sorted(ALLOWED_NODE_TYPES))}"
+                )
             query = f"MATCH (n:{node_type}) RETURN properties(n) as props, labels(n)[0] as label LIMIT $limit"
         else:
             query = "MATCH (n) RETURN properties(n) as props, labels(n)[0] as label LIMIT $limit"

@@ -7,23 +7,49 @@ with the actual Neo4j graph schema (node types and relationships).
 """
 
 import json
+import os
+import sys
 from datetime import datetime
+from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 
-BASE_URL = "http://127.0.0.1:5000"
+# Ensure backend imports are available
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+BACKEND_ROOT = REPO_ROOT / "backend"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
+load_dotenv(REPO_ROOT / ".env")
+
+BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
+
+# Direct Neo4j connection for schema queries
+_neo4j_driver = None
+
+
+def _get_driver():
+    global _neo4j_driver
+    if _neo4j_driver is None:
+        from neo4j import GraphDatabase
+        uri = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7687")
+        user = os.getenv("NEO4J_USER", "neo4j")
+        password = os.getenv("NEO4J_PASSWORD", "")
+        _neo4j_driver = GraphDatabase.driver(uri, auth=(user, password))
+    return _neo4j_driver
 
 
 def query_neo4j(cypher_query, params=None):
-    """Execute Cypher query via REST API"""
-    response = requests.post(
-        f"{BASE_URL}/api/v1/query",
-        json={"query": cypher_query, "params": params or {}},
-        headers={"Content-Type": "application/json"},
-    )
-    if response.status_code == 200:
-        return response.json()["data"]
-    return None
+    """Execute Cypher query directly against Neo4j"""
+    db = os.getenv("NEO4J_DATABASE", "neo4j")
+    driver = _get_driver()
+    try:
+        records, _, _ = driver.execute_query(cypher_query, parameters_=params or {}, database_=db)
+        return [dict(r) for r in records]
+    except Exception as e:
+        print(f"  [query error] {e}")
+        return None
 
 
 def test_api_endpoint(endpoint, expected_keys=None):
@@ -56,8 +82,8 @@ def main():
     print("-" * 70)
 
     node_labels = query_neo4j("CALL db.labels() YIELD label RETURN label ORDER BY label")
-    if node_labels:
-        labels = [item["label"] for item in node_labels]
+    labels = [item["label"] for item in node_labels] if node_labels else []
+    if labels:
         print(f"✅ Node Types Found: {len(labels)}")
         for label in labels:
             count_result = query_neo4j(f"MATCH (n:{label}) RETURN count(n) AS count")
@@ -68,8 +94,8 @@ def main():
     rel_types = query_neo4j(
         "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType ORDER BY relationshipType"
     )
-    if rel_types:
-        relationships = [item["relationshipType"] for item in rel_types]
+    relationships = [item["relationshipType"] for item in rel_types] if rel_types else []
+    if relationships:
         print(f"✅ Relationship Types Found: {len(relationships)}")
         for rel in relationships:
             count_result = query_neo4j(f"MATCH ()-[r:{rel}]->() RETURN count(r) AS count")
@@ -181,24 +207,24 @@ def main():
 
     semantic_tests = [
         {
-            "name": "Class Inheritance (GENERALIZES)",
-            "query": "MATCH (c:Class)-[:GENERALIZES]->(parent:Class) RETURN count(*) AS count",
+            "name": "Class Inheritance (GENERALIZES_TO)",
+            "query": "MATCH (c:Class)-[:GENERALIZES_TO]->(parent:Class) RETURN count(*) AS count",
         },
         {
             "name": "Class Properties (HAS_ATTRIBUTE)",
             "query": "MATCH (c:Class)-[:HAS_ATTRIBUTE]->(p:Property) RETURN count(*) AS count",
         },
         {
-            "name": "Package Containment (CONTAINS)",
-            "query": "MATCH (pkg:Package)-[:CONTAINS]->(child) RETURN count(*) AS count",
+            "name": "Package Containment (OWNS)",
+            "query": "MATCH (pkg:Package)-[:OWNS]->(child) RETURN count(*) AS count",
         },
         {
             "name": "Property Typing (TYPED_BY)",
             "query": "MATCH (p:Property)-[:TYPED_BY]->(type) RETURN count(*) AS count",
         },
         {
-            "name": "Constraint Rules (HAS_RULE)",
-            "query": "MATCH (owner)-[:HAS_RULE]->(c:Constraint) RETURN count(*) AS count",
+            "name": "Constraints (CONTAINS)",
+            "query": "MATCH (owner)-[:CONTAINS]->(c:Constraint) RETURN count(*) AS count",
         },
     ]
 

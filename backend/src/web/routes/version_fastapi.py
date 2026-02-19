@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from src.web.app_fastapi import Neo4jJSONResponse
+from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services import get_neo4j_service
 
 # ============================================================================

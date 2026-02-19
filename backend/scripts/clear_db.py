@@ -36,7 +36,7 @@ def main() -> int:
         print("Refusing to clear database without --yes (safety guard).")
         return 2
 
-    load_dotenv()
+    load_dotenv(PROJECT_ROOT / ".env")
 
     from backend.src.graph.connection import Neo4jConnection
     from backend.src.utils.config import Config

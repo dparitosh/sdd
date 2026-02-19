@@ -49,6 +49,18 @@ const FILE_TYPES = [{
   icon: FileCode,
   color: 'text-red-500',
   desc: 'XML Schema Definition'
+}, {
+  ext: '.owl',
+  name: 'Ontology',
+  icon: FileCode,
+  color: 'text-pink-500',
+  desc: 'OWL/RDF/TTL Files'
+}, {
+  ext: '.stp',
+  name: 'STEP',
+  icon: Database,
+  color: 'text-teal-500',
+  desc: 'STEP AP242/AP243 (STP/STPX)'
 }];
 export default function DataImport() {
   const [isDragging, setIsDragging] = useState(false);
@@ -60,7 +72,7 @@ export default function DataImport() {
       formData.append('file', file);
       const response = await apiClient.post('/upload/', formData, {
         headers: {
-          'Content-Type': undefined
+          'Content-Type': 'multipart/form-data'
         }
       });
       return response;
@@ -231,7 +243,7 @@ export default function DataImport() {
               relative border-2 border-dashed rounded-lg p-12 text-center cursor-pointer
               transition-all duration-200
               ${isDragging ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-border hover:border-primary/50 hover:bg-accent/5'}
-            `}><input ref={fileInputRef} type="file" multiple accept=".xmi,.xml,.csv,.json,.exp" onChange={handleFileSelect} className="hidden" /><div className="space-y-4"><div className="flex justify-center"><div className={`
+            `}><input ref={fileInputRef} type="file" multiple accept=".xmi,.xml,.csv,.json,.exp,.xsd,.owl,.rdf,.ttl,.nq,.stp,.step,.stpx" onChange={handleFileSelect} className="hidden" /><div className="space-y-4"><div className="flex justify-center"><div className={`
                   p-4 rounded-full bg-primary/10
                   ${isDragging ? 'scale-110' : 'scale-100'}
                   transition-transform duration-200

@@ -17,18 +17,18 @@ class APIConfig:
 class Pagination:
     """Pagination defaults and limits"""
 
-    DEFAULT_LIMIT = 20
-    MAX_LIMIT = 500
-    REQUIREMENTS_DEFAULT = 100
-    REQUIREMENTS_MAX = 500
+    DEFAULT_LIMIT = 50
+    MAX_LIMIT = 100000
+    REQUIREMENTS_DEFAULT = 200
+    REQUIREMENTS_MAX = 100000
 
 
 # Graph Limits
 class GraphLimits:
     """Graph query limits"""
 
-    MAX_NODES = 1000
-    DEFAULT_NODES = 100
+    MAX_NODES = 100000
+    DEFAULT_NODES = 500
     MAX_DEPTH = 5
 
 

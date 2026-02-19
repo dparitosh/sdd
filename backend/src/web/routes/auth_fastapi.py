@@ -50,6 +50,22 @@ class AuthConfig:
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
+    # Runtime password store — allows password changes to take effect
+    # within the current process.  Keyed by username.
+    _password_overrides: dict = {}
+
+    @classmethod
+    def get_password(cls, username: str) -> Optional[str]:
+        """Return the current effective password for *username*."""
+        return cls._password_overrides.get(username) or (
+            cls.ADMIN_PASSWORD if username == cls.ADMIN_USERNAME else None
+        )
+
+    @classmethod
+    def set_password(cls, username: str, new_password: str) -> None:
+        """Update the runtime password for *username*."""
+        cls._password_overrides[username] = new_password
+
 
 # In-memory token blacklist (in production, use Redis)
 TOKEN_BLACKLIST = set()
@@ -211,11 +227,12 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     Returns:
         User dict if authenticated, None otherwise
     """
-    # In production: query database with hashed password
-    if username == AuthConfig.ADMIN_USERNAME and password == AuthConfig.ADMIN_PASSWORD:
-        return {"username": username, "role": "admin"}
+    # Check runtime password (supports change-password flow)
+    expected = AuthConfig.get_password(username)
+    if expected is not None and password == expected:
+        role = "admin" if username == AuthConfig.ADMIN_USERNAME else "user"
+        return {"username": username, "role": role}
 
-    # Add more user validation here
     return None
 
 
@@ -510,10 +527,25 @@ async def change_password(
                 detail="New password must be at least 8 characters long",
             )
 
-        # In production: verify current password, update in database with hashing
-        # For now, just return success
+        # Verify current password against the runtime store
+        username = current_user["username"]
+        expected = AuthConfig.get_password(username)
+        if expected is None or password_request.current_password != expected:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect",
+            )
 
-        logger.info(f"Password changed for user: {current_user['username']}")
+        if password_request.new_password == password_request.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password must differ from the current password",
+            )
+
+        # Persist the new password for the remainder of this process
+        AuthConfig.set_password(username, password_request.new_password)
+
+        logger.info(f"Password changed for user: {username}")
 
         return {"message": "Password changed successfully"}
 

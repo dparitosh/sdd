@@ -12,9 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from loguru import logger
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from src.web.services import get_neo4j_service, reset_neo4j_service
 from src.web.services.redis_service import (
@@ -27,12 +26,11 @@ from src.web.middleware.session_manager import SessionManager
 from src.web.routes.auth_fastapi import set_session_manager
 from src.web.utils.responses import Neo4jJSONResponse
 from src.web.utils.runtime_config import get_cors_origins, get_frontend_url
+from src.web.utils.rate_limit import limiter
+from src.web.container import ServiceContainer
 
 # Load environment variables (searches current directory and parents for .env)
 load_dotenv(find_dotenv(usecwd=True))
-
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
 
 
 # Lifespan context manager for Neo4j connections
@@ -40,57 +38,21 @@ limiter = Limiter(key_func=get_remote_address)
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager for FastAPI app.
-    Handles startup and shutdown events including Redis and session management.
+    Handles startup and shutdown events via the central ServiceContainer.
     """
     # Startup
     logger.info("Starting up FastAPI application...")
-    logger.info("Verifying Neo4j database connection...")
+    container = ServiceContainer.instance()
 
     try:
-        neo4j_service = get_neo4j_service()
-        neo4j_service.verify_connectivity()
-        logger.info("✓ Neo4j database connected")
+        container.startup()  # Neo4j + Engine GraphStore + legacy singleton
+        logger.info("✓ Neo4j database connected (via ServiceContainer)")
     except Exception as e:
         logger.error(f"Failed to connect to Neo4j: {e}")
         raise
 
-    # Initialize Redis service (optional, graceful degradation)
-    if is_redis_enabled():
-        logger.info("Connecting to Redis...")
-        try:
-            from src.web.middleware.session_manager import SessionManager
-            from src.web.routes.auth_fastapi import set_session_manager
-
-            redis_service = await get_redis_service()
-
-            # Initialize session manager with Redis
-            if redis_service and await redis_service.is_connected():
-                session_manager = SessionManager(redis_service.client)
-                set_session_manager(session_manager)
-                logger.info("✓ Session management enabled with Redis")
-
-                # Attach query cache to Neo4j service (async-safe)
-                try:
-                    from src.web.services.query_cache import get_query_cache
-
-                    cache = await get_query_cache()
-                    if cache and getattr(cache, "enabled", False):
-                        neo4j_service.set_cache(cache)
-                        logger.info("✓ Neo4j query caching enabled")
-                    else:
-                        logger.info(
-                            "ℹ️  Neo4j query caching disabled - Redis unavailable"
-                        )
-                except Exception as e:
-                    logger.warning(f"⚠️  Failed to initialize query cache: {e}")
-            else:
-                logger.warning("⚠️  Session management disabled - Redis not available")
-        except Exception as e:
-            logger.warning(
-                f"⚠️  Redis connection failed: {e} - Continuing without session management"
-            )
-    else:
-        logger.info("Redis disabled (set REDIS_ENABLED=true to enable)")
+    # Async services (Redis, sessions, query cache)
+    await container.startup_async()
 
     yield
 
@@ -99,19 +61,14 @@ async def lifespan(app: FastAPI):
 
     # Close Redis
     try:
-        from src.web.services.redis_service import close_redis_service
-
         await close_redis_service()
         logger.info("✓ Redis service closed")
     except Exception as e:
         logger.error(f"Error closing Redis: {e}")
 
-    # Close Neo4j
-    try:
-        reset_neo4j_service()
-        logger.info("✓ Neo4j connections closed")
-    except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
+    # Close container (Neo4j + GraphStore + legacy singleton)
+    ServiceContainer.reset()
+    logger.info("✓ ServiceContainer shut down")
 
 
 # Create FastAPI app

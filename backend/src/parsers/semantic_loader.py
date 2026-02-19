@@ -302,6 +302,65 @@ class SemanticXMILoader:
         "value",  # literal values
     }
 
+    # AP-level classification based on element type (ISO 10303 hierarchy)
+    AP_LEVEL_MAP = {
+        # AP239 – Product Life Cycle Support (Level 1: SE Core)
+        "Requirement": "AP239", "RequirementVersion": "AP239", "RequirementSource": "AP239",
+        "RequirementAssignment": "AP239", "RequirementSatisfactionAssertion": "AP239",
+        "RequirementRelationship": "AP239",
+        "Analysis": "AP239", "AnalysisModel": "AP239", "AnalysisVersion": "AP239",
+        "AnalysisRepresentationContext": "AP239", "AnalysisModelObject": "AP239",
+        "AnalysisDisciplineDefinition": "AP239",
+        "Approval": "AP239", "ApprovalAssignment": "AP239", "ApprovalRelationship": "AP239",
+        "Certification": "AP239", "CertificationAssignment": "AP239",
+        "Document": "AP239", "DocumentDefinition": "AP239", "DocumentVersion": "AP239",
+        "DocumentVersionRelationship": "AP239", "DocumentRelationship": "AP239",
+        "Evidence": "AP239", "DigitalDocumentDefinition": "AP239", "DigitalFile": "AP239",
+        "Activity": "AP239", "ActivityMethod": "AP239", "ActivityAssignment": "AP239",
+        "ActivityRelationship": "AP239",
+        "Effectivity": "AP239", "DatedEffectivity": "AP239", "EffectivityAssignment": "AP239",
+        "BreakdownElement": "AP239", "BreakdownVersion": "AP239",
+        "BreakdownElementVersion": "AP239", "Breakdown": "AP239",
+        "BreakdownRelationship": "AP239",
+        "Event": "AP239", "EventAssignment": "AP239",
+        "Condition": "AP239", "ConditionEvaluation": "AP239",
+        "ConditionParameter": "AP239", "ConditionAssignment": "AP239",
+        "Assumption": "AP239", "AssumptionAssignment": "AP239",
+        "Justification": "AP239", "AdvisoryNote": "AP239",
+        "Collection": "AP239", "CollectionVersion": "AP239",
+        "CollectionMembership": "AP239",
+        "Contract": "AP239", "ContractAssignment": "AP239",
+        # AP242 – Managed Model-Based 3D Engineering (Level 2: CAD/Manufacturing)
+        "Part": "AP242", "PartVersion": "AP242", "PartView": "AP242",
+        "Assembly": "AP242", "AssemblyDefinition": "AP242",
+        "AssemblyViewRelationship": "AP242", "AssemblyOccurrenceRelationship": "AP242",
+        "IndividualPart": "AP242", "IndividualPartVersion": "AP242",
+        "IndividualPartView": "AP242",
+        "GeometricModel": "AP242", "ShapeRepresentation": "AP242",
+        "GeometricRepresentation": "AP242", "GeometricRepresentationContext": "AP242",
+        "GeometricCoordinateSpace": "AP242", "ComponentPlacement": "AP242",
+        "ExternalGeometricModel": "AP242", "ComposedGeometricModel": "AP242",
+        "Material": "AP242", "MaterialProperty": "AP242",
+        "PropertyValueRepresentation": "AP242", "MeasureQualification": "AP242",
+        "MakeFrom": "AP242",
+        "PhysicalBreakdownElementViewAssociation": "AP242",
+        "FunctionalBreakdownElementViewAssociation": "AP242",
+        "AlternativeSolution": "AP242", "ConfiguredAssemblyEffectivity": "AP242",
+        "DeltaChange": "AP242", "Envelope": "AP242",
+        "EvaluatedCharacteristic": "AP242", "EvaluatedRequirement": "AP242",
+        # AP243 – Reference Data & Ontologies (Level 3: Foundation)
+        "ExternalOwlClass": "AP243", "ExternalOwlObject": "AP243",
+        "ExternalClassSystem": "AP243", "ExternalLibrary": "AP243",
+        "ExternalUnit": "AP243", "ExternalTypeQualifier": "AP243",
+        "ExternalValue": "AP243",
+        "ExternalPropertyDefinition": "AP243", "ExternalRefBaseObject": "AP243",
+        "ClassAttribute": "AP243", "Classification": "AP243",
+        "ClassificationRelationship": "AP243",
+        "ExternalItem": "AP243", "ApplicationDomain": "AP243",
+        "DataEnvironment": "AP243", "ExchangeContext": "AP243",
+        "FormatProperty": "AP243", "File": "AP243", "Hardcopy": "AP243",
+    }
+
     def __init__(self, connection: Neo4jConnection, enable_versioning: bool = True):
         """Initialize semantic loader with complete UML/SysML support"""
         self.conn = connection
@@ -331,6 +390,7 @@ class SemanticXMILoader:
             self.load_timestamp = datetime.utcnow().isoformat()
 
         logger.info(f"🔍 Parsing XMI file: {xmi_file_path}")
+        self._current_source_file = Path(xmi_file_path).name
 
         # Parse XML
         tree = etree.parse(str(xmi_file_path))
@@ -459,6 +519,9 @@ class SemanticXMILoader:
                 if name in domain_entities:
                     labels.append(name)
 
+                # Extract xmi:uuid (stable OMG identifier)
+                xmi_uuid = elem.get("{http://www.omg.org/spec/XMI/20131001}uuid")
+
                 # Extract ALL UML/SysML properties
                 properties = self._extract_element_properties(elem, elem_type)
                 properties.update(
@@ -466,8 +529,26 @@ class SemanticXMILoader:
                         "id": elem_id,
                         "name": name,
                         "type": elem_type,
+                        "source": "XMI",
+                        "source_file": self._current_source_file,
                     }
                 )
+
+                # Store xmi:uuid when present (stable cross-tool identifier)
+                if xmi_uuid:
+                    properties["uuid"] = xmi_uuid
+                    properties["xmi_uuid"] = xmi_uuid
+
+                # Store xmi:id for traceability
+                properties["xmi_id"] = elem_id
+
+                # Classify AP level based on element label
+                ap_level = self.AP_LEVEL_MAP.get(label)
+                if ap_level:
+                    properties["ap_level"] = ap_level
+                else:
+                    # Default: MoSSEC XMI maps to AP243
+                    properties["ap_level"] = "AP243"
 
                 # Add version metadata if enabled
                 if self.enable_versioning and self.load_timestamp:
@@ -475,6 +556,10 @@ class SemanticXMILoader:
                     properties["createdAt"] = self.load_timestamp
                     properties["modifiedAt"] = self.load_timestamp
                     properties["loadSource"] = "XMI"
+
+                # Add MBSEElement as base label for all nodes
+                if "MBSEElement" not in labels:
+                    labels.append("MBSEElement")
 
                 # Cache element data
                 self.element_cache[elem_id] = {
@@ -601,10 +686,11 @@ class SemanticXMILoader:
         return properties
 
     def _create_node_batch(self, batch: List[Dict]) -> None:
-        """Create a batch of nodes using APOC with all extracted properties"""
+        """Create a batch of nodes using MERGE on id for idempotent re-runs.
+        Falls back to apoc.create.node for dynamic labels with MERGE semantics."""
         query = """
         UNWIND $nodes AS node
-        CALL apoc.create.node(node.labels, node.properties) YIELD node AS n
+        CALL apoc.merge.node(node.labels, {id: node.properties.id}, node.properties) YIELD node AS n
         RETURN count(n) AS created
         """
         self.conn.execute_query(query, {"nodes": batch})
@@ -648,12 +734,12 @@ class SemanticXMILoader:
         return count
 
     def _create_containment_batch(self, batch: List[Dict]) -> None:
-        """Create a batch of containment relationships"""
+        """Create a batch of containment relationships using MERGE for idempotency"""
         query = """
         UNWIND $rels AS rel
-        MATCH (parent {id: rel.parent_id})
-        MATCH (child {id: rel.child_id})
-        CALL apoc.create.relationship(parent, rel.rel_type, {}, child) YIELD rel AS r
+        MATCH (parent:MBSEElement {id: rel.parent_id})
+        MATCH (child:MBSEElement {id: rel.child_id})
+        CALL apoc.merge.relationship(parent, rel.rel_type, {}, {}, child) YIELD rel AS r
         RETURN count(r) AS created
         """
         self.conn.execute_query(query, {"rels": batch})
@@ -778,13 +864,13 @@ class SemanticXMILoader:
         if batch:
             query = """
             UNWIND $rels AS rel
-            MATCH (source {id: rel.source_id})
-            MATCH (target {id: rel.target_id})
+            MATCH (source:MBSEElement {id: rel.source_id})
+            MATCH (target:MBSEElement {id: rel.target_id})
             MATCH (assoc:Association {id: rel.assoc_id})
-            CALL apoc.create.relationship(source, 'ASSOCIATES_WITH', {
+            CALL apoc.merge.relationship(source, 'ASSOCIATES_WITH', {
                 association_id: rel.assoc_id,
                 association_name: rel.assoc_name
-            }, target) YIELD rel AS r
+            }, {}, target) YIELD rel AS r
             RETURN count(r) AS created
             """
             self.conn.execute_query(query, {"rels": batch})
@@ -834,9 +920,9 @@ class SemanticXMILoader:
         if batch:
             query = """
             UNWIND $rels AS rel
-            MATCH (child {id: rel.child_id})
-            MATCH (parent {id: rel.parent_id})
-            CALL apoc.create.relationship(child, 'GENERALIZES', {generalization_id: rel.gen_id}, parent) YIELD rel AS r
+            MATCH (child:MBSEElement {id: rel.child_id})
+            MATCH (parent:MBSEElement {id: rel.parent_id})
+            CALL apoc.merge.relationship(child, 'GENERALIZES', {generalization_id: rel.gen_id}, {}, parent) YIELD rel AS r
             RETURN count(r) AS created
             """
             self.conn.execute_query(query, {"rels": batch})
@@ -894,9 +980,9 @@ class SemanticXMILoader:
         if batch:
             query = """
             UNWIND $rels AS rel
-            MATCH (source {id: rel.source_id})
-            MATCH (target {id: rel.target_id})
-            CALL apoc.create.relationship(source, 'CONNECTED_BY', {connector_id: rel.connector_id}, target) YIELD rel AS r
+            MATCH (source:MBSEElement {id: rel.source_id})
+            MATCH (target:MBSEElement {id: rel.target_id})
+            CALL apoc.merge.relationship(source, 'CONNECTED_BY', {connector_id: rel.connector_id}, {}, target) YIELD rel AS r
             RETURN count(r) AS created
             """
             self.conn.execute_query(query, {"rels": batch})
@@ -956,9 +1042,9 @@ class SemanticXMILoader:
             if batch:
                 query = """
                 UNWIND $rels AS rel
-                MATCH (source {id: rel.source_id})
-                MATCH (target {id: rel.target_id})
-                CALL apoc.create.relationship(source, rel.rel_type, {relationship_id: rel.rel_id}, target) YIELD rel AS r
+                MATCH (source:MBSEElement {id: rel.source_id})
+                MATCH (target:MBSEElement {id: rel.target_id})
+                CALL apoc.merge.relationship(source, rel.rel_type, {relationship_id: rel.rel_id}, {}, target) YIELD rel AS r
                 RETURN count(r) AS created
                 """
                 self.conn.execute_query(query, {"rels": batch})
@@ -995,9 +1081,9 @@ class SemanticXMILoader:
         if batch:
             query = """
             UNWIND $rels AS rel
-            MATCH (element {id: rel.element_id})
-            MATCH (type {id: rel.type_id})
-            CALL apoc.create.relationship(element, 'TYPED_BY', {}, type) YIELD rel AS r
+            MATCH (element:MBSEElement {id: rel.element_id})
+            MATCH (type:MBSEElement {id: rel.type_id})
+            CALL apoc.merge.relationship(element, 'TYPED_BY', {}, {}, type) YIELD rel AS r
             RETURN count(r) AS created
             """
             self.conn.execute_query(query, {"rels": batch})
@@ -1043,7 +1129,7 @@ class SemanticXMILoader:
             # Update node with metadata
             if updates:
                 query = """
-                MATCH (n {id: $id})
+                MATCH (n:MBSEElement {id: $id})
                 SET n += $properties
                 RETURN n
                 """
@@ -1096,8 +1182,8 @@ class SemanticXMILoader:
             query = """
             UNWIND $rels AS rel
             MATCH (comment:Comment {id: rel.comment_id})
-            MATCH (target {id: rel.target_id})
-            CALL apoc.create.relationship(target, 'HAS_COMMENT', {}, comment) YIELD rel AS r
+            MATCH (target:MBSEElement {id: rel.target_id})
+            CALL apoc.merge.relationship(target, 'HAS_COMMENT', {}, {}, comment) YIELD rel AS r
             RETURN count(r) AS created
             """
             self.conn.execute_query(query, {"rels": batch})
@@ -1111,3 +1197,124 @@ class SemanticXMILoader:
         query = "MATCH (n) DETACH DELETE n"
         self.conn.execute_query(query)
         logger.info("Graph cleared!")
+
+    def create_constraints_and_indexes(self) -> None:
+        """Create uniqueness constraints and indexes for graph integrity.
+        Must be called BEFORE loading data for MERGE to be efficient."""
+        logger.info("Creating uniqueness constraints and indexes...")
+
+        constraints = [
+            # MBSEElement: unique on xmi:id
+            "CREATE CONSTRAINT mbse_element_id IF NOT EXISTS FOR (n:MBSEElement) REQUIRE n.id IS UNIQUE",
+            # OSLC ontology nodes
+            "CREATE CONSTRAINT ontology_uri IF NOT EXISTS FOR (n:Ontology) REQUIRE n.uri IS UNIQUE",
+            "CREATE CONSTRAINT ontology_class_uri IF NOT EXISTS FOR (n:OntologyClass) REQUIRE n.uri IS UNIQUE",
+            "CREATE CONSTRAINT ontology_property_uri IF NOT EXISTS FOR (n:OntologyProperty) REQUIRE n.uri IS UNIQUE",
+            "CREATE CONSTRAINT ext_ontology_uri IF NOT EXISTS FOR (n:ExternalOntology) REQUIRE n.uri IS UNIQUE",
+            "CREATE CONSTRAINT ext_owl_class_uri IF NOT EXISTS FOR (n:ExternalOwlClass) REQUIRE n.uri IS UNIQUE",
+            # XSD nodes
+            "CREATE CONSTRAINT xsd_element_id IF NOT EXISTS FOR (n:XSDElement) REQUIRE n.id IS UNIQUE",
+            "CREATE CONSTRAINT xsd_schema_id IF NOT EXISTS FOR (n:XSDSchema) REQUIRE n.id IS UNIQUE",
+        ]
+
+        indexes = [
+            # Performance indexes for frequent lookups
+            "CREATE INDEX mbse_element_name IF NOT EXISTS FOR (n:MBSEElement) ON (n.name)",
+            "CREATE INDEX mbse_element_uuid IF NOT EXISTS FOR (n:MBSEElement) ON (n.uuid)",
+            "CREATE INDEX mbse_element_ap_level IF NOT EXISTS FOR (n:MBSEElement) ON (n.ap_level)",
+            "CREATE INDEX mbse_element_source IF NOT EXISTS FOR (n:MBSEElement) ON (n.source)",
+        ]
+
+        for stmt in constraints + indexes:
+            try:
+                self.conn.execute_query(stmt)
+                logger.info(f"  ✓ {stmt.split('IF NOT EXISTS')[0].strip()}")
+            except Exception as e:
+                # Constraint may already exist — that's fine
+                logger.debug(f"  Skipped (may already exist): {e}")
+
+        logger.info("Constraints and indexes ready.")
+
+    def create_cross_schema_links(self) -> int:
+        """Create cross-schema relationships linking XMI ↔ XSD ↔ OSLC nodes.
+        
+        Strategies:
+        1. XMI Class ↔ XSD ComplexType: Match by name (same domain entity)
+        2. XMI Class ↔ OSLC OntologyClass: Match domain entities to OSLC vocabulary
+        3. XMI Class ↔ ExternalOwlClass: Connect to OSLC owl classes by name
+        """
+        total = 0
+
+        # --- Strategy 1: XMI Class ↔ XSD ComplexType by name ---
+        logger.info("Linking XMI Classes ↔ XSD ComplexTypes by name...")
+        result = self.conn.execute_query("""
+            MATCH (xmi:Class:MBSEElement)
+            MATCH (xsd:XSDComplexType)
+            WHERE toLower(xmi.name) = toLower(xsd.name)
+            MERGE (xmi)-[:SAME_AS {link_type: 'xmi_xsd_name_match', source: 'cross_schema_linker'}]->(xsd)
+            RETURN count(*) AS linked
+        """)
+        n = result[0]["linked"] if result else 0
+        total += n
+        logger.info(f"  XMI↔XSD name matches: {n}")
+
+        # --- Strategy 2: XMI domain entities ↔ OSLC OntologyClass by label ---
+        logger.info("Linking XMI entities ↔ OSLC OntologyClass by label...")
+        result = self.conn.execute_query("""
+            MATCH (xmi:MBSEElement)
+            WHERE xmi.name IS NOT NULL AND xmi.name <> ''
+            MATCH (oslc:OntologyClass)
+            WHERE toLower(xmi.name) = toLower(oslc.label)
+            MERGE (xmi)-[:MAPS_TO_OSLC {link_type: 'name_to_oslc_class', source: 'cross_schema_linker'}]->(oslc)
+            RETURN count(*) AS linked
+        """)
+        n = result[0]["linked"] if result else 0
+        total += n
+        logger.info(f"  XMI↔OSLC class matches: {n}")
+
+        # --- Strategy 3: XMI domain entities ↔ ExternalOwlClass by name ---
+        logger.info("Linking XMI entities ↔ ExternalOwlClass by name...")
+        result = self.conn.execute_query("""
+            MATCH (xmi:MBSEElement)
+            WHERE xmi.name IS NOT NULL AND xmi.name <> ''
+            MATCH (owl:ExternalOwlClass)
+            WHERE toLower(xmi.name) = toLower(owl.name)
+            MERGE (xmi)-[:MAPS_TO_ONTOLOGY {link_type: 'name_to_owl_class', source: 'cross_schema_linker'}]->(owl)
+            RETURN count(*) AS linked
+        """)
+        n = result[0]["linked"] if result else 0
+        total += n
+        logger.info(f"  XMI↔ExternalOwlClass matches: {n}")
+
+        # --- Strategy 4: Tag XSD nodes with source and ap_level ---
+        logger.info("Tagging XSD nodes with source and ap_level...")
+        result = self.conn.execute_query("""
+            MATCH (n)
+            WHERE any(lbl IN labels(n) WHERE lbl STARTS WITH 'XSD')
+              AND n.source IS NULL
+            SET n.source = 'XSD', n.ap_level = 'AP243'
+            RETURN count(n) AS tagged
+        """)
+        n = result[0]["tagged"] if result else 0
+        logger.info(f"  XSD nodes tagged: {n}")
+
+        # --- Strategy 5: Fix ExternalOwlClass/ExternalOntology ap_level (int→string) ---
+        logger.info("Normalizing ap_level on ExternalOwlClass/ExternalOntology...")
+        self.conn.execute_query("""
+            MATCH (n)
+            WHERE (n:ExternalOwlClass OR n:ExternalOntology)
+              AND n.ap_level IS NOT NULL
+              AND NOT n.ap_level STARTS WITH 'AP'
+            SET n.ap_level = 'AP' + toString(n.ap_level * 81),
+                n.source = 'OSLC'
+        """)
+        # For integer 3 → AP243;  just set directly for safety
+        self.conn.execute_query("""
+            MATCH (n)
+            WHERE (n:ExternalOwlClass OR n:ExternalOntology)
+            SET n.ap_level = 'AP243', n.source = 'OSLC'
+        """)
+        logger.info("  ExternalOwlClass/ExternalOntology normalized to AP243.")
+
+        logger.info(f"Cross-schema linking complete. Total links created: {total}")
+        return total

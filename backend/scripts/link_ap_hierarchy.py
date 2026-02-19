@@ -34,10 +34,14 @@ from typing import Dict, List, Set, Tuple
 from loguru import logger
 
 # Ensure `import src...` works when running this script from repo root.
+from dotenv import load_dotenv
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 BACKEND_ROOT = REPO_ROOT / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
+
+load_dotenv(REPO_ROOT / ".env")
 
 
 class APHierarchyLinker:
@@ -85,7 +89,7 @@ class APHierarchyLinker:
         # Get all requirements
         req_query = """
         MATCH (req:Requirement) 
-        WHERE req.ap_level = 1
+        WHERE req.ap_level = 'AP239'
         RETURN req.id AS id, req.name AS name, req.description AS description
         """
         requirements = self.conn.execute_query(req_query)
@@ -93,7 +97,7 @@ class APHierarchyLinker:
         # Get all parts
         part_query = """
         MATCH (part:Part)
-        WHERE part.ap_level = 2
+        WHERE part.ap_level = 'AP242'
         RETURN part.id AS id, part.name AS name, part.description AS description
         """
         parts = self.conn.execute_query(part_query)
@@ -127,14 +131,14 @@ class APHierarchyLinker:
         
         req_query = """
         MATCH (req:Requirement)
-        WHERE req.ap_level = 1
+        WHERE req.ap_level = 'AP239'
         RETURN req.id AS id, req.name AS name, req.description AS description
         """
         requirements = self.conn.execute_query(req_query)
         
         mat_query = """
         MATCH (mat:Material)
-        WHERE mat.ap_level = 2
+        WHERE mat.ap_level = 'AP242'
         RETURN mat.name AS name, mat.material_type AS type, mat.specification AS spec
         """
         materials = self.conn.execute_query(mat_query)
@@ -163,14 +167,14 @@ class APHierarchyLinker:
         
         ana_query = """
         MATCH (ana:Analysis)
-        WHERE ana.ap_level = 1
+        WHERE ana.ap_level = 'AP239'
         RETURN ana.name AS name, ana.type AS type, ana.method AS method
         """
         analyses = self.conn.execute_query(ana_query)
         
         geo_query = """
         MATCH (geo:GeometricModel)
-        WHERE geo.ap_level = 2
+        WHERE geo.ap_level = 'AP242'
         RETURN geo.name AS name, geo.model_type AS type, geo.units AS units
         """
         geometries = self.conn.execute_query(geo_query)
@@ -197,14 +201,14 @@ class APHierarchyLinker:
         
         ana_query = """
         MATCH (ana:Analysis)
-        WHERE ana.ap_level = 1 AND ana.type =~ '(?i).*thermal.*|.*mechanical.*|.*stress.*'
+        WHERE ana.ap_level = 'AP239' AND ana.type =~ '(?i).*thermal.*|.*mechanical.*|.*stress.*'
         RETURN ana.name AS name, ana.type AS type
         """
         analyses = self.conn.execute_query(ana_query)
         
         mat_query = """
         MATCH (mat:Material)
-        WHERE mat.ap_level = 2
+        WHERE mat.ap_level = 'AP242'
         RETURN mat.name AS name, mat.material_type AS type
         """
         materials = self.conn.execute_query(mat_query)
@@ -233,14 +237,14 @@ class APHierarchyLinker:
         
         appr_query = """
         MATCH (appr:Approval)
-        WHERE appr.ap_level = 1 AND appr.status = 'Approved'
+        WHERE appr.ap_level = 'AP239' AND appr.status = 'Approved'
         RETURN appr.name AS name, appr.approval_date AS date
         """
         approvals = self.conn.execute_query(appr_query)
         
         pv_query = """
         MATCH (pv:PartVersion)
-        WHERE pv.ap_level = 2 AND pv.status = 'Current'
+        WHERE pv.ap_level = 'AP242' AND pv.status = 'Current'
         RETURN pv.name AS name, pv.version AS version
         """
         part_versions = self.conn.execute_query(pv_query)
@@ -267,14 +271,14 @@ class APHierarchyLinker:
         
         mat_query = """
         MATCH (mat:Material)
-        WHERE mat.ap_level = 2
+        WHERE mat.ap_level = 'AP242'
         RETURN mat.name AS name, mat.material_type AS type
         """
         materials = self.conn.execute_query(mat_query)
         
         owl_query = """
         MATCH (owl:ExternalOwlClass)
-        WHERE owl.ap_level = 3
+        WHERE owl.ap_level = 'AP243'
         RETURN owl.name AS name, owl.ontology AS ontology, owl.uri AS uri
         """
         ontologies = self.conn.execute_query(owl_query)
@@ -304,14 +308,14 @@ class APHierarchyLinker:
         
         prop_query = """
         MATCH (prop:MaterialProperty)
-        WHERE prop.ap_level = 2 AND prop.unit IS NOT NULL
+        WHERE prop.ap_level = 'AP242' AND prop.unit IS NOT NULL
         RETURN prop.name AS name, prop.unit AS unit, prop.value AS value
         """
         properties = self.conn.execute_query(prop_query)
         
         unit_query = """
         MATCH (unit:ExternalUnit)
-        WHERE unit.ap_level = 3
+        WHERE unit.ap_level = 'AP243'
         RETURN unit.name AS name, unit.symbol AS symbol, unit.unit_type AS type
         """
         units = self.conn.execute_query(unit_query)
@@ -339,14 +343,14 @@ class APHierarchyLinker:
         
         req_query = """
         MATCH (req:Requirement)
-        WHERE req.ap_level = 1
+        WHERE req.ap_level = 'AP239'
         RETURN req.id AS id, req.name AS name, req.description AS description
         """
         requirements = self.conn.execute_query(req_query)
         
         unit_query = """
         MATCH (unit:ExternalUnit)
-        WHERE unit.ap_level = 3
+        WHERE unit.ap_level = 'AP243'
         RETURN unit.name AS name, unit.symbol AS symbol, unit.unit_type AS type
         """
         units = self.conn.execute_query(unit_query)

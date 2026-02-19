@@ -22,6 +22,7 @@ from src.web.services import get_neo4j_service
 from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services.upload_job_store import get_job_store
 from src.web.services.step_ingest_service import StepIngestConfig, StepIngestService
+from src.web.services.ontology_ingest_service import OntologyIngestService, OntologyIngestConfig
 
 # Import V2 ingesters
 import sys
@@ -33,7 +34,7 @@ router = APIRouter(prefix="/api/upload", tags=["upload"])
 # Storage configuration
 UPLOAD_DIR = Path("data/uploads")
 RAW_DATA_DIR = Path("data/raw")
-ALLOWED_EXTENSIONS = {".xmi", ".xml", ".csv", ".json", ".exp", ".xsd", ".stp", ".step", ".stpx"}
+ALLOWED_EXTENSIONS = {".xmi", ".xml", ".csv", ".json", ".exp", ".xsd", ".stp", ".step", ".stpx", ".owl", ".ttl", ".rdf", ".nq"}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
 # Ensure directories exist
@@ -615,6 +616,70 @@ async def process_xsd_file(file_path: Path, job_id: str) -> dict:
         raise
 
 
+async def process_ontology_file(file_path: Path, job_id: str) -> dict:
+    """Process Ontology RDF/OWL file in background"""
+    job_store = get_job_store()
+    try:
+        await job_store.update(
+            job_id,
+            {"status": "processing", "progress": 10, "message": "Initializing Ontology ingestion service..."},
+        )
+
+        def _process_ontology_sync():
+            service = OntologyIngestService()
+            # Let rdflib guess format from extension or content, or provide hint
+            rdf_format = None
+            ext = file_path.suffix.lower()
+            if ext == ".ttl":
+                rdf_format = "turtle"
+            elif ext == ".nq":
+                rdf_format = "nquads"
+            elif ext in [".rdf", ".owl"]:
+                rdf_format = "xml"  # Basic heuristic
+            
+            # Start ingestion
+            result = service.ingest_file(file_path, rdf_format=rdf_format)
+            return result
+
+        await job_store.update(
+            job_id, {"progress": 30, "message": "Parsing and ingesting ontology..."}
+        )
+
+        stats = await run_in_threadpool(_process_ontology_sync)
+
+        await job_store.update(
+            job_id, {"progress": 90, "message": "Finalizing ontology import..."}
+        )
+
+        # Move file to raw data directory
+        destination = RAW_DATA_DIR / file_path.name
+        shutil.copy(file_path, destination)
+
+        await job_store.update(
+            job_id,
+            {
+                "status": "completed",
+                "progress": 100,
+                "message": f"Successfully imported Ontology: {stats.get('ontology_name', file_path.name)}",
+                "stats": stats,
+            },
+        )
+        logger.success(f"✓ Processed Ontology file: {file_path.name} - {stats}")
+        return stats
+
+    except Exception as e:
+        await job_store.update(
+            job_id,
+            {
+                "status": "failed",
+                "error": str(e),
+                "message": f"Failed to process Ontology file: {str(e)}",
+            },
+        )
+        logger.error(f"✗ Failed to process Ontology file: {e}")
+        raise
+
+
 @router.post("/", response_model=UploadResponse)
 async def upload_file(
     background_tasks: BackgroundTasks, file: UploadFile = File(...)
@@ -701,6 +766,9 @@ async def upload_file(
         elif file_ext in [".stp", ".step", ".stpx"]:
             background_tasks.add_task(process_step_file, file_path, job_id)
             message = "STEP file uploaded successfully. Processing in background."
+        elif file_ext in [".owl", ".ttl", ".rdf", ".nq"]:
+            background_tasks.add_task(process_ontology_file, file_path, job_id)
+            message = "Ontology/RDF file uploaded successfully. Processing in background."
         else:
             message = "File uploaded successfully. Format not yet supported for automatic import."
 
