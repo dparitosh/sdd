@@ -1,0 +1,134 @@
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oslc:  <http://open-services.net/ns/core#> .
+@prefix ap242: <http://standards.iso.org/iso/ts/10303/ap242#> .
+
+# =============================================================================
+# OSLC Ontology for ISO 10303 AP242 – Managed Model-Based 3D Engineering
+# =============================================================================
+# AP242 is the CAD/Manufacturing layer (Level 2) of the AP hierarchy.
+# It covers product structure, geometry & CAD, materials & properties,
+# and manufacturing constructs.
+#
+# This ontology maps AP242 entities to OSLC-compatible vocabulary terms.
+# =============================================================================
+
+ap242:
+    a owl:Ontology ;
+    dcterms:title "AP242 – Managed Model-Based 3D Engineering Ontology" ;
+    dcterms:description "OSLC-compatible ontology for ISO 10303 AP242 entities including parts, assemblies, geometry, materials, and manufacturing." ;
+    rdfs:label "AP242 MBx" .
+
+# --- Product Structure ---
+
+ap242:Part
+    a rdfs:Class ;
+    rdfs:label "Part" ;
+    rdfs:comment "A discrete unit of a product (e.g. component, sub-assembly) (AP242)." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:PartVersion
+    a rdfs:Class ;
+    rdfs:label "PartVersion" ;
+    rdfs:comment "A versioned instance of a Part capturing design iterations." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:Assembly
+    a rdfs:Class ;
+    rdfs:label "Assembly" ;
+    rdfs:comment "A collection of Parts assembled into a higher-level product." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:AssemblyDefinition
+    a rdfs:Class ;
+    rdfs:label "AssemblyDefinition" ;
+    rdfs:comment "The definition of how an Assembly is composed." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:IndividualPart
+    a rdfs:Class ;
+    rdfs:label "IndividualPart" ;
+    rdfs:comment "A specific physical instance of a Part." ;
+    rdfs:isDefinedBy ap242: .
+
+# --- Geometry & CAD ---
+
+ap242:GeometricModel
+    a rdfs:Class ;
+    rdfs:label "GeometricModel" ;
+    rdfs:comment "A 3D geometric representation of a Part or Assembly." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:ShapeRepresentation
+    a rdfs:Class ;
+    rdfs:label "ShapeRepresentation" ;
+    rdfs:comment "A shape representation context (B-rep, tessellated, etc.)." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:GeometricRepresentation
+    a rdfs:Class ;
+    rdfs:label "GeometricRepresentation" ;
+    rdfs:comment "A representation of geometric data in a coordinate space." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:ComponentPlacement
+    a rdfs:Class ;
+    rdfs:label "ComponentPlacement" ;
+    rdfs:comment "The spatial placement of a component within an assembly." ;
+    rdfs:isDefinedBy ap242: .
+
+# --- Materials & Properties ---
+
+ap242:Material
+    a rdfs:Class ;
+    rdfs:label "Material" ;
+    rdfs:comment "A material designation (alloy, composite, polymer, etc.)." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:MaterialProperty
+    a rdfs:Class ;
+    rdfs:label "MaterialProperty" ;
+    rdfs:comment "A measured or specified property of a Material (tensile strength, density, etc.)." ;
+    rdfs:isDefinedBy ap242: .
+
+# --- Manufacturing ---
+
+ap242:MakeFrom
+    a rdfs:Class ;
+    rdfs:label "MakeFrom" ;
+    rdfs:comment "A manufacturing relationship describing raw material to finished Part." ;
+    rdfs:isDefinedBy ap242: .
+
+# --- Relationships (as rdf:Property) ---
+
+ap242:hasGeometry
+    a rdf:Property ;
+    rdfs:label "hasGeometry" ;
+    rdfs:comment "Links a Part to its GeometricModel." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:usesMaterial
+    a rdf:Property ;
+    rdfs:label "usesMaterial" ;
+    rdfs:comment "Links a Part to the Material it uses." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:assemblesWith
+    a rdf:Property ;
+    rdfs:label "assemblesWith" ;
+    rdfs:comment "Links a Part to another Part in an assembly." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:hasVersion
+    a rdf:Property ;
+    rdfs:label "hasVersion" ;
+    rdfs:comment "Links a Part to its PartVersion." ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:placedIn
+    a rdf:Property ;
+    rdfs:label "placedIn" ;
+    rdfs:comment "Links a ComponentPlacement to the Assembly it belongs to." ;
+    rdfs:isDefinedBy ap242: .

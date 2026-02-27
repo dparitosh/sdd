@@ -1,0 +1,77 @@
+# Core dependencies
+neo4j>=5.14.0
+python-dotenv>=1.0.0
+
+# JSON Schema Validation
+jsonschema>=4.20.0
+
+# XMI/XML Processing
+lxml>=4.9.3
+xmltodict>=0.13.0
+
+# Data Processing
+pandas>=2.1.0
+numpy>=1.24.0
+
+# Utilities
+requests>=2.31.0
+pydantic>=2.5.0
+pyyaml>=6.0.1
+
+# Logging
+loguru>=0.7.2
+
+# CLI
+click>=8.1.7
+rich>=13.7.0
+tqdm>=4.66.0
+
+# Authentication
+PyJWT>=2.8.0
+bcrypt>=4.1.2
+authlib>=1.6.0
+
+# AI Agent Framework
+langgraph>=0.2.0
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.0.5
+langchain-ollama>=0.2.0
+langsmith>=0.1.0
+
+# PLM Integration
+httpx>=0.25.2
+aiohttp>=3.9.1
+rdflib>=7.1.0
+owlrl>=5.2.3
+pyshacl>=0.25.0
+
+# FastAPI Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+websockets>=12.0
+strawberry-graphql[fastapi]>=0.270.0
+slowapi>=0.1.9
+
+# Redis (Session Management & Caching)
+redis[hiredis]>=5.0.1
+hiredis>=2.2.3
+
+# Monitoring & Metrics
+prometheus-client>=0.19.0
+psutil>=5.9.0
+
+# Rate Limiting
+slowapi>=0.1.9
+
+# ============================================================================
+# Semantic Web & Ontology ingestion
+# (Used by OSLC, SHACL validation, and OWL/RDF -> Neo4j ingestion)
+# ============================================================================
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.11.0
+flake8>=6.1.0
+mypy>=1.7.0
+types-requests>=2.31.0

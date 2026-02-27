@@ -1,0 +1,104 @@
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix mbse:    <http://mbse-mossec.com/ns/core#> .
+@prefix sdd:     <http://mbse-mossec.com/ns/sdd#> .
+
+#
+# SHACL Shape for ApprovalRecord nodes.
+#
+# Validates that an ApprovalRecord contains the minimum properties
+# required by the SDD v4.0 governance model (ISO-CASCO sign-off).
+#
+# Business rule: ApprovalRecords are immutable once created.
+#
+# Reference: SDD_MODULAR_ARCHITECTURE_PLAN.md Section 4.2
+#
+
+sdd:ApprovalRecordShape
+    a sh:NodeShape ;
+    sh:targetClass sdd:ApprovalRecord ;
+    rdfs:label "Approval Record Shape" ;
+    rdfs:comment "Validates that an ApprovalRecord has all required properties and exactly one decision link." ;
+
+    # ---- Required: id ----
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "id" ;
+        sh:message "An ApprovalRecord must have exactly one dcterms:identifier (id)." ;
+    ] ;
+
+    # ---- Required: status ----
+    sh:property [
+        sh:path sdd:status ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "Approved" "Rejected" ) ;
+        sh:name "status" ;
+        sh:message "An ApprovalRecord must have exactly one sdd:status with value 'Approved' or 'Rejected'." ;
+    ] ;
+
+    # ---- Required: timestamp ----
+    sh:property [
+        sh:path dcterms:created ;
+        sh:or (
+            [ sh:datatype xsd:dateTime ]
+            [ sh:datatype xsd:string ]
+        ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "timestamp" ;
+        sh:message "An ApprovalRecord must have exactly one dcterms:created (timestamp)." ;
+    ] ;
+
+    # ---- Required: reviewer ----
+    sh:property [
+        sh:path sdd:reviewer ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "reviewer" ;
+        sh:message "An ApprovalRecord must have exactly one sdd:reviewer (string)." ;
+    ] ;
+
+    # ---- Optional: comment ----
+    sh:property [
+        sh:path rdfs:comment ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "comment" ;
+        sh:message "rdfs:comment must be a string if present." ;
+    ] ;
+
+    # ---- Optional: signatureId ----
+    sh:property [
+        sh:path sdd:signatureId ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "signatureId" ;
+        sh:message "sdd:signatureId must be a string if present." ;
+    ] ;
+
+    # ---- Optional: role ----
+    sh:property [
+        sh:path sdd:role ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "role" ;
+        sh:message "sdd:role must be a string if present." ;
+    ] ;
+
+    # ---- Cardinality: exactly 1 decision link ----
+    sh:property [
+        sh:path sdd:hasDecision ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:name "decision" ;
+        sh:message "An ApprovalRecord must have exactly one sdd:hasDecision relationship to a DecisionLog." ;
+    ] .

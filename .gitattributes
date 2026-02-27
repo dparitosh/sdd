@@ -1,0 +1,30 @@
+# Normalize line endings to reduce cross-OS diff noise.
+# Default: let Git decide based on content.
+* text=auto
+
+# Code/config: enforce LF
+*.py  text eol=lf
+*.ts  text eol=lf
+*.tsx text eol=lf
+*.js  text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md  text eol=lf
+*.sh  text eol=lf
+*.sql text eol=lf
+
+# Windows scripts: enforce CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.pdf binary

@@ -1,0 +1,84 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please provide as much detail as possible.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: Describe the problem or pain point...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution
+      placeholder: How would you solve this problem?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered any alternative solutions?
+      placeholder: What other approaches have you considered?
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this affect?
+      options:
+        - Backend API
+        - Frontend UI
+        - MCP Server
+        - PLM Connector
+        - Agent Framework
+        - Database
+        - Deployment/Infrastructure
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature?
+      options:
+        - Critical (blocking)
+        - High (important)
+        - Medium (nice to have)
+        - Low (wishlist)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Contribution
+      description: Would you be willing to contribute this feature?
+      options:
+        - label: I am willing to submit a PR for this feature
+        - label: I can help with testing
+        - label: I can help with documentation
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or examples
+      placeholder: Screenshots, diagrams, related links, etc.

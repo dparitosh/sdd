@@ -1,0 +1,105 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+logs/*.log
+flask.log
+server.log
+
+# Neo4j
+neo4j/
+
+# Data files
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# Test cache
+.pytest_cache/
+*.cover
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+logs/*
+!logs/.gitkeep
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Old frontend files (to be removed)
+node_modules/
+dist/
+*.local
+
+# Windows cleanup artifacts
+node_modules_old_*/
+
+# Monorepo / subprojects
+**/node_modules/
+**/dist/
+frontend/package-lock.json
+
+# Upload staging
+data/uploads/
+!data/uploads/.gitkeep
+
+# Large reference datasets (keep out of git)
+samples/reference/

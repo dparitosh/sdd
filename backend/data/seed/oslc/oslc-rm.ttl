@@ -1,0 +1,50 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oslc: <http://open-services.net/ns/core#> .
+@prefix oslc_rm: <http://open-services.net/ns/rm#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://open-services.net/ns/rm#>
+    a owl:Ontology ;
+    dcterms:title "OSLC Requirements Management Vocabulary" ;
+    dcterms:description "Vocabulary for OSLC Requirements Management resources." .
+
+oslc_rm:Requirement
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/rm#> ;
+    rdfs:label "Requirement" ;
+    rdfs:comment "A statement of a need." ;
+    rdfs:subClassOf oslc:Resource .
+
+oslc_rm:RequirementCollection
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/rm#> ;
+    rdfs:label "RequirementCollection" ;
+    rdfs:comment "A collection of Requirements." ;
+    rdfs:subClassOf oslc:Resource .
+
+oslc_rm:implementedBy
+    a rdf:Property ;
+    rdfs:isDefinedBy <http://open-services.net/ns/rm#> ;
+    rdfs:label "implementedBy" ;
+    rdfs:comment "Resource, such as a Change Request, which implements this Requirement." .
+
+oslc_rm:validatedBy
+    a rdf:Property ;
+    rdfs:isDefinedBy <http://open-services.net/ns/rm#> ;
+    rdfs:label "validatedBy" ;
+    rdfs:comment "Resource, such as a Test Case, which validates this Requirement." .
+
+oslc_rm:elaboratedBy
+    a rdf:Property ;
+    rdfs:isDefinedBy <http://open-services.net/ns/rm#> ;
+    rdfs:label "elaboratedBy" ;
+    rdfs:comment "Resource, such as a model element, which elaborates this Requirement." .
+
+oslc_rm:specifiedBy
+    a rdf:Property ;
+    rdfs:isDefinedBy <http://open-services.net/ns/rm#> ;
+    rdfs:label "specifiedBy" ;
+    rdfs:comment "Resource, such as a model element, which specifies this Requirement." .

@@ -1,0 +1,108 @@
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix mbse:    <http://mbse-mossec.com/ns/core#> .
+@prefix sdd:     <http://mbse-mossec.com/ns/sdd#> .
+
+#
+# SHACL Shape for SimulationDossier nodes.
+#
+# Validates that a SimulationDossier resource contains the minimum
+# properties required by the SDD v4.0 governance model.
+#
+# Reference: SDD_MODULAR_ARCHITECTURE_PLAN.md Section 4.2
+#
+
+sdd:SimulationDossierShape
+    a sh:NodeShape ;
+    sh:targetClass sdd:SimulationDossier ;
+    rdfs:label "Simulation Dossier Shape" ;
+    rdfs:comment "Validates that a SimulationDossier has all required properties and at least one artifact." ;
+
+    # ---- Required: id ----
+    sh:property [
+        sh:path dcterms:identifier ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "id" ;
+        sh:message "A SimulationDossier must have exactly one dcterms:identifier (id)." ;
+    ] ;
+
+    # ---- Required: name ----
+    sh:property [
+        sh:path dcterms:title ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "name" ;
+        sh:message "A SimulationDossier must have exactly one dcterms:title (name)." ;
+    ] ;
+
+    # ---- Required: status ----
+    sh:property [
+        sh:path sdd:status ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( "Draft" "UnderReview" "Approved" "Rejected" "Archived" ) ;
+        sh:name "status" ;
+        sh:message "A SimulationDossier must have exactly one sdd:status with value in {Draft, UnderReview, Approved, Rejected, Archived}." ;
+    ] ;
+
+    # ---- Required: createdAt ----
+    sh:property [
+        sh:path dcterms:created ;
+        sh:or (
+            [ sh:datatype xsd:dateTime ]
+            [ sh:datatype xsd:string ]
+        ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:name "createdAt" ;
+        sh:message "A SimulationDossier must have exactly one dcterms:created (dateTime or string)." ;
+    ] ;
+
+    # ---- Optional: engineer ----
+    sh:property [
+        sh:path sdd:engineer ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "engineer" ;
+        sh:message "sdd:engineer must be a string if present." ;
+    ] ;
+
+    # ---- Optional: description ----
+    sh:property [
+        sh:path dcterms:description ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:name "description" ;
+        sh:message "dcterms:description must be a string if present." ;
+    ] ;
+
+    # ---- Cardinality: at least 1 artifact relationship ----
+    sh:property [
+        sh:path sdd:containsArtifact ;
+        sh:minCount 1 ;
+        sh:name "artifacts" ;
+        sh:message "A SimulationDossier must contain at least one artifact (sdd:containsArtifact)." ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+
+    # ---- Optional: evidence categories ----
+    sh:property [
+        sh:path sdd:hasEvidenceCategory ;
+        sh:nodeKind sh:IRI ;
+        sh:name "evidenceCategories" ;
+        sh:message "sdd:hasEvidenceCategory values must be IRIs." ;
+    ] ;
+
+    # ---- Optional: governed-by standard ----
+    sh:property [
+        sh:path sdd:governedBy ;
+        sh:nodeKind sh:IRI ;
+        sh:name "governedBy" ;
+        sh:message "sdd:governedBy values must be IRIs pointing to Standard nodes." ;
+    ] .

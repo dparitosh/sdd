@@ -1,0 +1,160 @@
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oslc:  <http://open-services.net/ns/core#> .
+@prefix ap243: <http://standards.iso.org/iso/ts/10303/ap243#> .
+
+# =============================================================================
+# OSLC Ontology for ISO 10303 AP243 – MoSSEC Reference Data & Ontologies
+# =============================================================================
+# AP243 is the Foundation layer (Level 3) of the AP hierarchy.
+# It covers reference ontologies, units & measures, value types,
+# classifications, and the MoSSEC (ISO/TS 10303-4443) domain model.
+#
+# This ontology maps AP243 entities to OSLC-compatible vocabulary terms.
+# =============================================================================
+
+ap243:
+    a owl:Ontology ;
+    dcterms:title "AP243 – MoSSEC Reference Data & Ontologies" ;
+    dcterms:description "OSLC-compatible ontology for ISO 10303 AP243 entities including reference ontologies, classification systems, units, value types, and the MoSSEC domain model." ;
+    rdfs:label "AP243 MoSSEC" .
+
+# --- Reference Ontologies & Classification ---
+
+ap243:ExternalOwlClass
+    a rdfs:Class ;
+    rdfs:label "ExternalOwlClass" ;
+    rdfs:comment "An external OWL class reference used for classification." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ExternalClassSystem
+    a rdfs:Class ;
+    rdfs:label "ExternalClassSystem" ;
+    rdfs:comment "An external classification system (e.g. IEC CDD, UNSPSC)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ExternalLibrary
+    a rdfs:Class ;
+    rdfs:label "ExternalLibrary" ;
+    rdfs:comment "An external reference library providing standard definitions." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:Classification
+    a rdfs:Class ;
+    rdfs:label "Classification" ;
+    rdfs:comment "A classification assignment linking an entity to a class." ;
+    rdfs:isDefinedBy ap243: .
+
+# --- Units & Measures ---
+
+ap243:ExternalUnit
+    a rdfs:Class ;
+    rdfs:label "ExternalUnit" ;
+    rdfs:comment "An externally defined unit of measure (SI, Imperial, etc.)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ExternalValue
+    a rdfs:Class ;
+    rdfs:label "ExternalValue" ;
+    rdfs:comment "An externally referenced value or constant." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ExternalTypeQualifier
+    a rdfs:Class ;
+    rdfs:label "ExternalTypeQualifier" ;
+    rdfs:comment "A qualifier constraining the type of an external reference." ;
+    rdfs:isDefinedBy ap243: .
+
+# --- Value Types & Properties ---
+
+ap243:ExternalPropertyDefinition
+    a rdfs:Class ;
+    rdfs:label "ExternalPropertyDefinition" ;
+    rdfs:comment "An externally defined property (e.g. tensile strength, mass)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ClassAttribute
+    a rdfs:Class ;
+    rdfs:label "ClassAttribute" ;
+    rdfs:comment "An attribute definition belonging to a classification class." ;
+    rdfs:isDefinedBy ap243: .
+
+# --- Data Environment ---
+
+ap243:ApplicationDomain
+    a rdfs:Class ;
+    rdfs:label "ApplicationDomain" ;
+    rdfs:comment "A defined application domain (aerospace, automotive, etc.)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:DataEnvironment
+    a rdfs:Class ;
+    rdfs:label "DataEnvironment" ;
+    rdfs:comment "The data environment context for exchange." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ExchangeContext
+    a rdfs:Class ;
+    rdfs:label "ExchangeContext" ;
+    rdfs:comment "The context under which data exchange occurs." ;
+    rdfs:isDefinedBy ap243: .
+
+# --- MoSSEC Domain Model Core Entities ---
+
+ap243:ModelInstance
+    a rdfs:Class ;
+    rdfs:label "ModelInstance" ;
+    rdfs:comment "An instance of a model in MoSSEC (ISO/TS 10303-4443)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:Study
+    a rdfs:Class ;
+    rdfs:label "Study" ;
+    rdfs:comment "A simulation or analysis study in MoSSEC." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:Method
+    a rdfs:Class ;
+    rdfs:label "Method" ;
+    rdfs:comment "A computational or analytical method used in a Study." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:Evaluation
+    a rdfs:Class ;
+    rdfs:label "Evaluation" ;
+    rdfs:comment "The evaluation of a model or result against criteria." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:Result
+    a rdfs:Class ;
+    rdfs:label "Result" ;
+    rdfs:comment "The result of a Study or Evaluation." ;
+    rdfs:isDefinedBy ap243: .
+
+# --- Relationships (as rdf:Property) ---
+
+ap243:classifiedAs
+    a rdf:Property ;
+    rdfs:label "classifiedAs" ;
+    rdfs:comment "Links any entity to its ExternalOwlClass classification." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:hasUnit
+    a rdf:Property ;
+    rdfs:label "hasUnit" ;
+    rdfs:comment "Links a property or measure to its ExternalUnit." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:references
+    a rdf:Property ;
+    rdfs:label "references" ;
+    rdfs:comment "Links an entity to an external reference." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:hasValueType
+    a rdf:Property ;
+    rdfs:label "hasValueType" ;
+    rdfs:comment "Links a property to its value type definition." ;
+    rdfs:isDefinedBy ap243: .

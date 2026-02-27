@@ -1,0 +1,5 @@
+{
+  "name": "SDD - Simulation Data Dossier",
+  "description": "Enterprise platform for creating and managing evidence packages of simulation data artifacts for industrial motor certification, supporting MOSSEC and IEC 6034 standards.",
+  "requestFramePermissions": []
+}

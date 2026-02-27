@@ -1,0 +1,165 @@
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oslc:  <http://open-services.net/ns/core#> .
+@prefix oslc_rm: <http://open-services.net/ns/rm#> .
+@prefix ap239: <http://standards.iso.org/iso/ts/10303/ap239#> .
+
+# =============================================================================
+# OSLC Ontology for ISO 10303 AP239 – Product Life Cycle Support
+# =============================================================================
+# AP239 is the Systems Engineering Core (Level 1) of the AP hierarchy.
+# It covers requirements management, analysis, approvals, documents,
+# lifecycle & configuration, events and conditions.
+#
+# This ontology maps AP239 entities to OSLC-compatible vocabulary terms
+# so that the knowledge graph can interoperate with OSLC toolchains.
+# =============================================================================
+
+ap239:
+    a owl:Ontology ;
+    dcterms:title "AP239 – Product Life Cycle Support Ontology" ;
+    dcterms:description "OSLC-compatible ontology for ISO 10303 AP239 (PLCS) entities including requirements, analysis, approvals, documents, lifecycle and configuration management." ;
+    rdfs:label "AP239 PLCS" .
+
+# --- Requirements Management ---
+
+ap239:Requirement
+    a rdfs:Class ;
+    rdfs:label "Requirement" ;
+    rdfs:comment "A stated need or condition that a product or system must satisfy (AP239)." ;
+    rdfs:subClassOf oslc_rm:Requirement ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:RequirementVersion
+    a rdfs:Class ;
+    rdfs:label "RequirementVersion" ;
+    rdfs:comment "A versioned instance of a Requirement capturing temporal changes." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:RequirementSource
+    a rdfs:Class ;
+    rdfs:label "RequirementSource" ;
+    rdfs:comment "The origin or authority from which a Requirement derives." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:RequirementAssignment
+    a rdfs:Class ;
+    rdfs:label "RequirementAssignment" ;
+    rdfs:comment "An assignment linking a Requirement to a satisfying element." ;
+    rdfs:isDefinedBy ap239: .
+
+# --- Analysis & Simulation ---
+
+ap239:Analysis
+    a rdfs:Class ;
+    rdfs:label "Analysis" ;
+    rdfs:comment "An engineering analysis performed on a model or system." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:AnalysisModel
+    a rdfs:Class ;
+    rdfs:label "AnalysisModel" ;
+    rdfs:comment "A mathematical or computational model used in an Analysis." ;
+    rdfs:isDefinedBy ap239: .
+
+# --- Approvals & Certification ---
+
+ap239:Approval
+    a rdfs:Class ;
+    rdfs:label "Approval" ;
+    rdfs:comment "A formal approval or sign-off on an engineering artifact." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:Certification
+    a rdfs:Class ;
+    rdfs:label "Certification" ;
+    rdfs:comment "A certification that an artifact meets specified standards." ;
+    rdfs:isDefinedBy ap239: .
+
+# --- Documents ---
+
+ap239:Document
+    a rdfs:Class ;
+    rdfs:label "Document" ;
+    rdfs:comment "A controlled document associated with the product lifecycle." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:DocumentVersion
+    a rdfs:Class ;
+    rdfs:label "DocumentVersion" ;
+    rdfs:comment "A specific version of a Document." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:Evidence
+    a rdfs:Class ;
+    rdfs:label "Evidence" ;
+    rdfs:comment "Supporting evidence for design decisions or certifications." ;
+    rdfs:isDefinedBy ap239: .
+
+# --- Lifecycle & Configuration ---
+
+ap239:Activity
+    a rdfs:Class ;
+    rdfs:label "Activity" ;
+    rdfs:comment "A lifecycle activity such as a task, review, or milestone." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:Effectivity
+    a rdfs:Class ;
+    rdfs:label "Effectivity" ;
+    rdfs:comment "The time or condition range during which a configuration applies." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:BreakdownElement
+    a rdfs:Class ;
+    rdfs:label "BreakdownElement" ;
+    rdfs:comment "An element in a product or work breakdown structure." ;
+    rdfs:isDefinedBy ap239: .
+
+# --- Events & Conditions ---
+
+ap239:Event
+    a rdfs:Class ;
+    rdfs:label "Event" ;
+    rdfs:comment "A significant occurrence in the product lifecycle." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:Condition
+    a rdfs:Class ;
+    rdfs:label "Condition" ;
+    rdfs:comment "A condition that must be evaluated during lifecycle management." ;
+    rdfs:isDefinedBy ap239: .
+
+# --- Relationships (as rdf:Property) ---
+
+ap239:satisfiedBy
+    a rdf:Property ;
+    rdfs:label "satisfiedBy" ;
+    rdfs:comment "Links a Requirement to the design element that satisfies it." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:verifiedBy
+    a rdf:Property ;
+    rdfs:label "verifiedBy" ;
+    rdfs:comment "Links a Requirement to the test or analysis that verifies it." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:approves
+    a rdf:Property ;
+    rdfs:label "approves" ;
+    rdfs:comment "Links an Approval to the artifact it approves." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:documents
+    a rdf:Property ;
+    rdfs:label "documents" ;
+    rdfs:comment "Links a Document to the artifact it documents." ;
+    rdfs:isDefinedBy ap239: .
+
+ap239:decomposesInto
+    a rdf:Property ;
+    rdfs:label "decomposesInto" ;
+    rdfs:comment "Links a BreakdownElement to its sub-elements." ;
+    rdfs:isDefinedBy ap239: .

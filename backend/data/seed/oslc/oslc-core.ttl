@@ -1,0 +1,47 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix oslc: <http://open-services.net/ns/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://open-services.net/ns/core#>
+    a owl:Ontology ;
+    dcterms:title "The OSLC Core Vocabulary" ;
+    dcterms:description "The Core vocabulary defines terms required by proper OSLC implementations." .
+
+oslc:ServiceProvider
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/core#> ;
+    rdfs:label "ServiceProvider" ;
+    rdfs:comment " The Service Provider resource" .
+
+oslc:ServiceProviderCatalog
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/core#> ;
+    rdfs:label "ServiceProviderCatalog" ;
+    rdfs:comment " The Service Provider Catalog resource" .
+
+oslc:Service
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/core#> ;
+    rdfs:label "Service" ;
+    rdfs:comment "The Service resource" .
+
+oslc:CreationFactory
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/core#> ;
+    rdfs:label "CreationFactory" ;
+    rdfs:comment "The Creation Factory resource" .
+
+oslc:QueryCapability
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/core#> ;
+    rdfs:label "QueryCapability" ;
+    rdfs:comment "The Query Capability resource" .
+
+oslc:Dialog
+    a rdfs:Class ;
+    rdfs:isDefinedBy <http://open-services.net/ns/core#> ;
+    rdfs:label "Dialog" ;
+    rdfs:comment "The Dialog resource" .

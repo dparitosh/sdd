@@ -1,0 +1,61 @@
+{
+  "app": {
+    "title": "MBSE Wissensgraph",
+    "subtitle": "Modellbasierte Systems Engineering Plattform"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "requirements": "Anforderungen",
+    "parts": "Teile",
+    "graph": "Graph Browser",
+    "query": "Abfrage Editor",
+    "dataImport": "Daten Import",
+    "plm": "PLM Integration",
+    "monitoring": "System Überwachung",
+    "aiInsights": "KI Einblicke",
+    "logout": "Abmelden"
+  },
+  "common": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "search": "Suchen",
+    "filter": "Filtern",
+    "export": "Exportieren",
+    "import": "Importieren",
+    "refresh": "Aktualisieren",
+    "close": "Schließen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "noData": "Keine Daten verfügbar",
+    "selectFile": "Datei auswählen",
+    "selectLanguage": "Sprache auswählen"
+  },
+  "errors": {
+    "sessionExpired": "Sitzung abgelaufen. Bitte melden Sie sich erneut an.",
+    "networkError": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+    "apiError": "API-Fehler: {{message}}",
+    "validationError": "Validierungsfehler: {{message}}",
+    "unauthorized": "Nicht autorisiert. Bitte melden Sie sich an.",
+    "forbidden": "Sie haben keine Berechtigung, auf diese Ressource zuzugreifen.",
+    "notFound": "Ressource nicht gefunden.",
+    "serverError": "Serverfehler. Bitte versuchen Sie es später erneut.",
+    "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten.",
+    "apiKeyNotConfigured": "API-Schlüssel ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator.",
+    "invalidParameters": "Ungültige Parameter: Typ={{type}}, ID={{id}}"
+  },
+  "dashboard": {
+    "title": "System Dashboard",
+    "totalNodes": "Gesamtknoten",
+    "totalRelationships": "Gesamtbeziehungen",
+    "requirements": "Anforderungen",
+    "parts": "Teile und Baugruppen",
+    "stats": "Statistiken",
+    "recentActivity": "Letzte Aktivität"
+  }
+}

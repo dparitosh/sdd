@@ -1,0 +1,115 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this bug! Please fill out the form below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and Error Messages
+      description: Paste any relevant logs or error messages
+      render: shell
+      placeholder: |
+        Paste logs here...
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - Backend API
+        - Frontend UI
+        - MCP Server
+        - PLM Connector
+        - Agent Framework
+        - Database
+        - Deployment/Infrastructure
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical (system down)
+        - High (major feature broken)
+        - Medium (feature impaired)
+        - Low (cosmetic issue)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version are you using?
+      placeholder: e.g., v1.0.0, main branch commit SHA
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Describe your environment
+      placeholder: |
+        - OS: [e.g., Ubuntu 22.04, macOS 14.0]
+        - Python: [e.g., 3.12]
+        - Node.js: [e.g., 20.10]
+        - Browser: [e.g., Chrome 120]
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem
+      placeholder: Screenshots, related issues, etc.

@@ -1,0 +1,44 @@
+SDD_Type,SDD_Field,SDD_Example,Neo4j_Label,Neo4j_Property,Neo4j_Type,Required,Notes
+Dossier,id,DOS-2024-001,SimulationDossier,id,string,Yes,Unique identifier
+Dossier,version,v1.2.0,SimulationDossier,version,string,Yes,Semantic version
+Dossier,credibilityLevel,PC3,SimulationDossier,credibilityLevel,string,Yes,PC1|PC2|PC3|PC4
+Dossier,motorId,IM-250-A,SimulationDossier,motorId,string,Yes,Physical product ID
+Dossier,projectName,Mudra Sugar Plant,SimulationDossier,projectName,string,Yes,Project name
+Dossier,status,IN_PROGRESS,SimulationDossier,status,string,Yes,IN_PROGRESS|PENDING_REVIEW|APPROVED|REJECTED
+Dossier,lastUpdated,2024-05-15,SimulationDossier,lastUpdated,string,Yes,ISO date format
+Dossier,engineer,Alex Rivera,SimulationDossier,engineer,string,Yes,User name
+Dossier,(ap_level),AP243,SimulationDossier,ap_level,string,Yes,Always AP243
+Dossier,(ap_schema),AP243,SimulationDossier,ap_schema,string,Yes,Always AP243
+Artifact,id,A1,SimulationArtifact,id,string,Yes,Unique identifier
+Artifact,name,Electromagnetic Performance,SimulationArtifact,name,string,Yes,Human-readable name
+Artifact,type,Report,SimulationArtifact,type,string,Yes,Report|Plot|CSV|3D Model|Certification
+Artifact,timestamp,2024-05-15,SimulationArtifact,timestamp,string,Yes,ISO date format
+Artifact,size,5.2 MB,SimulationArtifact,size,string,No,Human-readable size
+Artifact,status,Validated,SimulationArtifact,status,string,Yes,Validated|Pending
+Artifact,checksum,sha256:e3b0...,SimulationArtifact,checksum,string,Yes,SHA-256 hash
+Artifact,requirementId,REQ-01,SimulationArtifact,requirementId,string,Yes,Link to AP239 Requirement
+Artifact,fileUrl,/uploads/...,SimulationArtifact,fileUrl,string,No,Relative path
+Artifact,(ap_level),AP243,SimulationArtifact,ap_level,string,Yes,Always AP243
+Artifact,(ap_schema),AP243,SimulationArtifact,ap_schema,string,Yes,Always AP243
+EvidenceCategory,id,1,EvidenceCategory,id,integer,Yes,Numeric ID
+EvidenceCategory,label,Performance & Transients,EvidenceCategory,label,string,Yes,Category name
+EvidenceCategory,status,Complete,EvidenceCategory,status,string,Yes,Complete|Incomplete|Review Required
+KPIData,name,Rated Torque,KPI,name,string,Yes,Metric name
+KPIData,value,15400,KPI,value,float,Yes,Numeric value
+KPIData,unit,Nm,KPI,unit,string,Yes,Unit of measurement
+KPIData,trend,"[15200,15300,15400]",KPI,trend,string,No,JSON array as string
+MOSSECLink,sourceId,REQ-01,Relationship,sourceId,string,Yes,Source node ID
+MOSSECLink,sourceType,Requirement,Relationship,sourceType,string,Yes,Source node label
+MOSSECLink,targetId,SM-EM-01,Relationship,targetId,string,Yes,Target node ID
+MOSSECLink,targetType,SimModel,Relationship,targetType,string,Yes,Target node label
+MOSSECLink,relation,represents,Relationship,type,string,Yes,validates|derivedFrom|represents|executes|contains|verifies|approves|satisfies
+DecisionLog,status,APPROVED,DecisionLog,status,string,Yes,Dossier status at decision point
+DecisionLog,timestamp,2024-05-15,DecisionLog,timestamp,string,Yes,ISO date format
+DecisionLog,reviewer,Maria Garcia,DecisionLog,reviewer,string,Yes,User name
+DecisionLog,comment,Approved for release,DecisionLog,comment,string,No,Optional comment
+DecisionLog,signatureId,SIG-001,DecisionLog,signatureId,string,No,Digital signature reference
+AuditFinding,id,AUD-001,ComplianceAudit,id,string,Yes,Unique identifier
+AuditFinding,category,Compliance,ComplianceAudit,category,string,Yes,Compliance|Integrity|Traceability
+AuditFinding,severity,Critical,ComplianceAudit,severity,string,Yes,Critical|Warning|Pass
+AuditFinding,message,Missing requirement link,ComplianceAudit,message,string,Yes,Finding description
+AuditFinding,requirement,REQ-01,ComplianceAudit,requirement,string,No,Related requirement ID
