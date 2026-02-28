@@ -510,7 +510,6 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       Connector: '#a855f7',
       Generalization: '#d946ef',
       Organization: '#0891b2',
-      Person: '#f43f5e',
       // XSD Schema types
       XSDSchema: '#0369a1',
       XSDComplexType: '#b45309',
