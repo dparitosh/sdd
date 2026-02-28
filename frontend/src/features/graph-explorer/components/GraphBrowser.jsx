@@ -18,6 +18,52 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { getNodeTypes, getGraphData } from '@/services/graph.service';
 
+/**
+ * Discipline-grouped node type taxonomy.
+ * Drives the filter popover groups and the legend.
+ * AP239 = PLCS (Product Life Cycle Support)
+ * AP242 = Managed Model Based 3D Engineering (Design/CAD)
+ * AP243 = MoSSEC — Simulation & Analysis Context
+ */
+const NODE_TYPE_GROUPS = {
+  'AP239 · PLCS': [
+    'Requirement', 'RequirementVersion', 'Analysis', 'AnalysisModel',
+    'Approval', 'ComplianceAudit', 'DecisionLog',
+    'Document', 'Activity', 'Breakdown', 'Verification', 'WorkOrder', 'Event',
+  ],
+  'AP242 · Design / CAD': [
+    'Part', 'PartVersion', 'Assembly', 'Component', 'ComponentPlacement',
+    'Material', 'MaterialProperty', 'GeometricModel', 'ShapeRepresentation',
+    'Shape', 'Position', 'CADModel',
+  ],
+  'AP243 · Simulation (MoSSEC)': [
+    'SimulationDossier', 'SimulationRun', 'SimulationModel',
+    'SimulationArtifact', 'EvidenceCategory', 'KPI',
+    'ModelInstance', 'Study', 'ActualActivity', 'AssociativeModelNetwork',
+    'ModelType', 'Method', 'Result', 'Context', 'MethodActivity', 'Parameter',
+  ],
+  'Cross-Domain / Structural': [
+    'System', 'Interface', 'Port', 'Connector', 'Constraint',
+    'Class', 'Package', 'Property', 'Association', 'InstanceSpecification',
+    'Slot', 'Comment', 'MBSEElement', 'Generalization', 'ExternalPropertyDefinition',
+  ],
+  'Reference Data': [
+    'ExternalUnit', 'ValueType', 'Classification', 'ExternalOwlClass', 'ExternalModel',
+  ],
+  'MBSE / Ontology (OWL)': [
+    'OWLClass', 'OWLObjectProperty', 'OWLDatatypeProperty', 'OWLProperty',
+    'Ontology', 'OntologyClass', 'OntologyProperty',
+  ],
+  'XSD Schema': [
+    'XSDSchema', 'XSDElement', 'XSDComplexType', 'XSDSimpleType',
+    'XSDAttribute', 'XSDGroup', 'XSDAttributeGroup',
+  ],
+  'OSLC Integration': [
+    'ServiceProvider', 'Service', 'Catalog', 'CreationFactory', 'QueryCapability', 'Link',
+  ],
+  'People & Organizations': ['Person', 'Organization'],
+};
+
 const GRAPH_VIEWS = {
   ENTERPRISE: {
     id: 'ENTERPRISE',
@@ -70,9 +116,15 @@ const GRAPH_VIEWS = {
   DIGITAL_THREAD: {
     id: 'DIGITAL_THREAD',
     label: 'Digital Thread',
-    description: 'Linear flow: Dossier → Run → Artifact → Part → Requirement',
+    description: 'Full traceability: Dossier → Run → Artifact → KPI/Evidence → Part → Requirement → DecisionLog',
     apLevel: null,
-    fixedNodeTypes: ['SimulationDossier', 'SimulationRun', 'SimulationArtifact', 'EvidenceCategory', 'Part', 'Requirement'],
+    // All node types that participate in the digital thread traceability chain
+    fixedNodeTypes: [
+      'SimulationDossier', 'SimulationRun', 'SimulationModel',
+      'SimulationArtifact', 'EvidenceCategory', 'KPI',
+      'Part', 'Assembly', 'Requirement', 'Analysis',
+      'Approval', 'ComplianceAudit', 'DecisionLog',
+    ],
     icon: GitMerge
   }
 };
@@ -105,14 +157,35 @@ const OSLC_REL_COLORS = {
 
 /** Color coding for Digital Thread relationship types (matched to actual DB schema) */
 const DT_REL_COLORS = {
+  // Primary digital thread chain
   HAS_SIMULATION_RUN:       '#3b82f6', // blue       — Dossier → Run
   CONTAINS_ARTIFACT:        '#a855f7', // purple     — Run → Artifact
   GENERATED:                '#0ea5e9', // sky        — Run/Artifact → Artifact
+  HAS_KPI:                  '#38bdf8', // light-sky  — EvidenceCategory → KPI
   LINKED_TO_REQUIREMENT:    '#f97316', // orange     — Artifact → Requirement
   SATISFIED_BY_PART:        '#22c55e', // green      — Requirement → Part
   TYPED_BY:                 '#94a3b8', // slate-grey — Part → Class (structural)
-  PROVES_COMPLIANCE_TO:     '#ef4444', // red        — legacy
-  HAS_APPROVAL:             '#eab308', // gold       — legacy
+  // Compliance & approval chain
+  HAS_APPROVAL:             '#eab308', // gold       — node → Approval
+  HAS_DECISION:             '#f59e0b', // amber      — Dossier → DecisionLog
+  HAS_FINDING:              '#ef4444', // red        — Dossier/Audit → ComplianceAudit
+  PROVES_COMPLIANCE_TO:     '#dc2626', // dark-red   — legacy compliance trace
+};
+
+/**
+ * MoSSEC typed link relationships from SDD_DATA_MAPPING.csv
+ * MOSSECLink.relation: validates | derivedFrom | represents | executes |
+ *                      contains | verifies | approves | satisfies
+ */
+const MOSSEC_LINK_COLORS = {
+  validates:   '#10b981', // emerald  — model validates requirement
+  derivedFrom: '#f59e0b', // amber    — artifact derived from model
+  represents:  '#8b5cf6', // purple   — model represents physical part
+  executes:    '#3b82f6', // blue     — run executes model
+  contains:    '#94a3b8', // slate    — hierarchical containment
+  verifies:    '#22c55e', // green    — artifact verifies requirement
+  approves:    '#eab308', // gold     — person/approval approves dossier
+  satisfies:   '#14b8a6', // teal     — part satisfies requirement
 };
 
 export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
@@ -471,10 +544,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     if (type === 'Requirement') return '#10b981'; // Emerald
     if (['Verification', 'WorkOrder'].includes(type)) return '#14b8a6'; // Teal
 
-    // AP243 Simulation
+    // AP243 Simulation (MoSSEC)
     if (type === 'SimulationArtifact') return '#0ea5e9'; // Sky
     if (type === 'EvidenceCategory') return '#38bdf8';   // Light sky
-    if (['SimulationDossier', 'SimulationRun', 'SimulationModel', 'CADModel'].includes(type)) return '#7c3aed'; // Violet
+    if (type === 'KPI') return '#06b6d4';                // Cyan — key performance metric
+    if (['SimulationDossier', 'SimulationRun', 'SimulationModel'].includes(type)) return '#7c3aed'; // Violet
+    // AP242 CAD (CADModel belongs with Design, NOT Simulation)
+    if (type === 'CADModel') return '#c2410c'; // Orange-700 — AP242 design artifact
     
     // General type colors (only for types not matched above)
     const colors = {
@@ -489,13 +565,26 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       Activity: '#34d399',
       Resource: '#047857',
       Breakdown: '#6ee7b7',
+      Analysis: '#34d399',      // AP239 — analysis is a PLCS activity
+      AnalysisModel: '#6ee7b7', // AP239 — model for analysis
+      Approval: '#14b8a6',      // AP239 — approval record (teal)
+      ComplianceAudit: '#ef4444', // AP239 — compliance finding (red-alert)
+      DecisionLog: '#f59e0b',   // AP239/AP243 — decision record (amber)
 
       // AP243 (MoSSEC) - Blue/Purple Scheme
-      Study: '#3b82f6', 
+      Study: '#3b82f6',
       Model: '#2563eb',
-      Analysis: '#1d4ed8',
       Scenario: '#60a5fa',
       Result: '#93c5fd',
+      // AP243 Reference Data
+      ExternalUnit: '#38bdf8',     // sky — QUDT/OM unit reference
+      ExternalOwlClass: '#2563eb', // blue — external OWL class
+      Classification: '#0284c7',   // ocean — SKOS classification
+      ValueType: '#0ea5e9',        // sky-blue — value type definition
+      // Cross-domain structural
+      System: '#64748b',     // slate
+      Interface: '#a855f7',  // violet
+      Parameter: '#3b82f6',  // blue
 
       // Ontology & Metadata
       Class: '#8b5cf6',
@@ -800,6 +889,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                     <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
                   </div>
                 ))}
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mt-1 pt-1 border-t">MoSSEC Links (ISO 10303)</p>
+                {Object.entries(MOSSEC_LINK_COLORS).map(([rel, color]) => (
+                  <div key={rel} className="flex items-center gap-2">
+                    <div className="w-6 h-0.5 rounded border" style={{ borderColor: color, borderStyle: 'dashed' }} />
+                    <span className="text-muted-foreground">{rel}</span>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
@@ -987,36 +1083,71 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                   <CommandInput placeholder="Search node types…" />
                   <CommandList>
                     <CommandEmpty>No type found.</CommandEmpty>
-                    <CommandGroup heading={`Available Types (${dropdownTypes.length})`}>
-                      {dropdownTypes.map(nt => {
-                        const isSelected = selectedNodeTypes.includes(nt.type);
-                        return (
-                        <CommandItem
-                          key={nt.type}
-                          value={nt.type}
-                          onSelect={() => toggleNodeType(nt.type)}
-                          className={cn(isSelected && "bg-accent/40")}
-                        >
-                          <Checkbox
-                            checked={isSelected}
-                            className="mr-2 pointer-events-none"
-                          />
-                          <div
-                             className="mr-2 h-3 w-3 rounded-full shrink-0"
-                             style={{ backgroundColor: getNodeColor({ type: nt.type }) }}
-                          />
-                          <span className={cn("flex-1 truncate", isSelected && "font-medium")}>
-                            {nt.type}
-                          </span>
-                          {nt.count != null && (
-                            <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                              {nt.count}
-                            </span>
-                          )}
-                          {isSelected && <Check className="ml-1 h-3 w-3 shrink-0 text-primary" />}
-                        </CommandItem>
-                      )})}
-                    </CommandGroup>
+                    {/* Discipline-grouped type filter — each group maps to an AP/standard */}
+                    {Object.entries(NODE_TYPE_GROUPS).map(([groupLabel, groupTypes]) => {
+                      const groupItems = dropdownTypes.filter(nt => groupTypes.includes(nt.type));
+                      if (groupItems.length === 0) return null;
+                      return (
+                        <CommandGroup key={groupLabel} heading={groupLabel}>
+                          {groupItems.map(nt => {
+                            const isSelected = selectedNodeTypes.includes(nt.type);
+                            return (
+                              <CommandItem
+                                key={nt.type}
+                                value={nt.type}
+                                onSelect={() => toggleNodeType(nt.type)}
+                                className={cn(isSelected && 'bg-accent/40')}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  className="mr-2 pointer-events-none"
+                                />
+                                <div
+                                  className="mr-2 h-3 w-3 rounded-full shrink-0"
+                                  style={{ backgroundColor: getNodeColor({ type: nt.type }) }}
+                                />
+                                <span className={cn('flex-1 truncate', isSelected && 'font-medium')}>
+                                  {nt.type}
+                                </span>
+                                {nt.count != null && (
+                                  <span className="text-xs text-muted-foreground ml-2 shrink-0">
+                                    {nt.count}
+                                  </span>
+                                )}
+                                {isSelected && <Check className="ml-1 h-3 w-3 shrink-0 text-primary" />}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      );
+                    })}
+                    {/* Any types not covered by NODE_TYPE_GROUPS */}
+                    {(() => {
+                      const groupedTypes = new Set(Object.values(NODE_TYPE_GROUPS).flat());
+                      const uncategorized = dropdownTypes.filter(nt => !groupedTypes.has(nt.type));
+                      if (uncategorized.length === 0) return null;
+                      return (
+                        <CommandGroup heading="Other">
+                          {uncategorized.map(nt => {
+                            const isSelected = selectedNodeTypes.includes(nt.type);
+                            return (
+                              <CommandItem
+                                key={nt.type}
+                                value={nt.type}
+                                onSelect={() => toggleNodeType(nt.type)}
+                                className={cn(isSelected && 'bg-accent/40')}
+                              >
+                                <Checkbox checked={isSelected} className="mr-2 pointer-events-none" />
+                                <div className="mr-2 h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: getNodeColor({ type: nt.type }) }} />
+                                <span className={cn('flex-1 truncate', isSelected && 'font-medium')}>{nt.type}</span>
+                                {nt.count != null && <span className="text-xs text-muted-foreground ml-2 shrink-0">{nt.count}</span>}
+                                {isSelected && <Check className="ml-1 h-3 w-3 shrink-0 text-primary" />}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      );
+                    })()}
                   </CommandList>
                 </Command>
               </PopoverContent>
@@ -1380,6 +1511,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               const relType = l.type || l.relationship || '';
               if (currentViewId === 'DIGITAL_THREAD') {
                 if (DT_REL_COLORS[relType]) return DT_REL_COLORS[relType];
+                if (MOSSEC_LINK_COLORS[relType]) return MOSSEC_LINK_COLORS[relType];
               }
               if (currentViewId === 'ONTOLOGY') {
                 if (ONTOLOGY_REL_COLORS[relType]) return ONTOLOGY_REL_COLORS[relType];
@@ -1387,6 +1519,8 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               if (currentViewId === 'OSLC') {
                 if (OSLC_REL_COLORS[relType]) return OSLC_REL_COLORS[relType];
               }
+              // Enterprise / AP239 / AP242 / AP243 views: apply MoSSEC link colors globally
+              if (MOSSEC_LINK_COLORS[relType]) return MOSSEC_LINK_COLORS[relType];
               return 'rgba(100, 116, 139, 0.85)';
             }}
             linkWidth={l => {

@@ -88,19 +88,22 @@ ALLOWED_NODE_TYPES = {
     "Documentation",
     "DomainConcept",
     "ExternalModel",
-    # AP243 / Simulation
+    # AP243 / Simulation (MoSSEC)
     "SimulationDossier",
     "SimulationRun",
     "SimulationModel",
     "SimulationArtifact",
     "EvidenceCategory",
+    "KPI",                         # Key Performance Indicator linked to Evidence
+    "DecisionLog",                 # Approval / decision audit trail (reviewer, signatureId)
+    # AP239 / PLCS compliance
+    "ComplianceAudit",             # AuditFinding → ComplianceAudit (Critical/Warning/Pass)
     # AP242 / CAD extras
     "CADModel",
     "Shape",
     "Position",
     "WorkOrder",
     # People & Organizations
-    "Person",
     "Organization",
     # OSLC integration
     "ServiceProvider",
