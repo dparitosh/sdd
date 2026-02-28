@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceManyBody, forceX, forceY, forceCollide } from 'd3';
@@ -223,17 +224,21 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     queryFn: () => getNodeTypes()
   });
 
+  // Debounce filter changes so rapid checkbox clicks don't spam the API.
+  // The graph only reloads 400ms after the last toggle.
+  const [debouncedNodeTypes] = useDebounce(selectedNodeTypes, 400);
+
   const {
     data: graphData,
     isLoading,
     isFetching,
     error
   } = useQuery({
-    queryKey: ['graph-data', selectedNodeTypes, limit, apLevel],
+    queryKey: ['graph-data', debouncedNodeTypes, limit, apLevel],
     queryFn: () => {
       const params = {};
-      if (selectedNodeTypes.length > 0) {
-        params.node_types = selectedNodeTypes.join(',');
+      if (debouncedNodeTypes.length > 0) {
+        params.node_types = debouncedNodeTypes.join(',');
       }
       params.limit = limit[0];
       if (apLevel) {
@@ -428,6 +433,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       linkKeys
     };
   }, [normalizedGraph, selectedNode, hoverNode]);
+
+  // Keep a ref that always reflects the latest highlighted value.
+  // This prevents stale-closure issues inside the canvas callback which
+  // react-force-graph-2d may hold across renders.
+  const highlightedRef = useRef(highlighted);
+  useEffect(() => { highlightedRef.current = highlighted; }, [highlighted]);
+
   const availableNodeTypes = useMemo(() => {
     // When an apLevel is active, derive types from actual loaded graph data
     // so the sidebar only shows entity types present at that AP level
@@ -975,10 +987,14 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                   variant="outline"
                   role="combobox"
                   aria-expanded={nodeTypeOpen}
-                  className="w-full justify-between font-normal text-muted-foreground"
+                  className="w-full justify-between font-normal"
                 >
-                  <span className="truncate">
-                    {isFetching ? "Updating graph..." : selectedNodeTypes.length === 0 ? "Add type filter..." : "Add more types..."}
+                  <span className="truncate text-muted-foreground">
+                    {isFetching
+                      ? "Updating graph…"
+                      : selectedNodeTypes.length === 0
+                        ? "Filter by node type…"
+                        : `${selectedNodeTypes.length} type${selectedNodeTypes.length > 1 ? 's' : ''} selected`}
                   </span>
                   {isFetching ? (
                     <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin text-primary" />
@@ -989,10 +1005,10 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Search available types..." />
+                  <CommandInput placeholder="Search node types…" />
                   <CommandList>
                     <CommandEmpty>No type found.</CommandEmpty>
-                    <CommandGroup heading="Available Types">
+                    <CommandGroup heading={`Available Types (${dropdownTypes.length})`}>
                       {dropdownTypes.map(nt => {
                         const isSelected = selectedNodeTypes.includes(nt.type);
                         return (
@@ -1000,23 +1016,25 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                           key={nt.type}
                           value={nt.type}
                           onSelect={() => toggleNodeType(nt.type)}
+                          className={cn(isSelected && "bg-accent/40")}
                         >
-                          <Checkbox 
+                          <Checkbox
                             checked={isSelected}
-                            className="mr-2"
+                            className="mr-2 pointer-events-none"
                           />
-                          <div 
-                             className="mr-2 h-3 w-3 rounded-full"
-                             style={{ backgroundColor: getNodeColor({ type: nt.type }) }} 
+                          <div
+                             className="mr-2 h-3 w-3 rounded-full shrink-0"
+                             style={{ backgroundColor: getNodeColor({ type: nt.type }) }}
                           />
-                          <span className={cn("flex-1", isSelected && "font-medium")}>
+                          <span className={cn("flex-1 truncate", isSelected && "font-medium")}>
                             {nt.type}
                           </span>
-                          {nt.count && (
-                            <span className="text-xs text-muted-foreground ml-2">
+                          {nt.count != null && (
+                            <span className="text-xs text-muted-foreground ml-2 shrink-0">
                               {nt.count}
                             </span>
                           )}
+                          {isSelected && <Check className="ml-1 h-3 w-3 shrink-0 text-primary" />}
                         </CommandItem>
                       )})}
                     </CommandGroup>
@@ -1212,11 +1230,14 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             nodeRelSize={6}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const id = String(node.id);
-              const isFocused = highlighted.focusId === id;
-              const isNeighbor = highlighted.nodeIds
-                ? highlighted.nodeIds.has(id)
+              // Use ref so this callback always reflects the latest highlight
+              // state even when react-force-graph-2d holds a stale closure.
+              const hl = highlightedRef.current;
+              const isFocused = hl.focusId === id;
+              const isNeighbor = hl.nodeIds
+                ? hl.nodeIds.has(id)
                 : true;
-              const dim = highlighted.nodeIds ? !isNeighbor : false;
+              const dim = hl.nodeIds ? !isNeighbor : false;
               const baseColor = getNodeColor(node);
               const radius = isFocused ? 8 : 6;
 
@@ -1248,7 +1269,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, radius + 2, 0, 2 * Math.PI, false);
                 ctx.stroke();
-              } else if (highlighted.focusId && isNeighbor) {
+              } else if (hl.focusId && isNeighbor) {
                 ctx.globalAlpha = 1;
                 ctx.lineWidth = 2;
                 ctx.strokeStyle = '#f59e0b';
@@ -1257,9 +1278,14 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.stroke();
               }
 
-              // Show labels: ONTOLOGY view at zoom >= 0.5; all other views at zoom >= 1.2.
-              const labelZoomThreshold = currentViewId === 'ONTOLOGY' ? 0.5 : 1.2;
-              const showLabel = !dim && globalScale >= labelZoomThreshold;
+              // Label strategy:
+              //  - Always show label for the focused node & its direct neighbours
+              //    (so clicking / searching immediately reveals context labels).
+              //  - For all other nodes, only show labels when zoomed in past 2.5×
+              //    (ONTOLOGY view: 0.5× threshold – it's an annotation-heavy graph).
+              const isImportant = isFocused || (hl.focusId && isNeighbor && !dim);
+              const labelZoomThreshold = currentViewId === 'ONTOLOGY' ? 0.5 : 2.5;
+              const showLabel = !dim && (isImportant || globalScale >= labelZoomThreshold);
               if (showLabel) {
                 // Prefer human-readable name; fall back to properties.label then local part of id.
                 const rawId = String(node.id || '');
@@ -1328,14 +1354,16 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             }}
             linkDirectionalParticles={l => {
               const id = String(l.id ?? '');
-              return highlighted.linkKeys && highlighted.linkKeys.has(id) ? 3 : 0;
+              const hl = highlightedRef.current;
+              return hl.linkKeys && hl.linkKeys.has(id) ? 3 : 0;
             }}
             linkDirectionalParticleWidth={2}
             linkLabel={l => l.type || ''}
             linkColor={l => {
               const id = String(l.id ?? '');
-              const dim = highlighted.linkKeys
-                ? !highlighted.linkKeys.has(id)
+              const hl = highlightedRef.current;
+              const dim = hl.linkKeys
+                ? !hl.linkKeys.has(id)
                 : false;
               if (dim) return 'rgba(148, 163, 184, 0.20)';
               const relType = l.type || l.relationship || '';
@@ -1352,7 +1380,8 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             }}
             linkWidth={l => {
               const id = String(l.id ?? '');
-              return highlighted.linkKeys && highlighted.linkKeys.has(id)
+              const hl = highlightedRef.current;
+              return hl.linkKeys && hl.linkKeys.has(id)
                 ? 2.6
                 : 1.2;
             }}

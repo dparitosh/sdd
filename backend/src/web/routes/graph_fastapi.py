@@ -408,25 +408,18 @@ async def get_graph_data(
             params["ap_level"] = ap_level
 
         where_clause_n = " AND ".join(where_clauses) if where_clauses else "1=1"
-        where_clause_m = where_clause_n.replace("labels(n)", "labels(m)").replace("n.ap_level", "m.ap_level")
 
-        # Fetch primary nodes (excludes OWL satellite property nodes)
-        # Order by relationship degree to ensure connected nodes are prioritized over orphans
+        # Strategy: fetch CONNECTED nodes first (nodes that participate in at
+        # least one relationship), ordered by degree so the most interconnected
+        # nodes are always included. A small "isolated node" supplement is added
+        # afterwards so the view is never completely empty for sparse datasets.
         node_query = f"""
         MATCH (n)
         WHERE {where_clause_n}
+          AND size((n)--()) > 0
         WITH n
         ORDER BY size((n)--()) DESC
-        LIMIT {max(1, limit // 3)}
-        
-        OPTIONAL MATCH (n)-[r]-(m)
-        WHERE {where_clause_m}
-        
-        WITH n, m
         LIMIT $limit
-        
-        UNWIND (CASE WHEN m IS NOT NULL THEN [n, m] ELSE [n] END) AS _n
-        WITH DISTINCT _n AS n
         RETURN coalesce(n.id, elementId(n)) AS id,
                labels(n) AS labels,
                coalesce(n.name, n.label) AS name,
@@ -440,6 +433,29 @@ async def get_graph_data(
         """
 
         nodes_result = neo4j.execute_query(node_query, params)
+
+        # Fallback: if few connected nodes found, supplement with isolated nodes
+        # so sparse databases still return something useful.
+        if len(nodes_result) < max(1, limit // 4):
+            iso_where = where_clause_n
+            isolation_query = f"""
+            MATCH (n)
+            WHERE {iso_where}
+            WITH n
+            ORDER BY rand()
+            LIMIT $limit
+            RETURN coalesce(n.id, elementId(n)) AS id,
+                   labels(n) AS labels,
+                   coalesce(n.name, n.label) AS name,
+                   n.description AS description,
+                   n.status AS status,
+                   n.priority AS priority,
+                   n.part_number AS part_number,
+                   n.ap_level AS ap_level,
+                   n.ap_schema AS ap_schema,
+                   properties(n) AS props
+            """
+            nodes_result = neo4j.execute_query(isolation_query, params)
 
         # Helper: build a node dict from a query record
         def _make_node(r):
