@@ -212,6 +212,8 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const [nodeTypeOpen, setNodeTypeOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchHighlightIdx, setSearchHighlightIdx] = useState(-1);
+  const searchContainerRef = useRef(null);
   const [layoutDone, setLayoutDone] = useState(false);
   const [layoutActive, setLayoutActive] = useState(true); // Start active so graph lays out
   const graphIdRef = useRef(null); // Track which graph we've laid out
@@ -741,6 +743,62 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     });
   }, [dropdownTypes, selectedNode]);
 
+  // Filtered search results — shared between keyboard handler and result list
+  const filteredSearchResults = useMemo(() => {
+    if (!searchQuery || !normalizedGraph?.nodes) return [];
+    return normalizedGraph.nodes
+      .filter(n => (n.searchLabel || '').includes(searchQuery.toLowerCase()))
+      .slice(0, 25);
+  }, [normalizedGraph, searchQuery]);
+
+  // Highlight a matched substring inside a string
+  const highlightMatch = (text, query) => {
+    if (!query || text == null) return String(text ?? '');
+    const str = String(text);
+    const idx = str.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return str;
+    return (
+      <>
+        {str.slice(0, idx)}
+        <mark className="bg-primary/20 text-foreground not-italic rounded-sm">{str.slice(idx, idx + query.length)}</mark>
+        {str.slice(idx + query.length)}
+      </>
+    );
+  };
+
+  // Discipline-group bulk toggle
+  const toggleGroup = useCallback((groupTypes) => {
+    const available = groupTypes.filter(t => dropdownTypes.some(d => d.type === t));
+    const allSelected = available.length > 0 && available.every(t => selectedNodeTypes.includes(t));
+    setSelectedNodeTypes(prev =>
+      allSelected ? prev.filter(t => !available.includes(t)) : [...new Set([...prev, ...available])]
+    );
+  }, [dropdownTypes, selectedNodeTypes]);
+
+  const selectAllTypes = useCallback(
+    () => setSelectedNodeTypes(dropdownTypes.map(d => d.type)),
+    [dropdownTypes]
+  );
+  const invertSelection = useCallback(() => {
+    const all = dropdownTypes.map(d => d.type);
+    setSelectedNodeTypes(all.filter(t => !selectedNodeTypes.includes(t)));
+  }, [dropdownTypes, selectedNodeTypes]);
+
+  // Close search dropdown when clicking outside the search widget
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [searchOpen]);
+
+  // Reset keyboard cursor when query changes
+  useEffect(() => { setSearchHighlightIdx(-1); }, [searchQuery]);
+
   return (
     // Break out of the layout's p-8 + max-w wrapper so the graph fills edge-to-edge.
     // -mx-8 / -mt-8 cancel the parent p-8 padding.
@@ -901,7 +959,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
           )}
 
           {/* Search Nodes - Dedicated Search Bar */}
-          <div className="space-y-2">
+          <div className="space-y-2" ref={searchContainerRef}>
             <div className="flex items-center justify-between">
               <Label>Search Graph</Label>
               {(selectedNode || hoverNode) && (
@@ -931,19 +989,51 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                     }}
                     onFocus={() => setSearchOpen(true)}
                     className="pl-8"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setSearchQuery('');
+                        setSearchOpen(false);
+                        e.currentTarget.blur();
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSearchOpen(true);
+                        setSearchHighlightIdx(i => Math.min(i + 1, filteredSearchResults.length - 1));
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSearchHighlightIdx(i => Math.max(i - 1, 0));
+                      } else if (e.key === 'Enter') {
+                        const node = filteredSearchResults[searchHighlightIdx];
+                        if (node) {
+                          handleNodeClick(node);
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                          setSearchHighlightIdx(-1);
+                        }
+                      }
+                    }}
                 />
             </div>
             
-            {/* Search Results Dropdown (Inline) */}
+            {/* Search Results Dropdown */}
             {searchOpen && searchQuery && (
-                <div className="border rounded-md shadow-sm bg-background max-h-60 overflow-y-auto z-50">
-                    {(normalizedGraph?.nodes || [])
-                        .filter(node => (node.searchLabel || "").includes(searchQuery.toLowerCase()))
-                        .slice(0, 20)
-                        .map(node => {
-                            // Build a human-readable display label:
-                            // prefer node.name, then properties.label, then a
-                            // sanitised id (strip Neo4j internal element IDs like '4:uuid:12345')
+                <div className="border rounded-md shadow-sm bg-background overflow-hidden z-50">
+                    {/* Match count + keyboard hint */}
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b text-xs text-muted-foreground select-none">
+                      <span>
+                        {filteredSearchResults.length === 0
+                          ? 'No matches'
+                          : (() => {
+                              const total = normalizedGraph?.nodes?.filter(n => (n.searchLabel||'').includes(searchQuery.toLowerCase())).length ?? 0;
+                              return filteredSearchResults.length < total
+                                ? `Top ${filteredSearchResults.length} of ${total} matches`
+                                : `${filteredSearchResults.length} match${filteredSearchResults.length !== 1 ? 'es' : ''}`;
+                            })()
+                        }
+                      </span>
+                      <span className="opacity-50 hidden sm:block">↑↓ · Enter · Esc</span>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto">
+                    {filteredSearchResults.map((node, idx) => {
                             const rawId = String(node.id || '');
                             const isElementId = /^\d+:[0-9a-f\-]{36}:\d+$/i.test(rawId);
                             const localId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
@@ -953,38 +1043,50 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                                 || (isElementId ? null : rawId)
                                 || `${node.type || 'Node'} #${localId}`;
                             const displayId = isElementId ? null : rawId;
+                            const isKbFocused = idx === searchHighlightIdx;
                             return (
-                            <div 
+                            <div
                                 key={node.id}
                                 className={cn(
-                                    "flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                                    selectedNode?.id === node.id && "bg-accent"
+                                    "flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer transition-colors",
+                                    isKbFocused
+                                      ? "bg-primary/10 text-foreground"
+                                      : selectedNode?.id === node.id
+                                        ? "bg-accent/60"
+                                        : "hover:bg-accent hover:text-accent-foreground"
                                 )}
+                                onMouseEnter={() => setSearchHighlightIdx(idx)}
                                 onClick={() => {
                                     handleNodeClick(node);
                                     setSearchOpen(false);
-                                    setSearchQuery("");
+                                    setSearchQuery('');
+                                    setSearchHighlightIdx(-1);
                                 }}
                             >
-                                <div className="flex flex-col overflow-hidden">
-                                     <span className="font-medium truncate">{displayName}</span>
+                                <div
+                                    className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
+                                    style={{ backgroundColor: getNodeColor({ type: node.type }) }}
+                                />
+                                <div className="flex flex-col overflow-hidden min-w-0">
+                                     <span className="font-medium truncate">{highlightMatch(displayName, searchQuery)}</span>
                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span className="bg-secondary px-1.5 py-0.5 rounded-sm text-[10px] uppercase tracking-wider">
+                                        <span className="bg-secondary px-1.5 py-0.5 rounded-sm text-[10px] uppercase tracking-wider shrink-0">
                                             {node.type}
                                         </span>
-                                        {displayId && <span className="truncate opacity-70">{displayId}</span>}
+                                        {displayId && <span className="truncate opacity-70">{highlightMatch(displayId, searchQuery)}</span>}
                                      </div>
                                 </div>
-                                {selectedNode?.id === node.id && <Check className="ml-auto h-4 w-4 opacity-50" />}
+                                {selectedNode?.id === node.id && <Check className="ml-auto h-4 w-4 opacity-50 shrink-0" />}
                             </div>
                             );
                         })
                     }
-                    {normalizedGraph?.nodes && normalizedGraph.nodes.filter(n => (n.searchLabel||"").includes(searchQuery.toLowerCase())).length === 0 && (
+                    {filteredSearchResults.length === 0 && (
                         <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                            No nodes found.
+                            No nodes match <em className="not-italic font-medium">&ldquo;{searchQuery}&rdquo;</em>
                         </div>
                     )}
+                    </div>
                 </div>
             )}
             
@@ -1081,14 +1183,51 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               <PopoverContent className="w-72 p-0" align="start">
                 <Command>
                   <CommandInput placeholder="Search node types…" />
+                  {/* Quick-action bar */}
+                  <div className="flex items-center gap-0.5 px-2 py-1.5 border-b">
+                    <button
+                      className="text-xs px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
+                      onMouseDown={(e) => { e.preventDefault(); selectAllTypes(); }}
+                    >Select All</button>
+                    <button
+                      className="text-xs px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
+                      onMouseDown={(e) => { e.preventDefault(); invertSelection(); }}
+                    >Invert</button>
+                    <button
+                      className="text-xs px-1.5 py-0.5 rounded hover:bg-accent text-muted-foreground transition-colors"
+                      onMouseDown={(e) => { e.preventDefault(); setSelectedNodeTypes([]); }}
+                    >Clear</button>
+                    <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+                      {selectedNodeTypes.length} / {dropdownTypes.length}
+                    </span>
+                  </div>
                   <CommandList>
                     <CommandEmpty>No type found.</CommandEmpty>
                     {/* Discipline-grouped type filter — each group maps to an AP/standard */}
                     {Object.entries(NODE_TYPE_GROUPS).map(([groupLabel, groupTypes]) => {
                       const groupItems = dropdownTypes.filter(nt => groupTypes.includes(nt.type));
                       if (groupItems.length === 0) return null;
+                      const selCount = groupItems.filter(nt => selectedNodeTypes.includes(nt.type)).length;
+                      const allSel = selCount === groupItems.length;
                       return (
-                        <CommandGroup key={groupLabel} heading={groupLabel}>
+                        <CommandGroup
+                          key={groupLabel}
+                          heading={
+                            <span className="flex items-center justify-between w-full">
+                              {groupLabel}
+                              <span
+                                className={cn(
+                                  "ml-1 tabular-nums cursor-pointer rounded px-1 text-[10px] select-none transition-colors",
+                                  allSel ? "text-primary font-semibold" : selCount > 0 ? "text-primary/60" : "hover:text-primary"
+                                )}
+                                title={allSel ? "Click to deselect group" : "Click to select all in group"}
+                                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleGroup(groupTypes); }}
+                              >
+                                {selCount}/{groupItems.length}
+                              </span>
+                            </span>
+                          }
+                        >
                           {groupItems.map(nt => {
                             const isSelected = selectedNodeTypes.includes(nt.type);
                             return (
