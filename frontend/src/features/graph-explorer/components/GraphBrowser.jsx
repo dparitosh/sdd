@@ -1187,15 +1187,15 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                   <div className="flex items-center gap-0.5 px-2 py-1.5 border-b">
                     <button
                       className="text-xs px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
-                      onMouseDown={(e) => { e.preventDefault(); selectAllTypes(); }}
+                      onClick={(e) => { e.preventDefault(); selectAllTypes(); }}
                     >Select All</button>
                     <button
                       className="text-xs px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
-                      onMouseDown={(e) => { e.preventDefault(); invertSelection(); }}
+                      onClick={(e) => { e.preventDefault(); invertSelection(); }}
                     >Invert</button>
                     <button
                       className="text-xs px-1.5 py-0.5 rounded hover:bg-accent text-muted-foreground transition-colors"
-                      onMouseDown={(e) => { e.preventDefault(); setSelectedNodeTypes([]); }}
+                      onClick={(e) => { e.preventDefault(); setSelectedNodeTypes([]); }}
                     >Clear</button>
                     <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                       {selectedNodeTypes.length} / {dropdownTypes.length}
@@ -1239,7 +1239,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                               >
                                 <Checkbox
                                   checked={isSelected}
-                                  className="mr-2 pointer-events-none"
+                                  className="mr-2"
                                 />
                                 <div
                                   className="mr-2 h-3 w-3 rounded-full shrink-0"
@@ -1277,6 +1277,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                                 className={cn(isSelected && 'bg-accent/40')}
                               >
                                 <Checkbox checked={isSelected} className="mr-2 pointer-events-none" />
+                                                         <Checkbox checked={isSelected} className="mr-2" />
                                 <div className="mr-2 h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: getNodeColor({ type: nt.type }) }} />
                                 <span className={cn('flex-1 truncate', isSelected && 'font-medium')}>{nt.type}</span>
                                 {nt.count != null && <span className="text-xs text-muted-foreground ml-2 shrink-0">{nt.count}</span>}
