@@ -408,42 +408,153 @@ async def get_graph_data(
             params["ap_level"] = ap_level
 
         where_clause_n = " AND ".join(where_clauses) if where_clauses else "1=1"
+        # Build a matching clause for the far-end node m with renamed fields
+        _wc_m = (where_clause_n
+                 .replace("labels(n)", "labels(m)")
+                 .replace("n.ap_level", "m.ap_level"))
 
-        # Strategy: fetch CONNECTED nodes first (nodes that participate in at
-        # least one relationship), ordered by degree so the most interconnected
-        # nodes are always included. A small "isolated node" supplement is added
-        # afterwards so the view is never completely empty for sparse datasets.
-        node_query = f"""
-        MATCH (n)
+        # ----------------------------------------------------------------
+        # Core strategy: query EDGE PAIRS (n)-[r]->(m) and extract nodes
+        # from their endpoints.  This guarantees every returned node has at
+        # least one visible edge — eliminating the classic "N hub nodes,
+        # 0 internal edges" problem that arises when nodes are fetched
+        # independently and their neighbours happen to lie outside the result.
+        #
+        # pair_limit intentionally overshoots so that after deduplication we
+        # still end up with roughly $limit unique nodes.
+        # ----------------------------------------------------------------
+        pair_query = f"""
+        MATCH (n)-[r]->(m)
         WHERE {where_clause_n}
-          AND size((n)--()) > 0
-        WITH n
-        ORDER BY size((n)--()) DESC
-        LIMIT $limit
-        RETURN coalesce(n.id, elementId(n)) AS id,
-               labels(n) AS labels,
-               coalesce(n.name, n.label) AS name,
-               n.description AS description,
-               n.status AS status,
-               n.priority AS priority,
-               n.part_number AS part_number,
-               n.ap_level AS ap_level,
-               n.ap_schema AS ap_schema,
-               properties(n) AS props
+          AND {_wc_m}
+        WITH n, r, m
+        LIMIT $pair_limit
+        RETURN
+            coalesce(n.id, elementId(n)) AS n_id,
+            labels(n)                    AS n_labels,
+            coalesce(n.name, n.label)    AS n_name,
+            n.description                AS n_desc,
+            n.status                     AS n_status,
+            n.priority                   AS n_priority,
+            n.part_number                AS n_part_number,
+            n.ap_level                   AS n_ap_level,
+            n.ap_schema                  AS n_ap_schema,
+            properties(n)                AS n_props,
+            coalesce(m.id, elementId(m)) AS m_id,
+            labels(m)                    AS m_labels,
+            coalesce(m.name, m.label)    AS m_name,
+            m.description                AS m_desc,
+            m.status                     AS m_status,
+            m.priority                   AS m_priority,
+            m.part_number                AS m_part_number,
+            m.ap_level                   AS m_ap_level,
+            m.ap_schema                  AS m_ap_schema,
+            properties(m)               AS m_props,
+            type(r)                      AS rel_type,
+            elementId(r)                 AS rel_id
         """
+        pair_params = dict(params)
+        pair_params["pair_limit"] = limit * 3   # overshoot then deduplicate
 
-        nodes_result = neo4j.execute_query(node_query, params)
+        pairs_result = neo4j.execute_query(pair_query, pair_params)
 
-        # Fallback: if few connected nodes found, supplement with isolated nodes
-        # so sparse databases still return something useful.
-        if len(nodes_result) < max(1, limit // 4):
-            iso_where = where_clause_n
-            isolation_query = f"""
+        # ------------------------------------------------------------------
+        # Helpers
+        # ------------------------------------------------------------------
+        BASE_LABELS = {"XSDElement", "MBSEElement", "XSDNode", "OWLProperty"}
+        OWL_PREF    = {"OWLClass", "OWLObjectProperty", "OWLDatatypeProperty"}
+        TOP_KEYS     = {"id","labels","name","description","status",
+                        "priority","part_number","ap_level","ap_schema","props"}
+        INTERNAL_KEYS = {"uuid","xmi_uuid","xmi_id","createdAt",
+                         "modifiedAt","loadSource","version"}
+
+        def _resolve_type(labels):
+            specific = [l for l in labels if l not in BASE_LABELS]
+            owl = [l for l in specific if l in OWL_PREF]
+            return (owl[0] if owl else
+                    specific[0] if specific else
+                    labels[0] if labels else "Unknown")
+
+        def _extra_props(raw):
+            return {k: str(v) for k, v in raw.items()
+                    if k not in TOP_KEYS and k not in INTERNAL_KEYS
+                    and v is not None and str(v).strip()}
+
+        def _make_node_from_pair(row, prefix):
+            """Build a node dict from one row of the pair query."""
+            nlabels = row.get(f"{prefix}labels") or []
+            nid     = row.get(f"{prefix}id")
+            nname   = row.get(f"{prefix}name")
+            raw     = row.get(f"{prefix}props") or {}
+            return {
+                "id":          nid,
+                "name":        nname or row.get(f"{prefix}part_number")
+                               or raw.get("label") or raw.get("local_name") or nid,
+                "type":        _resolve_type(nlabels),
+                "group":       _resolve_type(nlabels),
+                "labels":      nlabels,
+                "description": row.get(f"{prefix}desc"),
+                "status":      row.get(f"{prefix}status"),
+                "priority":    row.get(f"{prefix}priority"),
+                "ap_level":    row.get(f"{prefix}ap_level"),
+                "ap_schema":   row.get(f"{prefix}ap_schema"),
+                "properties":  _extra_props(raw),
+            }
+
+        def _make_node(r):
+            """Build a node dict from a single-node query row (e.g. OWL supplement)."""
+            labels  = r.get("labels") or []
+            raw     = r.get("props") or {}
+            return {
+                "id":          r["id"],
+                "name":        r.get("name") or r.get("part_number")
+                               or raw.get("label") or raw.get("local_name") or r["id"],
+                "type":        _resolve_type(labels),
+                "group":       _resolve_type(labels),
+                "labels":      labels,
+                "description": r.get("description"),
+                "status":      r.get("status"),
+                "priority":    r.get("priority"),
+                "ap_level":    r.get("ap_level"),
+                "ap_schema":   r.get("ap_schema"),
+                "properties":  _extra_props(raw),
+            }
+
+        # ---- Process pair results -----------------------------------------
+        node_ids = set()
+        nodes    = []
+        link_ids = set()
+        links    = []
+
+        for row in pairs_result:
+            n_id = row.get("n_id")
+            m_id = row.get("m_id")
+            if not n_id or not m_id:
+                continue
+            if n_id not in node_ids and len(node_ids) < limit:
+                node_ids.add(n_id)
+                nodes.append(_make_node_from_pair(row, "n_"))
+            if m_id not in node_ids and len(node_ids) < limit:
+                node_ids.add(m_id)
+                nodes.append(_make_node_from_pair(row, "m_"))
+            rid = str(row.get("rel_id", ""))
+            if rid and rid not in link_ids:
+                link_ids.add(rid)
+                links.append({
+                    "source": n_id,
+                    "target": m_id,
+                    "type":   row.get("rel_type", ""),
+                    "id":     rid,
+                })
+
+        # Fallback: if pair query returned nothing (fully isolated dataset or
+        # very narrow type filter with no edges), sample any nodes so the view
+        # is not empty.
+        if not nodes:
+            fallback_query = f"""
             MATCH (n)
-            WHERE {iso_where}
-            WITH n
-            ORDER BY rand()
-            LIMIT $limit
+            WHERE {where_clause_n}
+            WITH n ORDER BY rand() LIMIT $limit
             RETURN coalesce(n.id, elementId(n)) AS id,
                    labels(n) AS labels,
                    coalesce(n.name, n.label) AS name,
@@ -455,53 +566,10 @@ async def get_graph_data(
                    n.ap_schema AS ap_schema,
                    properties(n) AS props
             """
-            nodes_result = neo4j.execute_query(isolation_query, params)
-
-        # Helper: build a node dict from a query record
-        def _make_node(r):
-            labels = r.get("labels") or []
-            BASE_LABELS = {"XSDElement", "MBSEElement", "XSDNode", "OWLProperty"}
-            specific = [l for l in labels if l not in BASE_LABELS]
-            OWL_PREF = {"OWLClass", "OWLObjectProperty", "OWLDatatypeProperty"}
-            owl = [l for l in specific if l in OWL_PREF]
-            node_type = owl[0] if owl else (specific[0] if specific else (labels[0] if labels else "Unknown"))
-            # Collect extra properties not already in top-level fields
-            _TOP_KEYS = {"id", "labels", "name", "description", "status",
-                         "priority", "part_number", "ap_level", "ap_schema", "props"}
-            # Internal/metadata keys to exclude from the tooltip properties
-            _INTERNAL_KEYS = {"uuid", "xmi_uuid", "xmi_id", "createdAt",
-                              "modifiedAt", "loadSource", "version"}
-            raw_props = r.get("props") or {}
-            extra_props = {
-                k: str(v) for k, v in raw_props.items()
-                if k not in _TOP_KEYS
-                and k not in _INTERNAL_KEYS
-                and v is not None
-                and str(v).strip()
-            }
-            return {
-                "id": r["id"],
-                "name": r.get("name") or r.get("part_number") or raw_props.get("label") or raw_props.get("local_name") or r["id"],
-                "type": node_type,
-                "group": node_type,
-                "labels": labels,
-                "description": r.get("description"),
-                "status": r.get("status"),
-                "priority": r.get("priority"),
-                "ap_level": r.get("ap_level"),
-                "ap_schema": r.get("ap_schema"),
-                "properties": extra_props,
-            }
-
-        # Format primary nodes
-        node_ids = set()
-        nodes = []
-
-        for r in nodes_result:
-            if not r or not r.get("id"):
-                continue
-            node_ids.add(r["id"])
-            nodes.append(_make_node(r))
+            for r in neo4j.execute_query(fallback_query, params):
+                if r and r.get("id") and r["id"] not in node_ids:
+                    node_ids.add(r["id"])
+                    nodes.append(_make_node(r))
 
         # ------------------------------------------------------------------
         # Fetch OWL satellite nodes connected to OWLClass nodes in the result
@@ -554,29 +622,27 @@ async def get_graph_data(
                     node_ids.add(r["id"])
                     nodes.append(_make_node(r))
 
-        # Fetch relationships
-        links = []
-        if node_ids:
-            rel_query = """
+            # Fetch any supplemental edges introduced by OWL satellite nodes
+            # (these were added after the main pair query so are not yet in links)
+            supp_rel_query = """
             MATCH (source)-[r]->(target)
-             WHERE coalesce(source.id, elementId(source)) IN $node_ids
-            AND coalesce(target.id, elementId(target)) IN $node_ids
-             RETURN coalesce(source.id, elementId(source)) AS source,
-                 coalesce(target.id, elementId(target)) AS target,
+            WHERE coalesce(source.id, elementId(source)) IN $node_ids
+              AND coalesce(target.id, elementId(target)) IN $node_ids
+            RETURN coalesce(source.id, elementId(source)) AS source,
+                   coalesce(target.id, elementId(target)) AS target,
                    type(r) AS type,
                    elementId(r) AS rel_id
             """
-
-            rels_result = neo4j.execute_query(rel_query, {"node_ids": list(node_ids)})
-
-            for r in rels_result:
-                link = {
-                    "source": r["source"],
-                    "target": r["target"],
-                    "type": r["type"],
-                    "id": str(r["rel_id"]),
-                }
-                links.append(link)
+            for r in neo4j.execute_query(supp_rel_query, {"node_ids": list(node_ids)}):
+                rid = str(r.get("rel_id", ""))
+                if rid and rid not in link_ids:
+                    link_ids.add(rid)
+                    links.append({
+                        "source": r["source"],
+                        "target": r["target"],
+                        "type":   r["type"],
+                        "id":     rid,
+                    })
 
         # Build metadata
         metadata = {

@@ -652,27 +652,6 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     });
   }, [dropdownTypes, selectedNode]);
 
-  const legendTypes = useMemo(() => {
-    if (selectedNodeTypes.length > 0) {
-      // If we have specific types selected (or fixed), show those
-      return selectedNodeTypes.slice(0, 8); // Limit to top 8 to avoid clogging UI
-    }
-    // Show actual types present in the loaded graph data
-    if (normalizedGraph?.nodes?.length > 0) {
-      const typeCounts = {};
-      for (const n of normalizedGraph.nodes) {
-        const t = n.type || 'Unknown';
-        typeCounts[t] = (typeCounts[t] || 0) + 1;
-      }
-      return Object.entries(typeCounts)
-        .sort((a, b) => b[1] - a[1]) // Sort by count descending
-        .slice(0, 10)
-        .map(([type]) => type);
-    }
-    // Default fallback
-    return ['Requirement', 'Part', 'Class', 'Package', 'Property', 'Association'];
-  }, [selectedNodeTypes, normalizedGraph]);
-
   return (
     // Break out of the layout's p-8 + max-w wrapper so the graph fills edge-to-edge.
     // -mx-8 / -mt-8 cancel the parent p-8 padding.
@@ -1074,8 +1053,9 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             </p>
           </div>
 
-          {/* Graph statistics */}
-          {graphData && (
+          {/* Graph statistics — use live normalizedGraph counts so numbers
+               always reflect what is actually visible on the canvas */}
+          {normalizedGraph && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Graph Statistics</CardTitle>
@@ -1083,22 +1063,32 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               <CardContent className="text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Nodes:</span>
-                  <span className="font-mono font-semibold">
-                    {graphData.metadata?.node_count ?? 0}
-                  </span>
+                  <span className="font-mono font-semibold">{normalizedGraph.nodes.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Links:</span>
-                  <span className="font-mono font-semibold">
-                    {graphData.metadata?.link_count ?? 0}
+                  <span className={cn(
+                    "font-mono font-semibold",
+                    normalizedGraph.links.length === 0 && "text-yellow-500"
+                  )}>
+                    {normalizedGraph.links.length}
+                    {normalizedGraph.links.length === 0 && " ⚠"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Types:</span>
                   <span className="font-mono font-semibold">
-                    {graphData.metadata?.node_types?.length ?? 0}
+                    {new Set(normalizedGraph.nodes.map(n => n.type)).size}
                   </span>
                 </div>
+                {normalizedGraph.links.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Rel types:</span>
+                    <span className="font-mono font-semibold">
+                      {new Set(normalizedGraph.links.map(l => l.type)).size}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -1137,23 +1127,44 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                     </div>
                   ))}
                 </>
-              ) : (
-                <>
-                  {legendTypes.map(type => (
-                    <div key={type} className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: getNodeColor({ type }) }}
-                      />
-                      <span>{type}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center gap-2 pt-1">
-                    <div className="w-3 h-3 rounded-full bg-gray-500" />
-                    <span className="text-muted-foreground">Other types</span>
-                  </div>
-                </>
-              )}
+              ) : (() => {
+                // Compute type → count from live graph data
+                const typeCounts = {};
+                (normalizedGraph?.nodes || []).forEach(n => {
+                  const t = n.type || 'Unknown';
+                  typeCounts[t] = (typeCounts[t] || 0) + 1;
+                });
+                const allLiveTypes = Object.entries(typeCounts)
+                  .sort((a, b) => b[1] - a[1]);
+                const shownTypes = allLiveTypes.slice(0, 10);
+                const hiddenCount = Math.max(0, allLiveTypes.length - shownTypes.length);
+                return (
+                  <>
+                    {shownTypes.map(([type, count]) => (
+                      <div key={type} className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: getNodeColor({ type }) }}
+                        />
+                        <span className="flex-1 truncate">{type}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{count}</span>
+                      </div>
+                    ))}
+                    {hiddenCount > 0 && (
+                      <div className="flex items-center gap-2 pt-1 border-t">
+                        <div className="w-3 h-3 rounded-full bg-muted-foreground/40 shrink-0" />
+                        <span className="text-muted-foreground text-xs">+{hiddenCount} more type{hiddenCount > 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                    {!normalizedGraph && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <div className="w-3 h-3 rounded-full bg-gray-400 shrink-0" />
+                        <span className="text-muted-foreground">All types</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
