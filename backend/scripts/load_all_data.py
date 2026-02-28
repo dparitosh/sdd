@@ -109,10 +109,19 @@ def _run(label: str, cmd: list[str | Path], *, cwd=REPO_ROOT,
         return True
 
     verbose = os.environ.get("LOAD_ALL_VERBOSE", "").strip() in ("1", "true", "yes")
+
+    # Ensure subprocesses can resolve both `backend.src.*` and bare `src.*` imports
+    sep = os.pathsep
+    extra = f"{REPO_ROOT}{sep}{BACKEND_ROOT}"
+    proc_env = os.environ.copy()
+    existing_pp = proc_env.get("PYTHONPATH", "")
+    proc_env["PYTHONPATH"] = f"{extra}{sep}{existing_pp}" if existing_pp else extra
+
     start = time.perf_counter()
     result = subprocess.run(
         cmd,
         cwd=str(cwd),
+        env=proc_env,
         capture_output=not verbose,
         text=True,
     )
@@ -217,7 +226,7 @@ def _print_final_stats():
         # Per-label counts (top 15, excluding huge noise labels)
         labels = conn.execute_query(
             "MATCH (n) UNWIND labels(n) AS l"
-            " WHERE NOT l IN ['MBSEElement','XSDNode','XSDElement']"
+            " WITH l WHERE NOT l IN ['MBSEElement','XSDNode','XSDElement']"
             " RETURN l AS label, count(*) AS c ORDER BY c DESC LIMIT 15"
         )
         print("\n  Key node types:")
