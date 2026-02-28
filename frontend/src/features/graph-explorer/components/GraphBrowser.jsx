@@ -168,6 +168,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const [hoverLink, setHoverLink] = useState(null);
     const pointerRef = useRef({ x: 0, y: 0 });
     const tooltipRef = useRef(null);
+    const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   // Memoised tooltip properties for hover node
   const hoverTooltipProps = useMemo(() => {
     if (!hoverNode) return null;
