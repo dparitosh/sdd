@@ -410,10 +410,14 @@ async def get_graph_data(
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 
         # Fetch primary nodes (excludes OWL satellite property nodes)
+        # Order by relationship degree to ensure connected nodes are prioritized over orphans
         node_query = f"""
         MATCH (n)
         WHERE {where_clause}
-         RETURN coalesce(n.id, elementId(n)) AS id,
+        WITH n
+        ORDER BY size((n)--()) DESC
+        LIMIT $limit
+        RETURN coalesce(n.id, elementId(n)) AS id,
                labels(n) AS labels,
                coalesce(n.name, n.label) AS name,
                n.description AS description,
@@ -423,7 +427,6 @@ async def get_graph_data(
                n.ap_level AS ap_level,
                n.ap_schema AS ap_schema,
                properties(n) AS props
-        LIMIT $limit
         """
 
         nodes_result = neo4j.execute_query(node_query, params)

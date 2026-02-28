@@ -166,9 +166,8 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const navigate = useNavigate();
   const [hoverNode, setHoverNode] = useState(null);
   const [hoverLink, setHoverLink] = useState(null);
-  const [pointer, setPointer] = useState({ x: 0, y: 0 });
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-
+    const pointerRef = useRef({ x: 0, y: 0 });
+    const tooltipRef = useRef(null);
   // Memoised tooltip properties for hover node
   const hoverTooltipProps = useMemo(() => {
     if (!hoverNode) return null;
@@ -529,6 +528,12 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     return colors[type] || '#6b7280';
   }, []);
   const handleNodeClick = useCallback(node => {
+    if (selectedNode && selectedNode.id === node.id) {
+      setSelectedNode(null);
+      setHoverNode(null);
+      if (fgRef.current) fgRef.current.zoomToFit(400);
+      return;
+    }
     setSelectedNode(node);
     setHoverNode(null); // clear hover so only the click selection drives highlight
     // In Digital Thread mode, add to breadcrumb trail
@@ -571,11 +576,25 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const handlePointerMove = useCallback(e => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    setPointer({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  }, []);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    pointerRef.current = { x, y };
+
+    if (tooltipRef.current) {
+      const TOOLTIP_W = 320;
+      const TOOLTIP_H_EST = 160;
+      const OFFSET = 12;
+      const left = x + OFFSET + TOOLTIP_W > dimensions.width
+        ? Math.max(0, x - TOOLTIP_W - OFFSET)
+        : x + OFFSET;
+      const top = y + OFFSET + TOOLTIP_H_EST > dimensions.height
+        ? Math.max(0, y - TOOLTIP_H_EST - OFFSET)
+        : y + OFFSET;
+      
+      tooltipRef.current.style.left = `${left}px`;
+      tooltipRef.current.style.top = `${top}px`;
+    }
+  }, [dimensions]);
   const isFixedMode = fixedNodeTypes && fixedNodeTypes.length > 0;
 
   // Empty state message based on current view
@@ -1224,6 +1243,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, radius + 2, 0, 2 * Math.PI, false);
                 ctx.stroke();
+              } else if (highlighted.focusId && isNeighbor) {
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius + 1.5, 0, 2 * Math.PI, false);
+                ctx.stroke();
               }
 
               // Show labels: ONTOLOGY view at zoom >= 0.5; all other views at zoom >= 1.2.
@@ -1400,18 +1426,20 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         )}
 
         {/* Hover tooltip */}
-        {(hoverNode || hoverLink) && (() => {
+        {((hoverNode && hoverNode.id !== selectedNode?.id) || hoverLink) && (() => {
           const TOOLTIP_W = 320;
           const TOOLTIP_H_EST = 160;
           const OFFSET = 12;
-          const left = pointer.x + OFFSET + TOOLTIP_W > dimensions.width
-            ? Math.max(0, pointer.x - TOOLTIP_W - OFFSET)
-            : pointer.x + OFFSET;
-          const top = pointer.y + OFFSET + TOOLTIP_H_EST > dimensions.height
-            ? Math.max(0, pointer.y - TOOLTIP_H_EST - OFFSET)
-            : pointer.y + OFFSET;
+          const ptr = pointerRef.current;
+          const left = ptr.x + OFFSET + TOOLTIP_W > dimensions.width
+            ? Math.max(0, ptr.x - TOOLTIP_W - OFFSET)
+            : ptr.x + OFFSET;
+          const top = ptr.y + OFFSET + TOOLTIP_H_EST > dimensions.height
+            ? Math.max(0, ptr.y - TOOLTIP_H_EST - OFFSET)
+            : ptr.y + OFFSET;
           return (
             <div
+              ref={tooltipRef}
               className="absolute z-50 pointer-events-none rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
               style={{ left, top, maxWidth: TOOLTIP_W }}
             >
