@@ -120,6 +120,19 @@ ALLOWED_NODE_TYPES = {
 METADATA_NODE_TYPES = {
     "Documentation",
     "DomainConcept",
+    # UML Comment nodes from XMI ingestion — internal annotations, not
+    # meaningful in graph visualisation.  Adding here excludes them from
+    # both the node-type filter UI and the pair query WHERE clause.
+    "Comment",
+}
+
+# Relationship types that are XMI-internal annotations and should be
+# de-prioritised in the pair query (pushed to end via ORDER BY).
+# They are NOT hard-excluded — they can still appear if no other edges exist.
+_NOISE_REL_TYPES = {
+    "OWNS_COMMENT",
+    "HAS_COMMENT",
+    "DOCUMENTED_BY",
 }
 
 
@@ -423,6 +436,10 @@ async def get_graph_data(
         # 0 internal edges" problem that arises when nodes are fetched
         # independently and their neighbours happen to lie outside the result.
         #
+        # ORDER BY puts structural/semantic edges first so the LIMIT budget is
+        # spent on meaningful pairs rather than XMI-internal annotation edges
+        # (OWNS_COMMENT / HAS_COMMENT / DOCUMENTED_BY).  Those are still
+        # returned if no other edges meet the limit.
         # pair_limit intentionally overshoots so that after deduplication we
         # still end up with roughly $limit unique nodes.
         # ----------------------------------------------------------------
@@ -430,7 +447,15 @@ async def get_graph_data(
         MATCH (n)-[r]->(m)
         WHERE {where_clause_n}
           AND {_wc_m}
-        WITH n, r, m
+        WITH n, r, m,
+             CASE type(r)
+               WHEN 'OWNS_COMMENT'       THEN 99
+               WHEN 'HAS_COMMENT'        THEN 99
+               WHEN 'DOCUMENTED_BY'      THEN 98
+               WHEN 'REFERENCES_EXTERNAL' THEN 50
+               ELSE 0
+             END AS noise_rank
+        ORDER BY noise_rank
         LIMIT $pair_limit
         RETURN
             coalesce(n.id, elementId(n)) AS n_id,
