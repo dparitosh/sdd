@@ -407,16 +407,26 @@ async def get_graph_data(
             # params is dict[str, Any] but defined by limit which is int
             params["ap_level"] = ap_level
 
-        where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
+        where_clause_n = " AND ".join(where_clauses) if where_clauses else "1=1"
+        where_clause_m = where_clause_n.replace("labels(n)", "labels(m)").replace("n.ap_level", "m.ap_level")
 
         # Fetch primary nodes (excludes OWL satellite property nodes)
         # Order by relationship degree to ensure connected nodes are prioritized over orphans
         node_query = f"""
         MATCH (n)
-        WHERE {where_clause}
+        WHERE {where_clause_n}
         WITH n
         ORDER BY size((n)--()) DESC
+        LIMIT {max(1, limit // 3)}
+        
+        OPTIONAL MATCH (n)-[r]-(m)
+        WHERE {where_clause_m}
+        
+        WITH n, m
         LIMIT $limit
+        
+        UNWIND (CASE WHEN m IS NOT NULL THEN [n, m] ELSE [n] END) AS _n
+        WITH DISTINCT _n AS n
         RETURN coalesce(n.id, elementId(n)) AS id,
                labels(n) AS labels,
                coalesce(n.name, n.label) AS name,

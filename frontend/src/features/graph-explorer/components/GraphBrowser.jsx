@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceManyBody, forceX, forceY, forceCollide } from 'd3';
@@ -145,18 +145,18 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const toggleLayout = useCallback(() => {
     if (!fgRef.current) return;
     if (layoutActive) {
-        // d3AlphaTarget/d3VelocityDecay are props, not ref methods.
-        // pauseAnimation() is the correct imperative call to stop the loop.
-        fgRef.current.pauseAnimation();
+        // Stop physics by letting state update the props
+        // (d3AlphaDecay=1, d3VelocityDecay=1) 
         setLayoutActive(false);
         setLayoutDone(true);
     } else {
-        // resumeAnimation() restarts the render loop;
-        // d3ReheatSimulation() re-energises the force engine.
-        fgRef.current.resumeAnimation();
-        fgRef.current.d3ReheatSimulation();
+        // Restart the layout physics engine
         setLayoutActive(true);
         setLayoutDone(false);
+        // We delay d3ReheatSimulation so the component has time to apply the layoutActive=true props
+        setTimeout(() => {
+            if (fgRef.current) fgRef.current.d3ReheatSimulation();
+        }, 50);
     }
   }, [layoutActive]);
 
@@ -226,6 +226,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const {
     data: graphData,
     isLoading,
+    isFetching,
     error
   } = useQuery({
     queryKey: ['graph-data', selectedNodeTypes, limit, apLevel],
@@ -240,6 +241,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       }
       return getGraphData(params);
     },
+    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false
   });
   const normalizedGraph = useMemo(() => {
@@ -339,7 +341,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         return yOffset + tier * ySpacing;
       }).strength(0.55);
       fx = forceX(0).strength(0.02);
-      fgRef.current.d3Force('charge', forceManyBody().strength(-160));
+      fgRef.current.d3Force('charge', forceManyBody().strength(-200));
     } else if (currentViewId === 'OSLC') {
       // 3-tier layout: Ontology module (top) → Classes/Properties (middle) → Schema/Requirements (bottom)
       const OSLC_TIER = {
@@ -358,7 +360,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         return yOffset + tier * ySpacing;
       }).strength(0.50);
       fx = forceX(0).strength(0.02);
-      fgRef.current.d3Force('charge', forceManyBody().strength(-120));
+      fgRef.current.d3Force('charge', forceManyBody().strength(-180));
     } else {
       // Default ring layout for all other views
       const ringRadius = 260;
@@ -375,12 +377,12 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         const angle = idx / typeCount * Math.PI * 2;
         return Math.sin(angle) * ringRadius;
       }).strength(strength);
-      fgRef.current.d3Force('charge', forceManyBody().strength(-80));
+      fgRef.current.d3Force('charge', forceManyBody().strength(-150));
     }
     fgRef.current.d3Force('x', fx);
     fgRef.current.d3Force('y', fy);
     // Add collision force to prevent overlap
-    fgRef.current.d3Force('collide', forceCollide().radius(8).strength(0.5));
+    fgRef.current.d3Force('collide', forceCollide().radius(20).strength(0.8));
     
     // Cooldown improvements:
     // Reheat simulation with specific alpha to smooth out initial burst
@@ -545,9 +547,8 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       });
     }
     if (fgRef.current) {
-      // Freeze simulation immediately so the graph is fully static when
-      // navigating to the selected node (prevents bounce/drift after zoom).
-      fgRef.current.pauseAnimation();
+      // Freeze simulation immediately without stopping the paint loop
+      // so highlights and new selections can be drawn.
       setLayoutActive(false);
       setLayoutDone(true);
 
@@ -977,9 +978,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                   className="w-full justify-between font-normal text-muted-foreground"
                 >
                   <span className="truncate">
-                    {selectedNodeTypes.length === 0 ? "Add type filter..." : "Add more types..."}
+                    {isFetching ? "Updating graph..." : selectedNodeTypes.length === 0 ? "Add type filter..." : "Add more types..."}
                   </span>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  {isFetching ? (
+                    <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                  ) : (
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0" align="start">
@@ -1288,8 +1293,10 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 const r2 = Math.min(boxH / 2, 2 / globalScale);
 
                 // Background pill for readability
-                ctx.globalAlpha = 0.82;
+                ctx.globalAlpha = 1;
                 ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.15)';
+                ctx.shadowBlur = 4 / globalScale;
                 ctx.beginPath();
                 ctx.moveTo(boxX + r2, boxY);
                 ctx.lineTo(boxX + boxW - r2, boxY);
@@ -1302,6 +1309,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.arcTo(boxX, boxY, boxX + r2, boxY, r2);
                 ctx.closePath();
                 ctx.fill();
+                ctx.shadowBlur = 0; // reset shadow
 
                 // Label text
                 ctx.globalAlpha = 0.95;
