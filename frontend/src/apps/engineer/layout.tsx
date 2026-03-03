@@ -6,7 +6,6 @@ import RoleSelector from '@/features/auth/components/RoleSelector';
 import Chatbot from '@/features/ai-studio/components/Chatbot';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
 import {
   LayoutDashboard,
   Search,
@@ -29,7 +28,6 @@ import {
   Code,
   FileOutput,
   Ruler,
-  Bell,
   UserCircle2,
   LogOut,
 } from 'lucide-react';
@@ -105,8 +103,6 @@ export default function EngineerLayout() {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -190,27 +186,9 @@ export default function EngineerLayout() {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden ml-64" role="main">
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#004A99]" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search dossiers, requirements, or motor IDs..." 
-                className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full text-sm w-80 focus:ring-2 focus:ring-[#004A99] focus:bg-white transition-all outline-none" 
-              />
-            </div>
-          </div>
+        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-end sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-6">
-            <button 
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              title="Notifications"
-            >
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-            </button>
-            <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
+            <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-slate-800">{displayName}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{displayRole}</p>
