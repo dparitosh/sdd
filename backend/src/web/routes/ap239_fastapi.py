@@ -712,11 +712,13 @@ async def get_documents(
 
         query = f"""
         MATCH (doc:Document)
-        WHERE doc.ap_level = 'AP239' AND {where_clause}
+        WHERE doc.ap_level = 'AP239'
+              AND doc.document_id IS NOT NULL
+              AND {where_clause}
         OPTIONAL MATCH (doc)-[:DOCUMENTS]->(req:Requirement)
         RETURN doc.name AS name,
                doc.document_id AS document_id,
-               doc.version AS version,
+               toString(doc.version) AS version,
                doc.type AS type,
                COLLECT(DISTINCT req.name) AS documents_requirements
         ORDER BY doc.name
