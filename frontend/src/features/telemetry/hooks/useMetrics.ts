@@ -1,7 +1,8 @@
-/** Telemetry hooks — useKPIs, useDossierHealth, useApprovalQueue */
+/** Telemetry hooks — useKPIs, useDossierHealth, useApprovalQueue, useStandardsKPIs */
 import { useQuery } from '@tanstack/react-query';
 import * as sddService from '@/services/sdd.service';
 import * as simService from '@/services/simulation.service';
+import { ap239, ap242, ap243 } from '@/services/standards.service';
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -225,4 +226,62 @@ export function useApprovalQueue() {
   })();
 
   return { queue, weeklyThroughput, isLoading };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  useStandardsKPIs — AP239 requirements, AP242 parts, AP243 MoSSEC model    */
+/* -------------------------------------------------------------------------- */
+
+export function useStandardsKPIs() {
+  const { data: ap239Stats, isLoading: l239 } = useQuery({
+    queryKey: ['ap239-statistics'],
+    queryFn: () => ap239.getStatistics(),
+    staleTime: 60_000,
+  });
+
+  const { data: ap242Stats, isLoading: l242 } = useQuery({
+    queryKey: ['ap242-statistics'],
+    queryFn: () => ap242.getStatistics(),
+    staleTime: 60_000,
+  });
+
+  const { data: ap243Overview, isLoading: l243 } = useQuery({
+    queryKey: ['ap243-overview-kpi'],
+    queryFn: () => ap243.getOverview(),
+    staleTime: 60_000,
+  });
+
+  const s239 = (ap239Stats as any)?.statistics ?? {};
+  const s242 = (ap242Stats as any)?.statistics ?? {};
+  const ov243 = (ap243Overview as any) ?? {};
+
+  // ── Requirements (AP239) ──────────────────────────────────
+  const reqNode = s239['Requirement'] ?? s239['AP239Requirement'] ?? {};
+  const reqTotal: number = reqNode.total ?? 0;
+  const statusMap239: Record<string, number> = reqNode.by_status ?? {};
+  const reqApproved = Object.entries(statusMap239)
+    .filter(([k]) => k.toLowerCase() === 'approved')
+    .reduce((sum, [, v]) => sum + (v as number), 0);
+  const reqOpen = reqTotal - reqApproved;
+  const reqApprovalPct = reqTotal > 0 ? Math.round((reqApproved / reqTotal) * 100) : 0;
+
+  // ── Parts & Assets (AP242) ────────────────────────────────
+  const partsTotal: number = (s242['AP242Product'] ?? s242['Part'] ?? {}).total ?? 0;
+  const assembliesTotal: number = (s242['AP242Assembly'] ?? s242['Assembly'] ?? {}).total ?? 0;
+  const materialsTotal: number = (s242['AP242Material'] ?? s242['Material'] ?? {}).total ?? 0;
+  const geometryTotal: number = (s242['AP242GeometryModel'] ?? s242['GeometryModel'] ?? {}).total ?? 0;
+
+  // ── MoSSEC Domain Model (AP243) ───────────────────────────
+  const nodeTypes: Record<string, number> = ov243.node_types ?? {};
+  const domainClassCount: number = nodeTypes['DomainClass'] ?? 0;
+  const packagesCount: number = (ov243.domain_packages ?? []).length;
+  const totalMossecNodes: number = ov243.total_nodes ?? 0;
+  const totalMossecRels: number = ov243.total_relationships ?? 0;
+
+  return {
+    requirements: { total: reqTotal, approved: reqApproved, open: reqOpen, approvalPct: reqApprovalPct },
+    parts: { total: partsTotal, assemblies: assembliesTotal, materials: materialsTotal, geometry: geometryTotal },
+    mossec: { domainClasses: domainClassCount, packages: packagesCount, totalNodes: totalMossecNodes, totalRelationships: totalMossecRels },
+    isLoading: l239 || l242 || l243,
+  };
 }

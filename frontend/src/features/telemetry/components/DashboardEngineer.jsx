@@ -10,8 +10,17 @@ import {
   Play,
   ClipboardCheck,
   Clock,
-  ArrowUpRight,
   BarChart3,
+  Package,
+  Layers,
+  FlaskConical,
+  Box,
+  CheckCircle2,
+  AlertCircle,
+  GitBranch,
+  Database,
+  BookOpen,
+  Network,
 } from 'lucide-react';
 import {
   BarChart,
@@ -25,7 +34,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { useKPIs, useDossierHealth } from '../hooks/useMetrics';
+import { useKPIs, useDossierHealth, useStandardsKPIs } from '../hooks/useMetrics';
 
 const EVIDENCE_LABELS = ['A1 Geometry', 'B1 Mesh', 'C1 Solver', 'D1 Results', 'E1 Post', 'F1 V&V', 'G1 Review', 'H1 Cert'];
 
@@ -52,9 +61,19 @@ function KPICard({ icon: Icon, label, value, subtitle, color = 'primary' }) {
   );
 }
 
+function SectionLabel({ children }) {
+  return (
+    <div className="flex items-center gap-2 pt-2">
+      <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">{children}</span>
+      <div className="flex-1 h-px bg-border" />
+    </div>
+  );
+}
+
 export default function DashboardEngineer() {
   const { kpis, isLoading: kpiLoading, error: kpiError } = useKPIs();
   const { healthData, convergenceData, evidenceSummary, isLoading: healthLoading } = useDossierHealth();
+  const { requirements: req, parts, mossec, isLoading: stdLoading } = useStandardsKPIs();
 
   if (kpiLoading || healthLoading) {
     return (
@@ -99,12 +118,64 @@ export default function DashboardEngineer() {
         icon={<BarChart3 className="h-6 w-6 text-primary" />}
       />
 
-      {/* KPI cards */}
+      {/* SDD / Simulation KPIs */}
+      <SectionLabel>Simulation Data Dossiers</SectionLabel>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard icon={FileText} label="Total Dossiers" value={kpis.totalDossiers} subtitle="All simulation dossiers" color="primary" />
         <KPICard icon={HeartPulse} label="Avg. Health Score" value={`${kpis.avgHealthScore}%`} subtitle="Across active dossiers" color="green" />
         <KPICard icon={Play} label="Active Simulations" value={kpis.activeSimulations} subtitle="Currently running" color="amber" />
         <KPICard icon={ClipboardCheck} label="Pending Reviews" value={kpis.pendingReviews} subtitle="Awaiting approval" color="purple" />
+      </div>
+
+      {/* Requirements (AP239) KPIs */}
+      <SectionLabel>Requirements — AP239 (ISO 10303-239)</SectionLabel>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stdLoading ? (
+          [...Array(4)].map((_, i) => (
+            <Card key={i}><CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-16" /></CardContent></Card>
+          ))
+        ) : (
+          <>
+            <KPICard icon={FileText} label="Total Requirements" value={req.total} subtitle="AP239 requirement nodes" color="primary" />
+            <KPICard icon={CheckCircle2} label="Approved" value={req.approved} subtitle={`${req.approvalPct}% of total`} color="green" />
+            <KPICard icon={AlertCircle} label="Open / Draft" value={req.open} subtitle="Not yet approved" color="amber" />
+            <KPICard icon={GitBranch} label="Approval Rate" value={`${req.approvalPct}%`} subtitle="Approved vs total" color="purple" />
+          </>
+        )}
+      </div>
+
+      {/* Parts & Assets (AP242) KPIs */}
+      <SectionLabel>Parts &amp; Assets — AP242 (ISO 10303-242)</SectionLabel>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stdLoading ? (
+          [...Array(4)].map((_, i) => (
+            <Card key={i}><CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-16" /></CardContent></Card>
+          ))
+        ) : (
+          <>
+            <KPICard icon={Package} label="Parts" value={parts.total} subtitle="AP242 product nodes" color="primary" />
+            <KPICard icon={Layers} label="Assemblies" value={parts.assemblies} subtitle="Assembly structures" color="green" />
+            <KPICard icon={FlaskConical} label="Materials" value={parts.materials} subtitle="Material definitions" color="amber" />
+            <KPICard icon={Box} label="Geometry Models" value={parts.geometry} subtitle="3D geometry records" color="purple" />
+          </>
+        )}
+      </div>
+
+      {/* MoSSEC Domain Model (AP243) KPIs */}
+      <SectionLabel>MoSSEC Domain Model — AP243 (ISO 10303-243)</SectionLabel>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stdLoading ? (
+          [...Array(4)].map((_, i) => (
+            <Card key={i}><CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader><CardContent><Skeleton className="h-8 w-16" /></CardContent></Card>
+          ))
+        ) : (
+          <>
+            <KPICard icon={Database} label="Domain Classes" value={mossec.domainClasses} subtitle="AP243 class definitions" color="primary" />
+            <KPICard icon={BookOpen} label="Packages" value={mossec.packages} subtitle="Domain model packages" color="green" />
+            <KPICard icon={Network} label="Graph Nodes" value={mossec.totalNodes} subtitle="MoSSEC nodes in Neo4j" color="amber" />
+            <KPICard icon={GitBranch} label="Relationships" value={mossec.totalRelationships} subtitle="MoSSEC edges" color="purple" />
+          </>
+        )}
       </div>
 
       {/* Charts row */}
