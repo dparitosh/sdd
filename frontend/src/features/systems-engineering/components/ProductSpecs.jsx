@@ -442,37 +442,3 @@ export default function ProductSpecs() {
     </div>
   );
 }
-
-
-function deriveConstraints(parts) {
-  const constraints = [];
-  for (const p of parts) {
-    if (p.status === 'RESTRICTED' || p.status === 'DEPRECATED') {
-      constraints.push({
-        id: p.uid ?? p.name,
-        description: `Part "${p.name ?? p.uid}" has status ${p.status} — verify compliance.`,
-        type: 'safety',
-        severity: 'critical',
-      });
-    }
-    if (p.tolerance != null) {
-      constraints.push({
-        id: `${p.uid}-tol`,
-        description: `Tolerance constraint on "${p.name ?? p.uid}": ${p.tolerance}`,
-        type: 'performance',
-        severity: 'major',
-      });
-    }
-  }
-  // Provide at least some sample constraints if data is empty
-  if (constraints.length === 0) {
-    constraints.push(
-      { id: 'SYS-C1', description: 'Operating temperature range: -40 °C to +85 °C', type: 'environmental', severity: 'critical' },
-      { id: 'SYS-C2', description: 'Maximum vibration level: 10 g RMS', type: 'performance', severity: 'major' },
-      { id: 'SYS-C3', description: 'EMC compliance per MIL-STD-461G', type: 'interface', severity: 'critical' },
-      { id: 'SYS-C4', description: 'Mean Time Between Failures (MTBF) ≥ 5 000 h', type: 'safety', severity: 'major' },
-      { id: 'SYS-C5', description: 'Field-replaceable unit weight < 15 kg', type: 'operational', severity: 'minor' },
-    );
-  }
-  return constraints;
-}
