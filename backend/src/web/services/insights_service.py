@@ -33,7 +33,7 @@ def _run(cypher: str, params: dict | None = None) -> list[dict]:
 # Labels that represent "items" in the knowledge graph.
 # Adapts across PLM XML and AP/MBSE ontology schemas.
 _ITEM_LABELS = [
-    "PLMXMLItem", "Part", "SimulationArtifact", "SimulationDossier",
+    "PLMXMLItem", "Part", "AP242Product", "SimulationArtifact", "SimulationDossier",
     "SimulationRun", "ValidationCase", "Assembly", "Document",
     "MBSEElement",
 ]
@@ -41,7 +41,8 @@ _ITEM_LABELS = [
 # Labels used for SHACL compliance node totals.
 _COMPLIANCE_LABELS = [
     "PLMXMLItem", "PLMXMLRevision", "PLMXMLBOMLine", "PLMXMLDataSet",
-    "StepFile", "Part", "SimulationArtifact", "SimulationDossier",
+    "StepFile", "Part", "AP242Product", "AP242ProductDefinition",
+    "AP242AssemblyOccurrence", "SimulationArtifact", "SimulationDossier",
     "SimulationRun", "ValidationCase", "Assembly", "Document",
     "MBSEElement",
 ]
@@ -108,6 +109,39 @@ def classification_coverage() -> Dict[str, Any]:
         "classified": classified,
         "unclassified": total - classified,
         "coverage_pct": round(classified / max(total, 1) * 100, 1),
+    }
+
+
+def part_similarity() -> Dict[str, Any]:
+    """Detect parts/products that share the same name/product_id but come from
+    different source files — i.e. revision or version variants.
+
+    This catches STEP file revisions imported from different uploads that
+    represent the same physical part (e.g. Rotor Shaft Key rev A vs rev B).
+    """
+    rows = _run(
+        "MATCH (p) WHERE p:Part OR p:AP242Product "
+        "WITH coalesce(p.product_id, p.name) AS groupKey, "
+        "     collect({uid: coalesce(p.uid, p.product_id, p.name), "
+        "              name: p.name, "
+        "              source_file: p.source_file, "
+        "              ap_level: p.ap_level, "
+        "              labels: labels(p)}) AS variants "
+        "WHERE size(variants) > 1 "
+        "RETURN groupKey, variants "
+        "ORDER BY size(variants) DESC"
+    )
+    groups = []
+    for r in rows:
+        groups.append({
+            "group_key": r["groupKey"],
+            "variant_count": len(r["variants"]),
+            "variants": r["variants"],
+        })
+    return {
+        "similar_groups": groups,
+        "total_groups": len(groups),
+        "total_variants": sum(g["variant_count"] for g in groups),
     }
 
 

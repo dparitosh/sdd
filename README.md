@@ -55,9 +55,9 @@ See [INSTALL.md](INSTALL.md) for detailed step-by-step installation instructions
 
 ### Quick Start
 1. Clone the repository
-2. Run `deployment/scripts/install.ps1` (Admin)
+2. Run `.\scripts\install.ps1`
 3. Configure `.env` with Neo4j credentials
-4. Run `start_all.ps1`
+4. Run `.\scripts\service_manager.ps1 start`
 - **Database Optimization**: 25 indexes + 7 constraints for fast queries
 - **Governance**: Person nodes and audit trails (created_by, modified_by)
 - **SMRL v1 API**: Full CRUD with `/api/v1/` endpoints
@@ -213,113 +213,123 @@ See **[docs/SERVICE_LAYER_GUIDE.md](docs/SERVICE_LAYER_GUIDE.md)** for service l
 ## Project Structure
 
 ```
-mbse-neo4j-graph-rep/
-├── src/
-│   ├── parsers/          # XMI parsing logic
-│   │   ├── xmi_parser.py
-│   │   ├── semantic_loader.py  # OMG UML/SysML metamodel parser
-│   │   └── __init__.py
-│   ├── graph/            # Neo4j graph operations
-│   │   ├── connection.py
-│   │   ├── builder.py
-│   │   ├── queries.py
-│   │   └── __init__.py
-│   ├── web/              # Web UI + REST API
-│   │   ├── app.py        # Flask application (50+ endpoints, refactored)
-│   │   ├── services/     # Service layer (NEW! ✨)
-│   │   │   ├── neo4j_service.py    # Connection pooling + CRUD (428 lines)
-│   │   │   ├── cache_service.py    # TTL caching (251 lines)
-│   │   │   ├── smrl_adapter.py     # ISO SMRL converter (265 lines)
-│   │   │   └── __init__.py
-│   │   ├── routes/       # Blueprint modules (NEW! ✨)
-│   │   │   ├── smrl_v1.py          # SMRL v1 API routes (421 lines)
-│   │   │   └── __init__.py
-│   │   ├── static/
-│   │   │   └── favicon.ico
-│   │   └── templates/
-│   │       └── index.html  # Interactive web interface
-│   ├── models/           # Data models
-│   ├── utils/            # Utility functions
-│   │   ├── logger.py
-│   │   ├── config.py
-│   │   └── __init__.py
-│   ├── cli/              # Command-line interface
-│   │   ├── main.py
-│   │   └── __init__.py
-│   └── main.py           # Application entry point
-├── mcp-server/           # Model Context Protocol server 🤖
+sdd/
+├── backend/
 │   ├── src/
-│   │   ├── index.ts      # MCP server entry point
-│   │   └── neo4j-client.ts  # TypeScript Neo4j client
-│   ├── dist/             # Compiled JavaScript
-│   ├── package.json      # Node.js dependencies
-│   ├── tsconfig.json     # TypeScript configuration
-│   ├── README.md         # MCP server documentation
-│   ├── INTEGRATION.md    # Integration guide
-│   └── SETUP_COMPLETE.md # Setup instructions
-├── docs/                 # Documentation (NEW! ✨)
-│   └── SERVICE_LAYER_GUIDE.md  # Service layer architecture guide
-├── smrlv12/              # ISO 10303 SMRL v12 XMI data
-│   └── data/
-│       └── domain_models/
-│           └── mossec/
-│               ├── Domain_model.xmi  # 3.8MB XMI file (3,257 nodes)
-│               └── DomainModel.json  # 1.1MB OpenAPI 3.0 spec (verified)
+│   │   ├── parsers/          # XMI parsing logic
+│   │   │   ├── xmi_parser.py
+│   │   │   ├── semantic_loader.py
+│   │   │   └── __init__.py
+│   │   ├── graph/            # Neo4j graph operations
+│   │   │   ├── connection.py
+│   │   │   ├── builder.py
+│   │   │   ├── queries.py
+│   │   │   └── __init__.py
+│   │   ├── web/              # FastAPI application + REST API
+│   │   │   ├── app_fastapi.py    # FastAPI entry point (50+ endpoints)
+│   │   │   ├── services/         # Service layer
+│   │   │   │   ├── neo4j_service.py    # Connection pooling + CRUD
+│   │   │   │   ├── cache_service.py    # TTL caching
+│   │   │   │   ├── insights_service.py # AI Insights analytics
+│   │   │   │   └── smrl_adapter.py     # ISO SMRL converter
+│   │   │   └── routes/           # Route modules
+│   │   │       ├── smrl_v1.py         # SMRL v1 API routes
+│   │   │       └── insights_fastapi.py
+│   │   ├── models/           # Data models
+│   │   └── utils/            # Utility functions
+│   ├── scripts/              # Backend-specific scripts
+│   ├── tests/                # Unit + integration tests
+│   ├── requirements.txt      # Python dependencies
+│   └── setup.py
+├── frontend/
+│   ├── src/                  # React + Vite frontend
+│   ├── public/
+│   ├── index.html
+│   ├── vite.config.ts
+│   └── vitest.config.ts
+├── mcp-server/               # Model Context Protocol server 🤖
+│   ├── src/
+│   │   ├── index.ts          # MCP server entry point
+│   │   └── neo4j-client.ts   # TypeScript Neo4j client
+│   ├── package.json
+│   └── README.md
+├── scripts/                  # Lifecycle scripts (PowerShell)
+│   ├── install.ps1           # Automated installation
+│   ├── reinstall.ps1         # Clean reinstall with backup
+│   ├── service_manager.ps1   # Start/stop/restart/status/logs
+│   ├── start_all_interactive.ps1
+│   ├── start_backend.ps1
+│   ├── start_ui.ps1
+│   ├── start_opensearch.ps1  # OpenSearch lifecycle management
+│   ├── stop_all.ps1
+│   ├── health_check.ps1      # Deployment health validation
+│   ├── reload_database.py    # Full seeding pipeline
+│   └── verify_connectivity.py
+├── smrlv12/                  # ISO 10303 SMRL v12 XMI data
+│   └── data/domain_models/mossec/
+│       └── Domain_model.xmi
 ├── data/
-│   ├── raw/              # Source XMI files
-│   ├── processed/        # Intermediate processed data
-│   └── output/           # Export results
-├── tests/
-│   ├── unit/             # Unit tests
-│   └── integration/      # Integration tests
-├── logs/                 # Application logs
-├── requirements.txt      # Python dependencies
-├── test_rest_api.py     # REST API test suite
-├── CYPHER_QUERIES.md    # Comprehensive query examples
-├── REST_API_GUIDE.md    # Complete REST API documentation
-├── REST_API_IMPLEMENTATION.md  # Implementation summary
-├── BUSINESS_USER_GUIDE.md  # End-user guide
-├── REFACTORING_TRACKER.md  # Development roadmap (Phase 0: 100%, Phase 1: 60%)
-├── API_SCHEMA_ALIGNMENT.md # API schema validation
-├── setup.py             # Package setup
-├── .env                 # Environment variables (configured)
-└── README.md            # This file
+│   ├── raw/                  # Source XMI files
+│   ├── processed/            # Intermediate processed data
+│   └── output/               # Export results
+├── deployment/               # Legacy deployment wrappers
+├── docs/                     # Documentation
+├── .env                      # Environment variables (see .env.example)
+├── .env.example              # Template with all supported variables
+├── INSTALL.md                # Full installation guide
+├── package.json              # Root Node.js dependencies (Vite/React)
+├── vite.config.ts
+└── README.md                 # This file
 ```
 
 ## Prerequisites
 
-- Python 3.9+
-- Neo4j Aura account (or local Neo4j instance)
+- Python 3.10+
+- Node.js 18+ with npm
+- Neo4j (local Desktop instance or AuraDB cloud)
+- OpenSearch 2.x+ (for vector search / AI features)
+- Ollama (optional, for local LLM / embeddings)
 
 ## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/dparitosh/mbse-neo4j-graph-rep.git
-cd mbse-neo4j-graph-rep
+git clone https://github.com/dparitosh/sdd.git
+cd sdd
 ```
 
-### 2. Create virtual environment
+### 2. Run the automated installer
 
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+```powershell
+.\scripts\install.ps1
 ```
 
-### 3. Install dependencies
+This creates `.venv`, installs Python/Node dependencies, and builds the frontend.
+See [INSTALL.md](INSTALL.md) for the full guide including OpenSearch and Ollama setup.
 
-```bash
-pip install -r requirements.txt
+### 3. Configure environment
+
+```powershell
+# Copy template if .env doesn't exist yet
+Copy-Item .env.example .env
+# Edit .env with your Neo4j credentials
+```
+
+At minimum set:
+```dotenv
+NEO4J_URI=neo4j://127.0.0.1:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
+NEO4J_DATABASE=mossec
 ```
 
 ## Quick Start
 
 ### Test Neo4j Connection
 
-```bash
-# Test connection to Neo4j Aura
-python src/cli/main.py test-connection
+```powershell
+..\.venv\Scripts\python.exe scripts\verify_connectivity.py
 ```
 
 ### Processing XMI Files
@@ -413,20 +423,25 @@ mypy src/
 
 ## Configuration
 
-The `.env` file contains your Neo4j connection details:
+The `.env` file contains your connection details (see `.env.example` for all available settings):
 
-```env
-NEO4J_URI=neo4j+s://your-neo4j-uri.databases.neo4j.io
+```dotenv
+# Neo4j — local instance (default)
+NEO4J_URI=neo4j://127.0.0.1:7687
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=your-neo4j-password
-LOG_LEVEL=INFO
+NEO4J_PASSWORD=your-password
+NEO4J_DATABASE=mossec
+
+# For Neo4j Aura (cloud), use:
+# NEO4J_URI=neo4j+s://<instance-id>.databases.neo4j.io
+
+# Runtime
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=5000
+FRONTEND_HOST=0.0.0.0
+FRONTEND_PORT=3001
+API_BASE_URL=http://127.0.0.1:5000
 ```
-
-## Neo4j Aura Access
-
-Access your Neo4j database:
-- **URI**: neo4j+s://your-neo4j-uri.databases.neo4j.io
-- **Browser**: https://console.neo4j.io/
 
 ## Troubleshooting
 
@@ -462,5 +477,5 @@ MIT License - see LICENSE file for details
 
 ## Contact
 
-- Repository: https://github.com/dparitosh/mbse-neo4j-graph-rep
-- Issues: https://github.com/dparitosh/mbse-neo4j-graph-rep/issues
+- Repository: https://github.com/dparitosh/sdd
+- Issues: https://github.com/dparitosh/sdd/issues

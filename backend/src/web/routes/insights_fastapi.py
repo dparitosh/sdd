@@ -18,6 +18,7 @@ from src.web.services.insights_service import (
     SmartAnalysisResult,
     bom_completeness,
     classification_coverage,
+    part_similarity,
     semantic_duplicates,
     shacl_compliance,
     smart_analysis,
@@ -38,6 +39,7 @@ _INSIGHT_MAP = {
     "traceability-gaps": traceability_gaps,
     "classification-coverage": classification_coverage,
     "semantic-duplicates": semantic_duplicates,
+    "part-similarity": part_similarity,
     "shacl-compliance": shacl_compliance,
 }
 

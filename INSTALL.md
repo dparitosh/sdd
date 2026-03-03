@@ -13,6 +13,12 @@ Before starting, ensure the following software is installed:
 - **Neo4j Database**:
   - Can be a local Desktop instance or an AuraDB cloud instance.
   - Obtain the URI, Username, and Password.
+- **OpenSearch 2.x+** (for vector search, RAG, and AI Insights):
+  - Download from https://opensearch.org/downloads.html
+  - See Section 4 for setup steps.
+- **Ollama** (optional, for local LLM and embeddings):
+  - Download from https://ollama.com/download
+  - See Section 4 for setup steps.
 
 ## 2. Installation Folder Setup
 
@@ -77,6 +83,71 @@ FRONTEND_HOST=0.0.0.0
 FRONTEND_PORT=3001
 API_BASE_URL=http://localhost:5000
 ```
+
+### OpenSearch Setup (Vector Search / AI Features)
+
+OpenSearch provides vector storage for embeddings and powers the RAG / semantic-duplicate / AI Insights features.
+
+1. **Download** OpenSearch from https://opensearch.org/downloads.html (tested with 2.x / 3.x).
+2. **Extract** to a location such as `D:\Software\opensearch-<version>`.
+3. **Disable the security plugin** (simplest for local dev):
+
+   Edit `<opensearch-home>/config/opensearch.yml` and add:
+   ```yaml
+   plugins.security.disabled: true
+   ```
+
+4. **Start OpenSearch** using the provided script:
+
+   ```powershell
+   .\scripts\start_opensearch.ps1 -Detach
+   ```
+
+   By default, the script looks in `D:\Software\opensearch-3.3.1`. To override:
+   ```powershell
+   .\scripts\start_opensearch.ps1 -Detach -OpenSearchHome "D:\Software\opensearch-<version>"
+   ```
+
+   Or set `OPENSEARCH_HOME` in `.env` / environment.
+
+5. **Verify**:
+   ```powershell
+   Invoke-RestMethod http://localhost:9200
+   ```
+
+   You should see a JSON response with `version.number` and `cluster_name`.
+
+6. **Add to `.env`** (optional — backend auto-detects `http://localhost:9200`):
+   ```dotenv
+   OPENSEARCH_URL=http://localhost:9200
+   ```
+
+### Ollama Setup (Local LLM & Embeddings)
+
+Ollama provides local LLM inference and embedding generation (no cloud API key required).
+
+1. **Install** Ollama from https://ollama.com/download (Windows installer).
+2. **Pull the required models**:
+
+   ```powershell
+   ollama pull llama3:latest
+   ollama pull nomic-embed-text:latest
+   ```
+
+3. **Verify** Ollama is running:
+   ```powershell
+   Invoke-RestMethod http://localhost:11434/api/tags
+   ```
+
+4. **Configure `.env`** to use Ollama as the LLM provider:
+   ```dotenv
+   LLM_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://localhost:11434
+   OLLAMA_MODEL=llama3:latest
+   OLLAMA_EMBED_MODEL=nomic-embed-text:latest
+   ```
+
+   > If you prefer OpenAI, set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` instead.
 
 ### LLM (AI Agent) configuration
 
@@ -475,6 +546,10 @@ Remove temporary files and caches:
 | `stop_all.ps1` | Stop all services |
 | `stop_backend.ps1` | Stop the backend service |
 | `stop_ui.ps1` | Stop the frontend service |
+| `start_opensearch.ps1` | Start/stop/restart/status for OpenSearch |
+| `install_oslc.ps1` | Install OSLC dependencies and seed ontologies |
+| `reinstall.ps1` | Clean reinstall with optional backup/restore |
+| `reinstall_clean.ps1` | Full re-clone + reinstall |
 | `health_check.ps1` | Validate deployment health |
 | `cleanup.ps1` | Remove temporary files and caches |
 

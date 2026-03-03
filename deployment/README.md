@@ -4,72 +4,86 @@ This repository is deployed in a **Windows** environment. Linux/bash/systemd ins
 
 ## What's Included
 
+### Primary scripts (canonical location: `scripts/`)
+
+```
+scripts/
+├── install.ps1                # Automated installation (no admin required)
+├── reinstall.ps1              # Clean reinstall with backup/restore
+├── reinstall_clean.ps1        # Full re-clone + reinstall
+├── service_manager.ps1        # Start/stop/restart/status/logs
+├── start_all_interactive.ps1  # Interactive startup with prereq checks
+├── start_backend.ps1          # Start backend directly
+├── start_ui.ps1               # Start frontend directly
+├── start_opensearch.ps1       # OpenSearch lifecycle management
+├── stop_all.ps1               # Stop all services
+├── stop_backend.ps1           # Stop backend
+├── stop_ui.ps1                # Stop frontend
+├── health_check.ps1           # Deployment health validation
+├── cleanup.ps1                # Remove temp files / caches
+├── reload_database.py         # Full Neo4j seeding pipeline
+└── verify_connectivity.py     # Neo4j connection test
+```
+
+### Legacy wrappers (`deployment/scripts/`)
+
+These forward to `scripts/` for backward compatibility:
+
 ```
 deployment/
 ├── scripts/
-│   ├── install.ps1            # Automated installation (PowerShell, run as Administrator)
-│   ├── install.bat            # Automated installation (Batch)
-│   ├── cleanup.ps1            # Cleanup caches/artifacts
-│   ├── cleanup.bat            # Cleanup caches/artifacts
-│   ├── service_manager.ps1    # Start/stop/restart/status/logs
-│   └── service_manager.bat    # Start/stop/restart/status/logs
-├── diagnostics/
-│   └── test_database.ps1      # Neo4j connectivity diagnostics
-└── README.md                  # This file
+│   ├── install.ps1            # → forwards to scripts/install.ps1
+│   └── service_manager.ps1    # → forwards to scripts/service_manager.ps1
+└── diagnostics/
+    ├── health_check.ps1       # Health checker
+    ├── test_database.ps1      # Neo4j connectivity diagnostics
+    └── verify_connectivity.py # Connection test
 ```
 
 ## Prerequisites
 
 - Windows 10/11 or Windows Server
-- Python 3.12 installed and available on PATH
-- Node.js 20 + npm installed and available on PATH
+- Python 3.10+ installed and available on PATH
+- Node.js 18+ with npm installed and available on PATH
 - Git
-- Neo4j credentials: `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
+- Neo4j (local Desktop or AuraDB) with credentials: `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
+- OpenSearch 2.x+ (for vector search / AI features)
+- Ollama (optional, for local LLM / embeddings)
 
 ## Quick Start (recommended)
 
-### 1) Run the installer (copies to `C:\MBSE\mbse-neo4j-graph-rep`)
-
-Open **PowerShell as Administrator**, then from the repo root:
+### 1) Run the installer (from repo root, no admin required)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deployment\scripts\install.ps1
+.\scripts\install.ps1
 ```
 
 ### 2) Configure environment
 
-Edit:
-- `C:\MBSE\mbse-neo4j-graph-rep\.env`
-
-At minimum set:
-- `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
+Edit `.env` in the repo root. At minimum set:
+- `NEO4J_URI=neo4j://127.0.0.1:7687`
+- `NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE=mossec`
 
 ### 3) Start services
 
-Option A (created by the installer):
-
 ```powershell
-& 'C:\MBSE\mbse-neo4j-graph-rep\start_all.ps1'
-```
+# Start backend + frontend (background)
+.\scripts\service_manager.ps1 start
 
-Option B (use the service manager):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File C:\MBSE\mbse-neo4j-graph-rep\deployment\scripts\service_manager.ps1 start
+# Or interactive with live logs
+.\scripts\start_all_interactive.ps1 -Inspect
 ```
 
 ### 4) Verify
 
 - Backend health: `http://localhost:5000/api/health`
-- Metrics health: `http://localhost:5000/api/metrics/health`
+- API docs: `http://localhost:5000/api/docs`
 - Frontend UI: `http://localhost:3001`
 
 ## Diagnostics
 
-From the installed directory (or repo root if running in-place), run:
-
 ```powershell
-powershell -ExecutionPolicy Bypass -File deployment\diagnostics\test_database.ps1
+.\scripts\health_check.ps1
 ```
 
 ## In-repo development (no copy/install)

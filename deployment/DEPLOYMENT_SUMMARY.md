@@ -5,15 +5,16 @@ This repository is deployed in a **Windows** environment.
 ## Included Automation
 
 ### Installation
-- `deployment/scripts/install.ps1` (PowerShell, run as Administrator)
-- `deployment/scripts/install.bat` (Batch alternative)
+- `scripts/install.ps1` — automated installation (no admin required)
+- `scripts/reinstall.ps1` — clean reinstall with optional backup/restore
+- `scripts/install_oslc.ps1` — OSLC ontology dependencies and seeding
 
-Installs dependencies, builds the frontend, and copies the app to:
-- `C:\MBSE\mbse-neo4j-graph-rep`
+Installs dependencies, builds the frontend, and configures the project in-place.
 
 ### Service Management
-- `deployment/scripts/service_manager.ps1`
-- `deployment/scripts/service_manager.bat`
+- `scripts/service_manager.ps1` — start/stop/restart/status/logs
+- `scripts/start_all_interactive.ps1` — interactive startup with prerequisite checks
+- `scripts/start_opensearch.ps1` — OpenSearch lifecycle management
 
 Supports:
 - `start`, `stop`, `restart`, `status`, `logs`
@@ -21,13 +22,17 @@ Supports:
 - `frontend start|stop|restart`
 
 ### Diagnostics
-- `deployment/diagnostics/test_database.ps1`
-  - Loads Neo4j credentials from `.env`
-  - Verifies connectivity and runs basic checks
+- `scripts/health_check.ps1` — 5-step deployment health validation
+- `scripts/verify_connectivity.py` — Neo4j connection and graph inspection
 
 ## Runtime Ports
 
-- Frontend: `http://localhost:3001`
-- Backend: `http://localhost:5000`
-- Backend health: `http://localhost:5000/api/health`
-- Metrics health: `http://localhost:5000/api/metrics/health`
+| Service | URL | Notes |
+|---------|-----|-------|
+| Frontend | `http://localhost:3001` | React + Vite dev server |
+| Backend API | `http://localhost:5000` | FastAPI (uvicorn) |
+| Backend health | `http://localhost:5000/api/health` | |
+| API docs | `http://localhost:5000/api/docs` | Interactive Swagger UI |
+| Neo4j Bolt | `neo4j://127.0.0.1:7687` | Graph database |
+| OpenSearch | `http://localhost:9200` | Vector search |
+| Ollama | `http://localhost:11434` | Local LLM / embeddings |

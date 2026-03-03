@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
 import { Button } from '@ui/button';
-import { Lightbulb, TrendingUp, AlertCircle, Sparkles, Shield, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { Lightbulb, TrendingUp, AlertCircle, Sparkles, Shield, Search, RefreshCw, Loader2, Copy } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { getInsight } from '@/services/insights.service';
 
@@ -49,6 +49,7 @@ export default function AIInsights() {
     'traceability-gaps',
     'classification-coverage',
     'semantic-duplicates',
+    'part-similarity',
     'shacl-compliance',
   ];
 
@@ -82,6 +83,7 @@ export default function AIInsights() {
   const trace = data['traceability-gaps'] || {};
   const cls = data['classification-coverage'] || {};
   const dup = data['semantic-duplicates'] || {};
+  const partSim = data['part-similarity'] || {};
   const shacl = data['shacl-compliance'] || {};
 
   return (
@@ -146,10 +148,26 @@ export default function AIInsights() {
           color="purple"
           metric={dup.count != null ? String(dup.count) : undefined}
           metricLabel="duplicate pairs"
-          description="Near-duplicate PLMXMLItem nodes detected via vector similarity"
+          description="Near-duplicate nodes detected via vector similarity"
           loading={loading['semantic-duplicates']}
           error={errors['semantic-duplicates']}
           onRefresh={() => fetchMetric('semantic-duplicates')}
+        />
+
+        <InsightCard
+          title="Part Similarity"
+          icon={<Copy className="h-5 w-5 text-orange-500" />}
+          color="orange"
+          metric={partSim.total_groups != null ? String(partSim.total_groups) : undefined}
+          metricLabel={`${partSim.total_variants ?? '?'} total variants`}
+          description={
+            partSim.similar_groups?.length
+              ? partSim.similar_groups.map((g) => `${g.group_key} (${g.variant_count} revisions)`).join(', ')
+              : 'No revision variants detected'
+          }
+          loading={loading['part-similarity']}
+          error={errors['part-similarity']}
+          onRefresh={() => fetchMetric('part-similarity')}
         />
 
         <InsightCard

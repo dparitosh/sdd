@@ -59,6 +59,9 @@ class Part(BaseModel):
     description: Optional[str] = None
     part_number: Optional[str] = None
     status: Optional[str] = None
+    source_file: Optional[str] = None
+    ap_level: Optional[str] = None
+    node_type: Optional[str] = None
     versions: List[str] = []
     materials: List[str] = []
     requirements: List[str] = []
@@ -216,20 +219,24 @@ async def get_parts(
         where_clause = " AND ".join(filters) if filters else "1=1"
 
         query = f"""
-        MATCH (part:Part)
-        WHERE part.ap_level = 'AP242' AND {where_clause}
+        MATCH (part)
+        WHERE (part:Part OR part:AP242Product) AND {where_clause}
         OPTIONAL MATCH (part)-[:HAS_VERSION]->(v:PartVersion)
         OPTIONAL MATCH (part)-[:USES_MATERIAL]->(mat:Material)
-        OPTIONAL MATCH (req:Requirement)-[:SATISFIED_BY_PART]->(part)
-        RETURN part.id AS id,
+        OPTIONAL MATCH (req)-[:APPLIES_TO_PART|SATISFIED_BY_PART]->(part)
+              WHERE req:Requirement
+        RETURN coalesce(part.id, part.product_id, elementId(part)) AS id,
                part.name AS name,
-               part.description AS description,
+               coalesce(part.description, part.name) AS description,
                part.part_number AS part_number,
                part.status AS status,
+               part.source_file AS source_file,
+               part.ap_level AS ap_level,
+               labels(part)[0] AS node_type,
                COLLECT(DISTINCT v.version) AS versions,
                COLLECT(DISTINCT mat.name) AS materials,
                COLLECT(DISTINCT req.name) AS satisfies_requirements
-        ORDER BY part.part_number, part.name
+        ORDER BY part.name
         """
 
         results = neo4j.execute_query(query, params)
@@ -239,8 +246,11 @@ async def get_parts(
                 "id": r["id"],
                 "name": r["name"] or "Unknown",
                 "description": r["description"],
-                "part_number": r["part_number"],
-                "status": r["status"],
+                "part_number": r.get("part_number"),
+                "status": r.get("status"),
+                "source_file": r.get("source_file"),
+                "ap_level": r.get("ap_level"),
+                "node_type": r.get("node_type"),
                 "versions": [v for v in r["versions"] if v],
                 "materials": [m for m in r["materials"] if m],
                 "requirements": [req for req in r["satisfies_requirements"] if req],

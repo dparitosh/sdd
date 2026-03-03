@@ -3,66 +3,72 @@
 ## Pre-Deployment
 
 - [ ] Windows host prepared (Windows 10/11 or Windows Server)
-- [ ] Python 3.12 installed (and on PATH)
-- [ ] Node.js 20 + npm installed (and on PATH)
+- [ ] Python 3.10+ installed (and on PATH)
+- [ ] Node.js 18+ and npm installed (and on PATH)
 - [ ] Git installed
-- [ ] Neo4j credentials ready (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`)
+- [ ] Neo4j running with credentials ready (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`)
+- [ ] OpenSearch 2.x+ installed and running on `:9200` (for vector search / AI)
+- [ ] Ollama installed and running on `:11434` (optional, for local LLM)
 
 ## Deploy (recommended path)
 
-### Step 1: Run installer (Administrator)
+### Step 1: Run installer (no admin required)
 
-- [ ] Open PowerShell **as Administrator**
+- [ ] Open PowerShell
 - [ ] From repo root, run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deployment\scripts\install.ps1
+.\scripts\install.ps1
 ```
-
-- [ ] Confirm files are copied to `C:\MBSE\mbse-neo4j-graph-rep`
 
 ### Step 2: Configure `.env`
 
-- [ ] Edit `C:\MBSE\mbse-neo4j-graph-rep\.env`
+- [ ] Edit `.env` in the repo root
 - [ ] Set Neo4j values:
-  - `NEO4J_URI`
-  - `NEO4J_USER`
-  - `NEO4J_PASSWORD`
+  - `NEO4J_URI=neo4j://127.0.0.1:7687`
+  - `NEO4J_USER=neo4j`
+  - `NEO4J_PASSWORD=<your-password>`
+  - `NEO4J_DATABASE=mossec`
+- [ ] Verify OpenSearch connectivity:
+  - `OPENSEARCH_URL=http://localhost:9200`
+- [ ] Verify Ollama settings (if using local LLM):
+  - `LLM_PROVIDER=ollama`
+  - `OLLAMA_BASE_URL=http://localhost:11434`
 
 ### Step 3: Validate database connectivity
 
-- [ ] In PowerShell, from `C:\MBSE\mbse-neo4j-graph-rep` run:
+- [ ] Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deployment\diagnostics\test_database.ps1
+.\.venv\Scripts\python.exe scripts\verify_connectivity.py
 ```
 
 ### Step 4: Start services
 
-- [ ] Start both services:
+- [ ] Start all services:
 
 ```powershell
-& 'C:\MBSE\mbse-neo4j-graph-rep\start_all.ps1'
+.\scripts\service_manager.ps1 start
 ```
 
-or using the service manager:
+or with live logs:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\MBSE\mbse-neo4j-graph-rep\deployment\scripts\service_manager.ps1 start
+.\scripts\start_all_interactive.ps1 -Inspect
 ```
 
 ### Step 5: Verify
 
 - [ ] Backend health: `http://localhost:5000/api/health`
-- [ ] Metrics health: `http://localhost:5000/api/metrics/health`
+- [ ] API docs: `http://localhost:5000/api/docs`
 - [ ] Frontend UI: `http://localhost:3001`
 
 ## Smoke Troubleshooting
 
-- Check logs (service manager):
+- Run full health check:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File C:\MBSE\mbse-neo4j-graph-rep\deployment\scripts\service_manager.ps1 logs
+.\scripts\health_check.ps1
 ```
 
 - Confirm ports are listening:

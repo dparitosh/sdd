@@ -43,7 +43,7 @@ param(
 
     [string]$Branch = 'main',
 
-    [string]$RepoUrl = 'https://github.com/dparitosh/mbse-neo4j-graph-rep.git',
+    [string]$RepoUrl = 'https://github.com/dparitosh/sdd.git',
 
     [switch]$SkipStart
 )
@@ -99,7 +99,7 @@ Set-Location $ParentPath
 
 git clone $RepoUrl
 
-$newPath = Join-Path $ParentPath 'mbse-neo4j-graph-rep'
+$newPath = Join-Path $ParentPath 'sdd'
 Set-Location $newPath
 
 git checkout $Branch

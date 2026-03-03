@@ -190,7 +190,15 @@ def main():
             # Build NDJSON bulk payload
             bulk_lines = []
             for node, text, emb in zip(batch, texts, embeddings):
-                uid = f"{spec['node_type']}_{node.get('name', node.get('step_id', 'unknown'))}"
+                # Include file_uri hash so different revisions of the same part
+                # get separate documents (e.g. two STEP file versions of Rotor Shaft Key)
+                name_part = node.get('name', node.get('step_id', 'unknown'))
+                file_part = node.get('file_uri', node.get('source_file', ''))
+                import hashlib
+                file_hash = hashlib.md5(file_part.encode()).hexdigest()[:8] if file_part else ''
+                uid = f"{spec['node_type']}_{name_part}"
+                if file_hash:
+                    uid += f"_{file_hash}"
                 uid = uid.replace(' ', '_').replace(';', '_').replace('(', '').replace(')', '')
                 action = json.dumps({"index": {"_index": args.index, "_id": uid}})
                 doc = json.dumps({
@@ -243,9 +251,6 @@ def main():
             total_ok += ok
             print(f"  Batch {i // args.batch + 1}: {ok}/{len(batch)} ok")
             time.sleep(1)  # brief pause between batches
-
-            total_ok += ok
-            print(f"  Batch {i // args.batch + 1}: {ok}/{len(batch)} ok")
 
     print("=" * 60)
     print(f"Vectorization complete: {total_ok} ok, {total_fail} failed")
