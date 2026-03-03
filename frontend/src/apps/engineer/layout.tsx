@@ -134,9 +134,12 @@ export default function EngineerLayout() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">
+          <nav className="flex-1 p-4 space-y-1 mt-4 overflow-y-auto">
             {navigationGroups.map((group) => (
-              <div key={group.label}>
+              <div key={group.label} className="mb-3">
+                <p className="px-4 py-1 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                  {group.label}
+                </p>
                 {group.items.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (

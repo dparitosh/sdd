@@ -119,7 +119,14 @@ export default function TraceabilityMatrix() {
         logger.error('Failed to fetch traceability data:', error);
         toast.error('Some traceability data could not be loaded');
       }
-      return traces;
+      // Deduplicate: same requirement → target → relationship should only appear once
+      const seen = new Set();
+      return traces.filter(t => {
+        const key = `${t.requirement.uid}|${t.target.uid}|${t.relationship}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     },
     enabled: requirements.length > 0
   });
@@ -177,8 +184,7 @@ export default function TraceabilityMatrix() {
           description="Visualize and analyze requirement traceability relationships"
           icon={<GitBranch className="h-6 w-6 text-primary" />}
           breadcrumbs={[
-            { label: 'Knowledge Graph', href: '/graph' },
-            { label: 'Traceability Matrix' },
+            { label: 'Knowledge Graph', href: '/engineer/graph' },
           ]}
           actions={
             <div className="flex gap-2">
