@@ -38,8 +38,12 @@ class Query:
     @strawberry.field
     def statistics(self) -> JSON:
         """Return graph statistics in the same shape as the REST `/api/stats` endpoint."""
-        neo4j = get_neo4j_service()
-        return neo4j.get_statistics()
+        try:
+            neo4j = get_neo4j_service()
+            return neo4j.get_statistics()
+        except Exception as exc:
+            logger.error(f"GraphQL statistics resolver error: {exc}")
+            raise Exception(f"Failed to query Neo4j statistics: {exc}") from exc
 
     @strawberry.field
     def cypher_read(
@@ -61,9 +65,13 @@ class Query:
         if re.search(r"\bLIMIT\b", normalized, re.IGNORECASE) is None:
             normalized = f"{normalized}\nLIMIT $limit"
 
-        neo4j = get_neo4j_service()
-        rows = neo4j.execute_query(normalized, bound_params)
-        return [dict(row) for row in rows]
+        try:
+            neo4j = get_neo4j_service()
+            rows = neo4j.execute_query(normalized, bound_params)
+            return [dict(row) for row in rows]
+        except Exception as exc:
+            logger.error(f"GraphQL cypher_read resolver error: {exc}")
+            raise Exception(f"Failed to execute Cypher query: {exc}") from exc
 
 
 schema = strawberry.Schema(query=Query)
