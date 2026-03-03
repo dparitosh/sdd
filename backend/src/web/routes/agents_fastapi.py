@@ -10,12 +10,13 @@ from loguru import logger
 
 from src.agents.orchestrator_workflow import execute_engineering_workflow
 from src.web.utils.responses import Neo4jJSONResponse
+from src.web.dependencies import get_api_key
 
 # ============================================================================
 # ROUTER CONFIGURATION
 # ============================================================================
 
-router = APIRouter(prefix="/agents", tags=["AI Agents & Orchestration"])
+router = APIRouter(prefix="/agents", tags=["AI Agents & Orchestration"], dependencies=[Depends(get_api_key)])
 
 
 # ============================================================================
@@ -79,5 +80,71 @@ async def run_orchestrator(request: AgentRequest):
         }
         
     except Exception as e:
-        logger.error(f"Orchestrator endpoint failed: {e}")
+        # Log full traceback for easier debugging
+        logger.exception("Orchestrator endpoint failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# SEMANTIC SEARCH & INSIGHT (RAG pipeline)
+# ============================================================================
+
+from src.agents.semantic_agent import SemanticAgent
+
+_semantic_agent: SemanticAgent | None = None
+
+
+def _get_semantic_agent() -> SemanticAgent:
+    global _semantic_agent
+    if _semantic_agent is None:
+        _semantic_agent = SemanticAgent()
+    return _semantic_agent
+
+
+class SemanticSearchRequest(BaseModel):
+    query: str = Field(..., description="Natural language search query")
+    top_k: int = Field(10, ge=1, le=100)
+    expand: bool = Field(True, description="Include 2-hop Neo4j expansion")
+    threshold: float = Field(0.5, ge=0.0, le=1.0)
+
+
+class SemanticInsightRequest(BaseModel):
+    question: str = Field(..., description="Natural language question for RAG synthesis")
+    top_k: int = Field(5, ge=1, le=50)
+
+
+@router.post("/semantic/search")
+async def semantic_search(request: SemanticSearchRequest):
+    """Semantic vector search over the knowledge graph.
+
+    Embeds the query → kNN search in OpenSearch → optional 2-hop
+    Neo4j expansion.  Falls back to Neo4j full-text search when
+    OpenSearch is unreachable.
+    """
+    agent = _get_semantic_agent()
+    try:
+        result = agent.semantic_search(
+            query=request.query,
+            top_k=request.top_k,
+            expand=request.expand,
+            threshold=request.threshold,
+        )
+        return {"status": "success", "data": result}
+    except Exception as exc:
+        logger.exception("Semantic search failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/semantic/insight")
+async def semantic_insight(request: SemanticInsightRequest):
+    """Full RAG pipeline: search → LLM synthesis → markdown answer + sources."""
+    agent = _get_semantic_agent()
+    try:
+        result = agent.semantic_insight(
+            question=request.question,
+            top_k=request.top_k,
+        )
+        return {"status": "success", "data": result}
+    except Exception as exc:
+        logger.exception("Semantic insight failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

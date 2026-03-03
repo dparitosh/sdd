@@ -1,0 +1,197 @@
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:    <http://www.w3.org/ns/shacl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix ap242: <http://standards.iso.org/iso/ts/10303/ap242#> .
+@prefix ap239: <http://standards.iso.org/iso/ts/10303/ap239#> .
+@prefix ap243: <http://standards.iso.org/iso/ts/10303/ap243#> .
+@prefix shapes: <http://mossec.io/shacl/plmxml#> .
+
+# ===========================================================================
+# SHACL Shape Definitions for PLMXML Knowledge Graph
+# ===========================================================================
+#
+# These shapes validate that nodes ingested from Teamcenter PLMXML files
+# contain the minimum required properties for downstream processing
+# (ontology classification, OSLC export, graph navigation).
+#
+# Validation target mapping (Neo4j label → OWL class):
+#   :PLMXMLItem       → ap242:Part
+#   :PLMXMLRevision   → ap242:PartVersion
+#   :PLMXMLBOMLine    → ap242:PartOccurrence
+#   :PLMXMLDataSet    → ap242:GeometryRepresentation
+#   :StepFile         → ap242:ShapeRepresentation
+#   :Requirement      → ap239:Requirement
+
+
+# ---------------------------------------------------------------------------
+# 1. PLMXMLItemShape — every Part must have an item_id
+# ---------------------------------------------------------------------------
+shapes:PLMXMLItemShape
+    a sh:NodeShape ;
+    sh:targetClass ap242:Part ;
+    rdfs:label "PLMXMLItem validation shape" ;
+    rdfs:comment "Ensures every PLMXMLItem has a unique item_id and a name." ;
+    sh:property [
+        sh:path ap242:itemId ;
+        sh:name "item_id" ;
+        sh:description "TC item number (e.g. 000123)" ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "PLMXMLItem must have exactly one item_id." ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:name "name" ;
+        sh:description "Human-readable item name" ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "PLMXMLItem should have a name." ;
+    ] .
+
+
+# ---------------------------------------------------------------------------
+# 2. PLMXMLRevisionShape — every PartVersion must have a rev_id
+# ---------------------------------------------------------------------------
+shapes:PLMXMLRevisionShape
+    a sh:NodeShape ;
+    sh:targetClass ap242:PartVersion ;
+    rdfs:label "PLMXMLRevision validation shape" ;
+    rdfs:comment "Ensures every PLMXMLRevision has a revision identifier." ;
+    sh:property [
+        sh:path ap242:revisionId ;
+        sh:name "rev_id" ;
+        sh:description "Revision identifier (e.g. A, B, 001)" ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "PLMXMLRevision must have a revision identifier." ;
+    ] ;
+    sh:property [
+        sh:path ap242:status ;
+        sh:name "status" ;
+        sh:description "Lifecycle status of the revision" ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:severity sh:Info ;
+        sh:message "Revision status is not set." ;
+    ] .
+
+
+# ---------------------------------------------------------------------------
+# 3. PLMXMLBOMLineShape — every PartOccurrence must resolve a reference
+# ---------------------------------------------------------------------------
+shapes:PLMXMLBOMLineShape
+    a sh:NodeShape ;
+    sh:targetClass ap242:PartOccurrence ;
+    rdfs:label "PLMXMLBOMLine validation shape" ;
+    rdfs:comment "Ensures every BOM line references an existing item." ;
+    sh:property [
+        sh:path ap242:refUid ;
+        sh:name "ref_uid" ;
+        sh:description "UID of the referenced PLMXMLItem" ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "PLMXMLBOMLine must reference an existing item via ref_uid." ;
+    ] ;
+    sh:property [
+        sh:path ap242:findNumber ;
+        sh:name "find_num" ;
+        sh:description "Sequence / find number in the BOM" ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:severity sh:Info ;
+        sh:message "BOM line find number is not set." ;
+    ] .
+
+
+# ---------------------------------------------------------------------------
+# 4. PLMXMLDataSetShape — every GeometryRepresentation must have a name
+# ---------------------------------------------------------------------------
+shapes:PLMXMLDataSetShape
+    a sh:NodeShape ;
+    sh:targetClass ap242:GeometryRepresentation ;
+    rdfs:label "PLMXMLDataSet validation shape" ;
+    rdfs:comment "Ensures every DataSet has a name and dataset type." ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:name "name" ;
+        sh:description "Dataset name (e.g. UGMASTER, DirectModel, …)" ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "PLMXMLDataSet must have a name." ;
+    ] ;
+    sh:property [
+        sh:path ap242:datasetType ;
+        sh:name "ds_type" ;
+        sh:description "Dataset type (UGMASTER, DirectModel, PDF, …)" ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "PLMXMLDataSet should have a dataset type." ;
+    ] .
+
+
+# ---------------------------------------------------------------------------
+# 5. StepFileShape — every ShapeRepresentation must have entity_count > 0
+# ---------------------------------------------------------------------------
+shapes:StepFileShape
+    a sh:NodeShape ;
+    sh:targetClass ap242:ShapeRepresentation ;
+    rdfs:label "StepFile validation shape" ;
+    rdfs:comment "Ensures every StepFile has been parsed and contains entities." ;
+    sh:property [
+        sh:path ap242:entityCount ;
+        sh:name "entity_count" ;
+        sh:description "Number of STEP entities parsed from the file" ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:minExclusive 0 ;
+        sh:severity sh:Violation ;
+        sh:message "StepFile must have entity_count > 0." ;
+    ] ;
+    sh:property [
+        sh:path ap242:fileSchema ;
+        sh:name "file_schema" ;
+        sh:description "STEP application protocol (e.g. AP242, AP203)" ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:severity sh:Warning ;
+        sh:message "StepFile should declare its AP schema." ;
+    ] .
+
+
+# ---------------------------------------------------------------------------
+# 6. RequirementShape — every Requirement must have a title
+# ---------------------------------------------------------------------------
+shapes:RequirementShape
+    a sh:NodeShape ;
+    sh:targetClass ap239:Requirement ;
+    rdfs:label "Requirement validation shape" ;
+    rdfs:comment "Ensures every Requirement has a title and optional description." ;
+    sh:property [
+        sh:path dcterms:title ;
+        sh:name "title" ;
+        sh:description "Requirement title" ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Requirement must have a title." ;
+    ] ;
+    sh:property [
+        sh:path dcterms:description ;
+        sh:name "description" ;
+        sh:description "Detailed requirement description" ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:severity sh:Info ;
+        sh:message "Requirement description is not set." ;
+    ] .

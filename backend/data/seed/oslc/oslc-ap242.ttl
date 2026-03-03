@@ -4,6 +4,7 @@
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix oslc:  <http://open-services.net/ns/core#> .
 @prefix ap242: <http://standards.iso.org/iso/ts/10303/ap242#> .
+@prefix ap243: <http://standards.iso.org/iso/ts/10303/ap243#> .
 
 # =============================================================================
 # OSLC Ontology for ISO 10303 AP242 – Managed Model-Based 3D Engineering
@@ -27,12 +28,14 @@ ap242:Part
     a rdfs:Class ;
     rdfs:label "Part" ;
     rdfs:comment "A discrete unit of a product (e.g. component, sub-assembly) (AP242)." ;
+    rdfs:subClassOf ap243:Product ;
     rdfs:isDefinedBy ap242: .
 
 ap242:PartVersion
     a rdfs:Class ;
     rdfs:label "PartVersion" ;
     rdfs:comment "A versioned instance of a Part capturing design iterations." ;
+    rdfs:subClassOf ap243:ProductVersion ;
     rdfs:isDefinedBy ap242: .
 
 ap242:Assembly
@@ -99,6 +102,22 @@ ap242:MakeFrom
     a rdfs:Class ;
     rdfs:label "MakeFrom" ;
     rdfs:comment "A manufacturing relationship describing raw material to finished Part." ;
+    rdfs:isDefinedBy ap242: .
+
+# --- Cross-Ontology Classes ---
+
+ap242:PartOccurrence
+    a rdfs:Class ;
+    rdfs:label "PartOccurrence" ;
+    rdfs:comment "An occurrence of a Part within an assembly structure (AP242)." ;
+    rdfs:subClassOf ap243:ProductOccurrence ;
+    rdfs:isDefinedBy ap242: .
+
+ap242:Drawing
+    a rdfs:Class ;
+    rdfs:label "Drawing" ;
+    rdfs:comment "A 2D or 3D engineering drawing document (AP242)." ;
+    rdfs:subClassOf ap243:Document ;
     rdfs:isDefinedBy ap242: .
 
 # --- Relationships (as rdf:Property) ---

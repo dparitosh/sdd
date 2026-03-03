@@ -54,11 +54,12 @@ export default function RDFExporter() {
     setLastExport(null);
     try {
       let blob;
+      const typesFilter = selectedTypes.length > 0 ? selectedTypes : undefined;
       if (format === 'jsonld') {
-        const data = await exportService.exportJSONLD();
+        const data = await exportService.exportJSONLD(typesFilter);
         blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/ld+json' });
       } else {
-        const data = await exportService.exportRDF(format);
+        const data = await exportService.exportRDF(format, typesFilter);
         blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data)], { type: 'text/plain' });
       }
 
@@ -75,7 +76,7 @@ export default function RDFExporter() {
     } finally {
       setIsExporting(false);
     }
-  }, [format]);
+  }, [format, selectedTypes]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">

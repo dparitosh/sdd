@@ -5,6 +5,7 @@ Provides endpoints for fetching graph data in format suitable for visualization
 
 from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from loguru import logger
 
@@ -88,22 +89,19 @@ ALLOWED_NODE_TYPES = {
     "Documentation",
     "DomainConcept",
     "ExternalModel",
-    # AP243 / Simulation (MoSSEC)
+    # AP243 / Simulation
     "SimulationDossier",
     "SimulationRun",
     "SimulationModel",
     "SimulationArtifact",
     "EvidenceCategory",
-    "KPI",                         # Key Performance Indicator linked to Evidence
-    "DecisionLog",                 # Approval / decision audit trail (reviewer, signatureId)
-    # AP239 / PLCS compliance
-    "ComplianceAudit",             # AuditFinding → ComplianceAudit (Critical/Warning/Pass)
     # AP242 / CAD extras
     "CADModel",
     "Shape",
     "Position",
     "WorkOrder",
     # People & Organizations
+    "Person",
     "Organization",
     # OSLC integration
     "ServiceProvider",
@@ -120,19 +118,6 @@ ALLOWED_NODE_TYPES = {
 METADATA_NODE_TYPES = {
     "Documentation",
     "DomainConcept",
-    # UML Comment nodes from XMI ingestion — internal annotations, not
-    # meaningful in graph visualisation.  Adding here excludes them from
-    # both the node-type filter UI and the pair query WHERE clause.
-    "Comment",
-}
-
-# Relationship types that are XMI-internal annotations and should be
-# de-prioritised in the pair query (pushed to end via ORDER BY).
-# They are NOT hard-excluded — they can still appear if no other edges exist.
-_NOISE_REL_TYPES = {
-    "OWNS_COMMENT",
-    "HAS_COMMENT",
-    "DOCUMENTED_BY",
 }
 
 
@@ -191,6 +176,55 @@ class RelationshipType(BaseModel):
 class RelationshipTypesResponse(BaseModel):
     relationship_types: List[RelationshipType]
     total_types: int
+
+
+# ── Pydantic models for path-finding, RAG, communities, expansion ───────────
+
+class PathNode(BaseModel):
+    id: str
+    name: Optional[str] = None
+    type: str
+    labels: List[str]
+
+
+class PathLink(BaseModel):
+    source: str
+    target: str
+    type: str
+
+
+class ShortestPathResponse(BaseModel):
+    found: bool
+    path_length: int = 0
+    nodes: List[PathNode] = []
+    links: List[PathLink] = []
+
+
+class RAGQueryRequest(BaseModel):
+    question: str
+    top_k: int = 5
+
+
+class RAGQueryResponse(BaseModel):
+    answer: str
+    sources: List[dict] = []
+    nodes: List[dict] = []
+    links: List[dict] = []
+
+
+class CommunityNode(BaseModel):
+    id: str
+    community: int
+
+
+class CommunityResponse(BaseModel):
+    communities: List[CommunityNode]
+    cluster_count: int
+
+
+class ExpandResponse(BaseModel):
+    nodes: List[dict]
+    links: List[dict]
 
 
 # ── Pydantic models for search & authoring ──────────────────────────────────
@@ -348,6 +382,7 @@ async def create_relationship(
 
 @router.get("/data", response_model=GraphData, response_class=Neo4jJSONResponse)
 async def get_graph_data(
+    response: Response,
     node_types: Optional[str] = Query(None, description="Comma-separated node types"),
     limit: int = Query(500, ge=1, le=100000, description="Maximum nodes to return"),
     depth: int = Query(1, ge=1, le=3, description="Relationship traversal depth"),
@@ -380,6 +415,9 @@ async def get_graph_data(
 
         # Filter against whitelist to prevent injection
         validated_types = [nt for nt in requested_types if nt in ALLOWED_NODE_TYPES]
+
+        # Instruct clients / CDNs to cache graph data for 60s (private)
+        response.headers["Cache-Control"] = "private, max-age=60"
 
         # Exclude metadata types unless explicitly requested
         if not include_metadata:
@@ -423,181 +461,72 @@ async def get_graph_data(
             # params is dict[str, Any] but defined by limit which is int
             params["ap_level"] = ap_level
 
-        where_clause_n = " AND ".join(where_clauses) if where_clauses else "1=1"
-        # Build a matching clause for the far-end node m with renamed fields
-        _wc_m = (where_clause_n
-                 .replace("labels(n)", "labels(m)")
-                 .replace("n.ap_level", "m.ap_level"))
+        where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # ----------------------------------------------------------------
-        # Core strategy: query EDGE PAIRS (n)-[r]->(m) and extract nodes
-        # from their endpoints.  This guarantees every returned node has at
-        # least one visible edge — eliminating the classic "N hub nodes,
-        # 0 internal edges" problem that arises when nodes are fetched
-        # independently and their neighbours happen to lie outside the result.
-        #
-        # ORDER BY puts structural/semantic edges first so the LIMIT budget is
-        # spent on meaningful pairs rather than XMI-internal annotation edges
-        # (OWNS_COMMENT / HAS_COMMENT / DOCUMENTED_BY).  Those are still
-        # returned if no other edges meet the limit.
-        # pair_limit intentionally overshoots so that after deduplication we
-        # still end up with roughly $limit unique nodes.
-        # ----------------------------------------------------------------
-        pair_query = f"""
-        MATCH (n)-[r]->(m)
-        WHERE {where_clause_n}
-          AND {_wc_m}
-        WITH n, r, m,
-             CASE type(r)
-               WHEN 'OWNS_COMMENT'       THEN 99
-               WHEN 'HAS_COMMENT'        THEN 99
-               WHEN 'DOCUMENTED_BY'      THEN 98
-               WHEN 'REFERENCES_EXTERNAL' THEN 50
-               ELSE 0
-             END AS noise_rank
-        ORDER BY noise_rank
-        LIMIT $pair_limit
-        RETURN
-            coalesce(n.id, elementId(n)) AS n_id,
-            labels(n)                    AS n_labels,
-            coalesce(n.name, n.label)    AS n_name,
-            n.description                AS n_desc,
-            n.status                     AS n_status,
-            n.priority                   AS n_priority,
-            n.part_number                AS n_part_number,
-            n.ap_level                   AS n_ap_level,
-            n.ap_schema                  AS n_ap_schema,
-            properties(n)                AS n_props,
-            coalesce(m.id, elementId(m)) AS m_id,
-            labels(m)                    AS m_labels,
-            coalesce(m.name, m.label)    AS m_name,
-            m.description                AS m_desc,
-            m.status                     AS m_status,
-            m.priority                   AS m_priority,
-            m.part_number                AS m_part_number,
-            m.ap_level                   AS m_ap_level,
-            m.ap_schema                  AS m_ap_schema,
-            properties(m)               AS m_props,
-            type(r)                      AS rel_type,
-            elementId(r)                 AS rel_id
+        # Fetch primary nodes (excludes OWL satellite property nodes)
+        node_query = f"""
+        MATCH (n)
+        WHERE {where_clause}
+         RETURN coalesce(n.id, elementId(n)) AS id,
+               labels(n) AS labels,
+               coalesce(n.name, n.label) AS name,
+               n.description AS description,
+               n.status AS status,
+               n.priority AS priority,
+               n.part_number AS part_number,
+               n.ap_level AS ap_level,
+               n.ap_schema AS ap_schema,
+               properties(n) AS props
+        LIMIT $limit
         """
-        pair_params = dict(params)
-        pair_params["pair_limit"] = limit * 3   # overshoot then deduplicate
 
-        pairs_result = neo4j.execute_query(pair_query, pair_params)
+        nodes_result = neo4j.execute_query(node_query, params)
 
-        # ------------------------------------------------------------------
-        # Helpers
-        # ------------------------------------------------------------------
-        BASE_LABELS = {"XSDElement", "MBSEElement", "XSDNode", "OWLProperty"}
-        OWL_PREF    = {"OWLClass", "OWLObjectProperty", "OWLDatatypeProperty"}
-        TOP_KEYS     = {"id","labels","name","description","status",
-                        "priority","part_number","ap_level","ap_schema","props"}
-        INTERNAL_KEYS = {"uuid","xmi_uuid","xmi_id","createdAt",
-                         "modifiedAt","loadSource","version"}
-
-        def _resolve_type(labels):
-            specific = [l for l in labels if l not in BASE_LABELS]
-            owl = [l for l in specific if l in OWL_PREF]
-            return (owl[0] if owl else
-                    specific[0] if specific else
-                    labels[0] if labels else "Unknown")
-
-        def _extra_props(raw):
-            return {k: str(v) for k, v in raw.items()
-                    if k not in TOP_KEYS and k not in INTERNAL_KEYS
-                    and v is not None and str(v).strip()}
-
-        def _make_node_from_pair(row, prefix):
-            """Build a node dict from one row of the pair query."""
-            nlabels = row.get(f"{prefix}labels") or []
-            nid     = row.get(f"{prefix}id")
-            nname   = row.get(f"{prefix}name")
-            raw     = row.get(f"{prefix}props") or {}
-            return {
-                "id":          nid,
-                "name":        nname or row.get(f"{prefix}part_number")
-                               or raw.get("label") or raw.get("local_name") or nid,
-                "type":        _resolve_type(nlabels),
-                "group":       _resolve_type(nlabels),
-                "labels":      nlabels,
-                "description": row.get(f"{prefix}desc"),
-                "status":      row.get(f"{prefix}status"),
-                "priority":    row.get(f"{prefix}priority"),
-                "ap_level":    row.get(f"{prefix}ap_level"),
-                "ap_schema":   row.get(f"{prefix}ap_schema"),
-                "properties":  _extra_props(raw),
-            }
-
+        # Helper: build a node dict from a query record
         def _make_node(r):
-            """Build a node dict from a single-node query row (e.g. OWL supplement)."""
-            labels  = r.get("labels") or []
-            raw     = r.get("props") or {}
+            labels = r.get("labels") or []
+            BASE_LABELS = {"XSDElement", "MBSEElement", "XSDNode", "OWLProperty"}
+            specific = [l for l in labels if l not in BASE_LABELS]
+            OWL_PREF = {"OWLClass", "OWLObjectProperty", "OWLDatatypeProperty"}
+            owl = [l for l in specific if l in OWL_PREF]
+            node_type = owl[0] if owl else (specific[0] if specific else (labels[0] if labels else "Unknown"))
+            # Collect extra properties not already in top-level fields
+            _TOP_KEYS = {"id", "labels", "name", "description", "status",
+                         "priority", "part_number", "ap_level", "ap_schema", "props"}
+            # Internal/metadata keys to exclude from the tooltip properties
+            _INTERNAL_KEYS = {"uuid", "xmi_uuid", "xmi_id", "createdAt",
+                              "modifiedAt", "loadSource", "version"}
+            raw_props = r.get("props") or {}
+            extra_props = {
+                k: str(v) for k, v in raw_props.items()
+                if k not in _TOP_KEYS
+                and k not in _INTERNAL_KEYS
+                and v is not None
+                and str(v).strip()
+            }
             return {
-                "id":          r["id"],
-                "name":        r.get("name") or r.get("part_number")
-                               or raw.get("label") or raw.get("local_name") or r["id"],
-                "type":        _resolve_type(labels),
-                "group":       _resolve_type(labels),
-                "labels":      labels,
+                "id": r["id"],
+                "name": r.get("name") or r.get("part_number") or raw_props.get("label") or raw_props.get("local_name") or r["id"],
+                "type": node_type,
+                "group": node_type,
+                "labels": labels,
                 "description": r.get("description"),
-                "status":      r.get("status"),
-                "priority":    r.get("priority"),
-                "ap_level":    r.get("ap_level"),
-                "ap_schema":   r.get("ap_schema"),
-                "properties":  _extra_props(raw),
+                "status": r.get("status"),
+                "priority": r.get("priority"),
+                "ap_level": r.get("ap_level"),
+                "ap_schema": r.get("ap_schema"),
+                "properties": extra_props,
             }
 
-        # ---- Process pair results -----------------------------------------
+        # Format primary nodes
         node_ids = set()
-        nodes    = []
-        link_ids = set()
-        links    = []
+        nodes = []
 
-        for row in pairs_result:
-            n_id = row.get("n_id")
-            m_id = row.get("m_id")
-            if not n_id or not m_id:
+        for r in nodes_result:
+            if not r or not r.get("id"):
                 continue
-            if n_id not in node_ids and len(node_ids) < limit:
-                node_ids.add(n_id)
-                nodes.append(_make_node_from_pair(row, "n_"))
-            if m_id not in node_ids and len(node_ids) < limit:
-                node_ids.add(m_id)
-                nodes.append(_make_node_from_pair(row, "m_"))
-            rid = str(row.get("rel_id", ""))
-            if rid and rid not in link_ids:
-                link_ids.add(rid)
-                links.append({
-                    "source": n_id,
-                    "target": m_id,
-                    "type":   row.get("rel_type", ""),
-                    "id":     rid,
-                })
-
-        # Fallback: if pair query returned nothing (fully isolated dataset or
-        # very narrow type filter with no edges), sample any nodes so the view
-        # is not empty.
-        if not nodes:
-            fallback_query = f"""
-            MATCH (n)
-            WHERE {where_clause_n}
-            WITH n ORDER BY rand() LIMIT $limit
-            RETURN coalesce(n.id, elementId(n)) AS id,
-                   labels(n) AS labels,
-                   coalesce(n.name, n.label) AS name,
-                   n.description AS description,
-                   n.status AS status,
-                   n.priority AS priority,
-                   n.part_number AS part_number,
-                   n.ap_level AS ap_level,
-                   n.ap_schema AS ap_schema,
-                   properties(n) AS props
-            """
-            for r in neo4j.execute_query(fallback_query, params):
-                if r and r.get("id") and r["id"] not in node_ids:
-                    node_ids.add(r["id"])
-                    nodes.append(_make_node(r))
+            node_ids.add(r["id"])
+            nodes.append(_make_node(r))
 
         # ------------------------------------------------------------------
         # Fetch OWL satellite nodes connected to OWLClass nodes in the result
@@ -650,27 +579,57 @@ async def get_graph_data(
                     node_ids.add(r["id"])
                     nodes.append(_make_node(r))
 
-            # Fetch any supplemental edges introduced by OWL satellite nodes
-            # (these were added after the main pair query so are not yet in links)
-            supp_rel_query = """
+        # Fetch relationships
+        # Split node_ids into property-based IDs and elementId-based fallbacks
+        # so each branch can use an efficient index lookup.
+        prop_ids = [nid for nid in node_ids if not nid.startswith("4:") and ":" not in nid]
+        elem_ids = [nid for nid in node_ids if nid not in prop_ids]
+
+        links = []
+        if node_ids:
+            rel_query = """
             MATCH (source)-[r]->(target)
-            WHERE coalesce(source.id, elementId(source)) IN $node_ids
-              AND coalesce(target.id, elementId(target)) IN $node_ids
-            RETURN coalesce(source.id, elementId(source)) AS source,
-                   coalesce(target.id, elementId(target)) AS target,
+            WHERE source.id IN $prop_ids
+              AND target.id IN $prop_ids
+            RETURN source.id AS source,
+                   target.id AS target,
                    type(r) AS type,
                    elementId(r) AS rel_id
+            LIMIT 10000
             """
-            for r in neo4j.execute_query(supp_rel_query, {"node_ids": list(node_ids)}):
-                rid = str(r.get("rel_id", ""))
-                if rid and rid not in link_ids:
-                    link_ids.add(rid)
-                    links.append({
-                        "source": r["source"],
-                        "target": r["target"],
-                        "type":   r["type"],
-                        "id":     rid,
-                    })
+            rels_result = neo4j.execute_query(
+                rel_query,
+                {"prop_ids": prop_ids if prop_ids else list(node_ids)},
+                use_cache=False,
+            )
+
+            # If we have element-ID-based nodes, pick up their edges too
+            if elem_ids:
+                elem_rel_query = """
+                MATCH (source)-[r]->(target)
+                WHERE elementId(source) IN $elem_ids
+                  AND elementId(target) IN $elem_ids
+                RETURN coalesce(source.id, elementId(source)) AS source,
+                       coalesce(target.id, elementId(target)) AS target,
+                       type(r) AS type,
+                       elementId(r) AS rel_id
+                LIMIT 5000
+                """
+                elem_rels = neo4j.execute_query(
+                    elem_rel_query,
+                    {"elem_ids": elem_ids},
+                    use_cache=False,
+                )
+                rels_result = rels_result + elem_rels
+
+            for r in rels_result:
+                link = {
+                    "source": r["source"],
+                    "target": r["target"],
+                    "type": r["type"],
+                    "id": str(r["rel_id"]),
+                }
+                links.append(link)
 
         # Build metadata
         metadata = {
@@ -701,6 +660,7 @@ async def get_graph_data(
     "/node-types", response_model=NodeTypesResponse, response_class=Neo4jJSONResponse
 )
 async def get_node_types(
+    response: Response,
     include_metadata: bool = Query(
         False, description="Include metadata node types in results"
     ),
@@ -719,8 +679,7 @@ async def get_node_types(
     try:
         query = """
         CALL db.labels() YIELD label
-        CALL {
-            WITH label
+        CALL (label) {
             MATCH (n)
             WHERE label IN labels(n)
             RETURN count(n) AS count
@@ -730,6 +689,9 @@ async def get_node_types(
         """
 
         results = neo4j.execute_query(query)
+
+        # Node-type list rarely changes — cache for 5 min
+        response.headers["Cache-Control"] = "public, max-age=300"
 
         node_types = []
         for r in results:
@@ -757,6 +719,7 @@ async def get_node_types(
     response_class=Neo4jJSONResponse,
 )
 async def get_relationship_types(
+    response: Response,
     neo4j=Depends(Services.neo4j),
 ):
     """
@@ -768,8 +731,7 @@ async def get_relationship_types(
     try:
         query = """
         CALL db.relationshipTypes() YIELD relationshipType
-        CALL {
-            WITH relationshipType
+        CALL (relationshipType) {
             MATCH ()-[r]->()
             WHERE type(r) = relationshipType
             RETURN count(r) AS count
@@ -780,10 +742,420 @@ async def get_relationship_types(
 
         results = neo4j.execute_query(query)
 
+        # Relationship types rarely change — cache for 5 min
+        response.headers["Cache-Control"] = "public, max-age=300"
+
         rel_types = [{"type": r["type"], "count": r["count"]} for r in results]
 
         return {"relationship_types": rel_types, "total_types": len(rel_types)}
 
     except Exception as e:
         logger.error(f"Error fetching relationship types: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ── Shortest-path endpoint (E2) ─────────────────────────────────────────────
+
+@router.get("/shortest-path", response_model=ShortestPathResponse, response_class=Neo4jJSONResponse)
+async def shortest_path(
+    source: str = Query(..., description="Source node ID"),
+    target: str = Query(..., description="Target node ID"),
+    max_depth: int = Query(15, ge=1, le=30, description="Max traversal depth"),
+    neo4j=Depends(Services.neo4j),
+    _api_key: str = Depends(get_api_key),
+):
+    """Find the shortest path between two nodes in the knowledge graph."""
+    try:
+        # Match by property id, element-id, OR node name (case-insensitive)
+        query = """
+        MATCH (a)
+        WHERE coalesce(a.id, elementId(a)) = $source
+           OR toLower(coalesce(a.name, a.label, '')) = toLower($source)
+        WITH a LIMIT 1
+        MATCH (b)
+        WHERE coalesce(b.id, elementId(b)) = $target
+           OR toLower(coalesce(b.name, b.label, '')) = toLower($target)
+        WITH a, b LIMIT 1
+        MATCH p = shortestPath((a)-[*..%d]-(b))
+        RETURN nodes(p) AS nodes, relationships(p) AS rels
+        """ % max_depth
+
+        results = neo4j.execute_query(query, {"source": source, "target": target})
+        if not results:
+            return {"found": False, "path_length": 0, "nodes": [], "links": []}
+
+        row = results[0]
+        raw_nodes = row.get("nodes", [])
+        raw_rels = row.get("rels", [])
+
+        path_nodes = []
+        for n in raw_nodes:
+            props = dict(n) if hasattr(n, '__iter__') else {}
+            nid = props.get("id") or str(n.element_id) if hasattr(n, 'element_id') else str(n)
+            labels = list(n.labels) if hasattr(n, 'labels') else []
+            name = props.get("name") or props.get("label") or nid
+            node_type = labels[0] if labels else "Unknown"
+            path_nodes.append({"id": nid, "name": name, "type": node_type, "labels": labels})
+
+        path_links = []
+        for r in raw_rels:
+            src = str(r.start_node.element_id) if hasattr(r, 'start_node') else ""
+            tgt = str(r.end_node.element_id) if hasattr(r, 'end_node') else ""
+            # Map element_id back to the node id we returned
+            src_id = next((pn["id"] for pn in path_nodes if pn["id"] == src or str(src) == str(pn["id"])), src)
+            tgt_id = next((pn["id"] for pn in path_nodes if pn["id"] == tgt or str(tgt) == str(pn["id"])), tgt)
+            # Use node property ids if available
+            if hasattr(r, 'start_node'):
+                sn_props = dict(r.start_node)
+                src_id = sn_props.get("id", src_id)
+            if hasattr(r, 'end_node'):
+                en_props = dict(r.end_node)
+                tgt_id = en_props.get("id", tgt_id)
+            path_links.append({
+                "source": src_id,
+                "target": tgt_id,
+                "type": r.type if hasattr(r, 'type') else str(type(r)),
+            })
+
+        return {
+            "found": True,
+            "path_length": len(path_links),
+            "nodes": path_nodes,
+            "links": path_links,
+        }
+
+    except Exception as e:
+        logger.error(f"Shortest-path query failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ── GraphRAG endpoint (E3) ──────────────────────────────────────────────────
+
+@router.post("/rag-query", response_model=RAGQueryResponse, response_class=Neo4jJSONResponse)
+async def rag_query(
+    body: RAGQueryRequest,
+    _api_key: str = Depends(get_api_key),
+    neo4j=Depends(Services.neo4j),
+):
+    """Natural-language query over the knowledge graph using RAG pipeline."""
+    try:
+        from src.agents.semantic_agent import SemanticAgent
+        agent = SemanticAgent()
+        result = agent.semantic_insight(body.question, top_k=body.top_k)
+
+        raw_answer = result.get("answer", "")
+        is_fallback = result.get("fallback", False)
+
+        # Build subgraph from the source hits + their 2-hop expanded neighbours
+        raw_hits = result.get("hits", [])
+        expanded = result.get("expanded", {})
+        graph_nodes = []
+        graph_links = []
+        seen_ids = set()
+
+        # ── Enrich hit names from Neo4j ─────────────────────────────────────
+        # OpenSearch metadata only stores item_type; resolve real node names.
+        uid_to_name: dict = {}
+        hit_uids = [h.get("uid") for h in raw_hits if h.get("uid")]
+        if hit_uids:
+            try:
+                name_rows = neo4j.execute_query(
+                    "UNWIND $uids AS uid "
+                    "MATCH (n {uid: uid}) "
+                    "RETURN uid, COALESCE(n.name, n.product_id, n.label, uid) AS name, "
+                    "       labels(n) AS labels",
+                    {"uids": hit_uids},
+                )
+                uid_to_name = {r["uid"]: {"name": r["name"], "labels": list(r["labels"])} for r in name_rows}
+            except Exception as exc:
+                logger.warning(f"GraphRAG: Neo4j name enrichment failed — {exc}")
+
+        def _resolve_name(uid: str, fallback: str) -> str:
+            """Return Neo4j name if available, else fall back to metadata value."""
+            neo4j_name = uid_to_name.get(uid, {}).get("name")
+            # Only use the Neo4j name if it differs from the uid (i.e. a real name exists)
+            if neo4j_name and neo4j_name != uid:
+                return neo4j_name
+            return fallback if (fallback and fallback != uid) else uid
+
+        # If no LLM answer (search-only fallback), synthesise a simple answer from hits
+        if not raw_answer and raw_hits:
+            hit_names = ", ".join(_resolve_name(h.get("uid", "?"), h.get("name", "")) for h in raw_hits[:5])
+            raw_answer = (
+                f"**Search results for:** _{body.question}_\n\n"
+                f"Top matches: {hit_names}\n\n"
+                "*(Vector search index unavailable — showing full-text keyword matches only.)*"
+            )
+        elif not raw_answer:
+            raw_answer = "No results found for this query in the knowledge graph."
+
+        if is_fallback:
+            raw_answer = raw_answer.rstrip() + "\n\n---\n*Semantic search index offline — using Neo4j keyword fallback.*"
+
+        for hit in raw_hits:
+            uid = hit.get("uid")
+            if uid and uid not in seen_ids:
+                seen_ids.add(uid)
+                resolved_name = _resolve_name(uid, hit.get("name", uid))
+                resolved_labels = uid_to_name.get(uid, {}).get("labels", [])
+                graph_nodes.append({
+                    "id": uid,
+                    "name": resolved_name,
+                    "type": resolved_labels[0] if resolved_labels else "RAGHit",
+                    "labels": resolved_labels,
+                    "score": hit.get("score", 0),
+                })
+            # Add expanded neighbours
+            for nb in expanded.get(uid or "", []):
+                nb_id = nb.get("neighbor_uid")
+                if nb_id and nb_id not in seen_ids:
+                    seen_ids.add(nb_id)
+                    graph_nodes.append({
+                        "id": nb_id,
+                        "name": nb.get("neighbor_name", nb_id),
+                        "type": (nb.get("neighbor_labels") or ["Unknown"])[0],
+                        "labels": nb.get("neighbor_labels", []),
+                    })
+                if uid and nb_id:
+                    rels = nb.get("rel_types", [])
+                    graph_links.append({
+                        "source": uid,
+                        "target": nb_id,
+                        "type": " → ".join(rels) if rels else "RELATED",
+                    })
+
+        # Build enriched sources list
+        raw_sources = result.get("sources", [])
+        sources = [
+            {
+                "uid": s.get("uid"),
+                "name": _resolve_name(s.get("uid", ""), s.get("name", "")),
+                "score": s.get("score"),
+            }
+            for s in raw_sources
+        ]
+
+        return {
+            "answer": raw_answer,
+            "sources": sources,
+            "nodes": graph_nodes,
+            "links": graph_links,
+        }
+
+    except Exception as e:
+        logger.error(f"GraphRAG query failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ── Node expansion endpoint (E1 context-menu expand) ────────────────────────
+
+@router.get("/expand/{node_id}", response_model=ExpandResponse, response_class=Neo4jJSONResponse)
+async def expand_node(
+    node_id: str,
+    depth: int = Query(2, ge=1, le=3, description="Hop depth"),
+    neo4j=Depends(Services.neo4j),
+    _api_key: str = Depends(get_api_key),
+):
+    """Expand a node by 1-3 hops, returning the subgraph around it."""
+    try:
+        query = """
+        MATCH (center)-[r*1..%d]-(neighbor)
+        WHERE coalesce(center.id, elementId(center)) = $node_id
+          AND neighbor <> center
+        RETURN DISTINCT
+            coalesce(center.id, elementId(center)) AS center_id,
+            labels(center) AS center_labels,
+            coalesce(center.name, center.label) AS center_name,
+            coalesce(neighbor.id, elementId(neighbor)) AS neighbor_id,
+            labels(neighbor) AS neighbor_labels,
+            coalesce(neighbor.name, neighbor.label) AS neighbor_name,
+            [rel IN r | type(rel)] AS rel_types,
+            properties(neighbor) AS neighbor_props
+        LIMIT 200
+        """ % depth
+
+        results = neo4j.execute_query(query, {"node_id": node_id})
+
+        nodes_map = {}
+        links = []
+        for row in results:
+            cid = row["center_id"]
+            if cid not in nodes_map:
+                nodes_map[cid] = {
+                    "id": cid,
+                    "name": row.get("center_name") or cid,
+                    "type": (row.get("center_labels") or ["Unknown"])[0],
+                    "labels": row.get("center_labels", []),
+                }
+            nid = row["neighbor_id"]
+            if nid not in nodes_map:
+                raw_props = row.get("neighbor_props") or {}
+                extra = {k: str(v) for k, v in raw_props.items()
+                         if k not in {"id", "name", "label", "uuid", "xmi_uuid"} and v is not None}
+                nodes_map[nid] = {
+                    "id": nid,
+                    "name": row.get("neighbor_name") or nid,
+                    "type": (row.get("neighbor_labels") or ["Unknown"])[0],
+                    "labels": row.get("neighbor_labels", []),
+                    "properties": extra,
+                }
+            rel_types = row.get("rel_types", [])
+            rel_label = rel_types[0] if len(rel_types) == 1 else " → ".join(rel_types)
+            links.append({"source": cid, "target": nid, "type": rel_label})
+
+        return {"nodes": list(nodes_map.values()), "links": links}
+
+    except Exception as e:
+        logger.error(f"Node expansion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ── Community detection endpoint (E14) ──────────────────────────────────────
+
+@router.get("/communities", response_model=CommunityResponse, response_class=Neo4jJSONResponse)
+async def detect_communities(
+    neo4j=Depends(Services.neo4j),
+    _api_key: str = Depends(get_api_key),
+):
+    """
+    Lightweight community detection using label propagation.
+    Falls back to connected-component grouping if GDS is unavailable.
+    """
+    try:
+        # Try Neo4j GDS label propagation first
+        try:
+            gds_query = """
+            CALL gds.labelPropagation.stream({
+                nodeProjection: '*',
+                relationshipProjection: { ALL: { type: '*', orientation: 'UNDIRECTED' } }
+            }) YIELD nodeId, communityId
+            RETURN gds.util.asNode(nodeId).id AS id, communityId AS community
+            ORDER BY community
+            """
+            results = neo4j.execute_query(gds_query)
+            if results:
+                items = [{"id": r["id"], "community": r["community"]} for r in results]
+                clusters = len(set(r["community"] for r in results))
+                return {"communities": items, "cluster_count": clusters}
+        except Exception:
+            logger.info("GDS not available, using connected-component fallback")
+
+        # Fallback: BFS-based connected components via Cypher
+        cc_query = """
+        MATCH (n)
+        WHERE n.id IS NOT NULL
+        WITH collect(n) AS allNodes
+        UNWIND allNodes AS n
+        OPTIONAL MATCH (n)-[r]-(m)
+        WHERE m.id IS NOT NULL
+        WITH n.id AS nid, collect(DISTINCT m.id) AS neighbors
+        RETURN nid AS id, neighbors
+        """
+        rows = neo4j.execute_query(cc_query)
+        # Build adjacency and run BFS
+        adj = {}
+        for row in rows:
+            nid = row["id"]
+            adj[nid] = row.get("neighbors", [])
+
+        visited = set()
+        community_map = {}
+        comm_id = 0
+        for nid in adj:
+            if nid in visited:
+                continue
+            queue = [nid]
+            visited.add(nid)
+            while queue:
+                current = queue.pop(0)
+                community_map[current] = comm_id
+                for nb in adj.get(current, []):
+                    if nb not in visited:
+                        visited.add(nb)
+                        queue.append(nb)
+            comm_id += 1
+
+        items = [{"id": k, "community": v} for k, v in community_map.items()]
+        return {"communities": items, "cluster_count": comm_id}
+
+    except Exception as e:
+        logger.error(f"Community detection failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ── Graph diff endpoint (E20) ───────────────────────────────────────────────
+
+class GraphDiffRequest(BaseModel):
+    """Compare two sets of node types to find added/removed nodes & links"""
+    node_types_a: List[str] = []
+    node_types_b: List[str] = []
+    limit: int = 500
+
+
+class DiffResult(BaseModel):
+    added_nodes: list = []
+    removed_nodes: list = []
+    added_links: list = []
+    removed_links: list = []
+    summary: dict = {}
+
+
+@router.post("/diff", response_model=DiffResult, response_class=Neo4jJSONResponse)
+async def graph_diff(
+    req: GraphDiffRequest,
+    neo4j=Depends(Services.neo4j),
+    _api_key: str = Depends(get_api_key),
+):
+    """
+    Compare two graph snapshots defined by different node-type selections.
+    Returns added/removed nodes and links between snapshot A and B.
+    """
+    try:
+        def fetch_snapshot(node_types, lim):
+            if node_types:
+                safe = [t for t in node_types if t in ALLOWED_NODE_TYPES]
+                if not safe:
+                    return set(), set()
+                labels = "|".join(f"`{t}`" for t in safe)
+                q = f"MATCH (n) WHERE n:{labels} WITH n LIMIT {lim} " \
+                    f"OPTIONAL MATCH (n)-[r]->(m) WHERE m:{labels} " \
+                    f"RETURN n.id AS nid, type(r) AS rtype, m.id AS mid"
+            else:
+                q = f"MATCH (n) WITH n LIMIT {lim} " \
+                    f"OPTIONAL MATCH (n)-[r]->(m) " \
+                    f"RETURN n.id AS nid, type(r) AS rtype, m.id AS mid"
+            rows = neo4j.execute_query(q)
+            nodes = set()
+            links = set()
+            for row in rows:
+                if row.get("nid"):
+                    nodes.add(str(row["nid"]))
+                if row.get("nid") and row.get("mid") and row.get("rtype"):
+                    links.add((str(row["nid"]), str(row["rtype"]), str(row["mid"])))
+            return nodes, links
+
+        nodes_a, links_a = fetch_snapshot(req.node_types_a, req.limit)
+        nodes_b, links_b = fetch_snapshot(req.node_types_b, req.limit)
+
+        added_n = list(nodes_b - nodes_a)
+        removed_n = list(nodes_a - nodes_b)
+        added_l = [{"source": s, "type": t, "target": tgt} for s, t, tgt in (links_b - links_a)]
+        removed_l = [{"source": s, "type": t, "target": tgt} for s, t, tgt in (links_a - links_b)]
+
+        return {
+            "added_nodes": added_n,
+            "removed_nodes": removed_n,
+            "added_links": added_l,
+            "removed_links": removed_l,
+            "summary": {
+                "added_nodes_count": len(added_n),
+                "removed_nodes_count": len(removed_n),
+                "added_links_count": len(added_l),
+                "removed_links_count": len(removed_l),
+                "snapshot_a_nodes": len(nodes_a),
+                "snapshot_b_nodes": len(nodes_b),
+            }
+        }
+    except Exception as e:
+        logger.error(f"Graph diff failed: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e

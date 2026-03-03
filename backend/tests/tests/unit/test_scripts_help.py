@@ -82,6 +82,16 @@ SKIPPED_SCRIPTS: dict[str, str] = {
     # OSLC client test scripts (require running OSLC server).
     "backend/scripts/test_oslc_client.py": "OSLC client test; requires running OSLC server.",
     "backend/scripts/test_oslc_client_v2.py": "OSLC client test v2; requires running OSLC server.",
+
+    # Debug / diagnostic scripts (require running Neo4j; no stable CLI).
+    "backend/scripts/_debug_list_all.py": "Debug helper; requires Neo4j connection.",
+    "backend/scripts/diag_graph.py": "Graph diagnostic; requires Neo4j connection.",
+    "backend/scripts/load_all_data.py": "Bulk data loader; requires Neo4j connection.",
+
+    # Vectorization scripts (require Neo4j + Ollama + OpenSearch; not pure argparse CLIs).
+    "backend/scripts/vectorize_all.py": "Bulk Neo4j→OpenSearch vectorizer; requires all services.",
+    "backend/scripts/run_vectorize.py": "Wrapper for vectorize_all.py; requires all services.",
+    "backend/scripts/gap_analysis.py": "One-shot gap analysis; requires Neo4j connection.",
 }
 
 

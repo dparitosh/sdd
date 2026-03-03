@@ -16,18 +16,42 @@ from typing import List, Optional
 from xml.dom import minidom
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from loguru import logger
 from pydantic import BaseModel
 
 from src.web.services import get_neo4j_service
 from src.web.services.export_service import ExportService
+from src.web.dependencies import get_api_key
 
 # ============================================================================
 # ROUTER CONFIGURATION
 # ============================================================================
 
-router = APIRouter(prefix="/export", tags=["Data Export"])
+router = APIRouter(prefix="/export", tags=["Data Export"], dependencies=[Depends(get_api_key)])
+
+# Regex to validate Neo4j label names (alphanumeric + underscore only)
+_SAFE_LABEL_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_node_types(node_types: Optional[str]) -> list[str]:
+    """Parse and validate a comma-separated list of node type labels.
+
+    Raises HTTPException 400 if any label contains unsafe characters
+    (prevents Cypher injection via label interpolation).
+    """
+    if not node_types:
+        return []
+    labels = [nt.strip() for nt in node_types.split(",") if nt.strip()]
+    for label in labels:
+        if not _SAFE_LABEL_RE.match(label):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid node type label: '{label}'. Labels must be alphanumeric/underscore only.",
+            )
+    return labels
 
 
 # ============================================================================
@@ -181,7 +205,7 @@ async def export_graphml(
     try:
         neo4j = get_neo4j_service()
 
-        node_types_list = node_types.split(",") if node_types else []
+        node_types_list = _validate_node_types(node_types)
 
         # Build query
         node_match = "MATCH (n)"
@@ -320,7 +344,7 @@ async def export_jsonld(
     try:
         neo4j = get_neo4j_service()
 
-        node_types_list = node_types.split(",") if node_types else []
+        node_types_list = _validate_node_types(node_types)
 
         node_match = "MATCH (n)"
         if node_types_list and node_types_list[0]:

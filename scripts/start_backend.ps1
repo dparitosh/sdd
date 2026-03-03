@@ -147,4 +147,6 @@ if ($Detach) {
     exit 0
 }
 
+$env:PYTHONPATH = "$backendDir;$env:PYTHONPATH"
+Set-Location $backendDir
 & $python -m uvicorn src.web.app_fastapi:app --host $backendHost --port $backendPort --reload --reload-dir "$backendDir\src"

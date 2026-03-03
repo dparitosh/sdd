@@ -8,18 +8,19 @@ Endpoints for simulation system integration:
 
 from typing import Any, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services import get_neo4j_service
+from src.web.dependencies import get_api_key
 
 # ============================================================================
 # ROUTER CONFIGURATION
 # ============================================================================
 
-router = APIRouter(prefix="/simulation", tags=["Simulation Integration"])
+router = APIRouter(prefix="/simulation", tags=["Simulation Integration"], dependencies=[Depends(get_api_key)])
 
 
 # ============================================================================
@@ -500,23 +501,24 @@ async def get_simulation_results(
 ):
     """List stored simulation results (if present in the graph).
 
-    This endpoint is intentionally tolerant: if no `SimulationResult` nodes exist,
-    it returns an empty list.
+    This endpoint queries both `SimulationResult` and `SimulationArtifact` nodes,
+    returning a unified list.  If neither label exists it returns an empty list.
     """
     try:
         neo4j = get_neo4j_service()
 
         query = """
-        MATCH (r:SimulationResult)
+        MATCH (r)
+        WHERE r:SimulationResult OR r:SimulationArtifact
         RETURN coalesce(r.id, r.uid, elementId(r)) as id,
                r.name as name,
                r.status as status,
-               toString(r.created_on) as created_on,
+               toString(coalesce(r.created_on, r.created_at)) as created_on,
                toString(r.last_modified) as last_modified,
-               r.model_id as model_id,
+               coalesce(r.model_id, r.code) as model_id,
                r.metrics as metrics,
-               r.parameters as parameters
-        ORDER BY coalesce(r.last_modified, r.created_on) DESC
+               r.type as parameters
+        ORDER BY coalesce(r.last_modified, r.created_on, r.created_at) DESC
         LIMIT $limit
         """
 
@@ -1031,8 +1033,8 @@ async def get_simulation_statistics():
 class SimulationRunSummary(BaseModel):
     """Summary of a simulation run"""
     id: str
-    sim_type: str
-    start_time: str
+    sim_type: Optional[str] = None
+    start_time: Optional[str] = None
     end_time: Optional[str] = None
     status: str
     solver_version: Optional[str] = None
@@ -1046,10 +1048,10 @@ class SimulationRunSummary(BaseModel):
 class SimulationRunDetail(BaseModel):
     """Detailed simulation run information"""
     id: str
-    sim_type: str
-    start_time: str
+    sim_type: Optional[str] = None
+    start_time: Optional[str] = None
     end_time: Optional[str] = None
-    timestamp: str
+    timestamp: Optional[str] = None
     status: str
     solver_version: Optional[str] = None
     credibility_level: Optional[str] = None
@@ -1107,6 +1109,13 @@ async def get_simulation_runs(
             limit=limit
         )
         
+        # Convert Neo4j temporal types to ISO strings
+        for run in runs:
+            for key in ('timestamp', 'start_time', 'end_time'):
+                val = run.get(key)
+                if val is not None and not isinstance(val, str):
+                    run[key] = str(val)
+        
         return runs
         
     except Exception as e:
@@ -1140,6 +1149,12 @@ async def get_simulation_run(run_id: str):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Simulation run '{run_id}' not found"
             )
+        
+        # Convert Neo4j temporal types to ISO strings
+        for key in ('timestamp', 'start_time', 'end_time'):
+            val = run.get(key)
+            if val is not None and not isinstance(val, str):
+                run[key] = str(val)
         
         return run
         

@@ -2,6 +2,7 @@
 FastAPI dependencies for authentication, rate limiting, and shared resources.
 """
 
+import hmac
 import os
 from typing import Optional
 
@@ -24,10 +25,15 @@ def get_api_key(x_api_key: Optional[str] = Header(None)) -> str:
     """
     expected_key = os.getenv("API_KEY")
 
-    # If no API key configured, allow access (development mode)
+    # If no API key configured, only allow in explicit development mode
     if not expected_key:
-        logger.warning("No API_KEY configured - authentication bypassed")
-        return "development"
+        if os.getenv("ENVIRONMENT", "production").lower() in ("development", "dev", "local"):
+            logger.warning("No API_KEY configured - authentication bypassed (dev mode)")
+            return "development"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server misconfiguration: API_KEY not set. Set API_KEY env var or ENVIRONMENT=development.",
+        )
 
     if not x_api_key:
         logger.warning("Missing X-API-Key header")
@@ -37,7 +43,7 @@ def get_api_key(x_api_key: Optional[str] = Header(None)) -> str:
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    if x_api_key != expected_key:
+    if not hmac.compare_digest(x_api_key, expected_key):
         logger.warning(f"Invalid API key attempt: {x_api_key[:8]}...")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

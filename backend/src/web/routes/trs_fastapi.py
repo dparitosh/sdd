@@ -5,8 +5,9 @@ Endpoints for Tracked Resource Set (Smart Linking).
 
 from fastapi import APIRouter, Depends, Header, Response, Request
 from src.web.services.oslc_trs_service import OSLCTRSService
+from src.web.dependencies import get_api_key
 
-router = APIRouter(prefix="/oslc/trs", tags=["OSLC TRS"])
+router = APIRouter(prefix="/oslc/trs", tags=["OSLC TRS"], dependencies=[Depends(get_api_key)])
 
 
 def get_trs_service() -> OSLCTRSService:

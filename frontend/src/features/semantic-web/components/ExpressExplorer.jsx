@@ -43,13 +43,13 @@ export default function ExpressExplorer() {
   const schemaName = parseResult?.schema ?? parseResult?.name ?? 'Unknown';
 
   const handleAnalyze = () => {
-    if (schemaName) analyzeMutation.mutate(schemaName);
+    if (parseResult) analyzeMutation.mutate(parseResult);
   };
 
   const handleExport = async () => {
     if (!schemaName) return;
     try {
-      const result = await expressService.exportExpress(schemaName, exportFormat);
+      const result = await expressService.exportExpress(parseResult, exportFormat);
       const blob = new Blob([typeof result === 'string' ? result : JSON.stringify(result, null, 2)], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

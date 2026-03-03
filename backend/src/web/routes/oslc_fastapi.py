@@ -12,8 +12,9 @@ from rdflib.namespace import DCTERMS
 from src.web.services import get_neo4j_service
 from src.web.services.oslc_service import OSLCService, OSLC, OSLC_RM
 from src.web.services.oslc_trs_service import OSLCTRSService
+from src.web.dependencies import get_api_key
 
-router = APIRouter(prefix="/oslc", tags=["OSLC Semantic Web"])
+router = APIRouter(prefix="/oslc", tags=["OSLC Semantic Web"], dependencies=[Depends(get_api_key)])
 
 def get_trs_service() -> OSLCTRSService:
     return OSLCTRSService()

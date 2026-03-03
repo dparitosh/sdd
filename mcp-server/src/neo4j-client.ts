@@ -9,6 +9,7 @@ export interface Neo4jConfig {
   uri: string;
   user: string;
   password: string;
+  database?: string;
 }
 
 export interface Class {
@@ -52,12 +53,14 @@ export interface Relationship {
 
 export class Neo4jClient {
   private driver: Driver;
+  private database?: string;
 
   constructor(config: Neo4jConfig) {
     this.driver = neo4j.driver(
       config.uri,
       neo4j.auth.basic(config.user, config.password)
     );
+    this.database = config.database;
   }
 
   async connect(): Promise<void> {
@@ -74,15 +77,43 @@ export class Neo4jClient {
     await this.driver.close();
   }
 
+  /**
+   * Convert Neo4j Integer / BigInt values to plain JS numbers recursively.
+   */
+  private static toNative(val: any): any {
+    if (val === null || val === undefined) return val;
+    // neo4j-driver Integer objects
+    if (neo4j.isInt(val)) return val.toNumber();
+    if (typeof val === 'bigint') return Number(val);
+    if (Array.isArray(val)) return val.map(Neo4jClient.toNative);
+    if (val && typeof val === 'object') {
+      const out: Record<string, any> = {};
+      for (const [k, v] of Object.entries(val)) {
+        out[k] = Neo4jClient.toNative(v);
+      }
+      return out;
+    }
+    return val;
+  }
+
   private async executeQuery<T = any>(
     query: string,
     params: Record<string, any> = {},
     accessMode: SessionMode = neo4j.session.READ
   ): Promise<T[]> {
-    const session: Session = this.driver.session({ defaultAccessMode: accessMode });
+    // Convert JS numbers to neo4j integers for params used in LIMIT/SKIP etc.
+    const safeParams: Record<string, any> = {};
+    for (const [k, v] of Object.entries(params)) {
+      if (typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v)) {
+        safeParams[k] = neo4j.int(v);
+      } else {
+        safeParams[k] = v;
+      }
+    }
+    const session: Session = this.driver.session({ defaultAccessMode: accessMode, database: this.database });
     try {
-      const result = await session.run(query, params);
-      return result.records.map((record: any) => record.toObject() as T);
+      const result = await session.run(query, safeParams);
+      return result.records.map((record: any) => Neo4jClient.toNative(record.toObject()) as T);
     } finally {
       await session.close();
     }

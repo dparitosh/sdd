@@ -5,6 +5,8 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
 import { Badge } from '@ui/badge';
 import { Button } from '@ui/button';
@@ -207,7 +209,18 @@ export default function Chatbot() {
                       : 'bg-muted rounded-bl-sm'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  {msg.role === 'assistant' ? (
+                    <div
+                      className="prose prose-sm dark:prose-invert max-w-none
+                        [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-0.5
+                        [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-2 [&_h2]:mb-0.5
+                        [&_ul]:mt-0.5 [&_ul]:mb-0.5 [&_li]:my-0 [&_table]:text-xs
+                        [&_strong]:font-semibold [&_code]:text-xs [&_p]:my-0.5"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(msg.content) as string) }}
+                    />
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  )}
                 </div>
                 {msg.role === 'user' && (
                   <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">

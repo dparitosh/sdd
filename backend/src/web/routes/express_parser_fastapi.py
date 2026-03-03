@@ -8,9 +8,10 @@ Provides RESTful endpoints for parsing, querying, and exporting EXPRESS schemas.
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, Body, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File
 from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel, Field
+from src.web.dependencies import get_api_key
 
 from src.parsers.express import (
     ExpressParser,
@@ -24,11 +25,61 @@ from src.parsers.express import (
 )
 
 
+# ============================================================================
+# Path Safety
+# ============================================================================
+
+def _repo_root() -> Path:
+    """backend/src/web/routes -> backend/src/web -> backend/src -> backend -> repo"""
+    return Path(__file__).resolve().parents[4]
+
+
+_ALLOWED_EXTENSIONS = {".exp", ".stp", ".step", ".stpx"}
+
+
+def _resolve_safe_express_path(user_path: str) -> Path:
+    """Resolve and validate a user-supplied path against allowed roots.
+
+    Raises HTTPException 400 on path-traversal or disallowed extension.
+    """
+    root = _repo_root()
+    p = Path(user_path)
+
+    if not p.is_absolute():
+        p = (root / p).resolve()
+    else:
+        p = p.resolve()
+
+    allowed_roots = [
+        (root / "smrlv12").resolve(),
+        (root / "data").resolve(),
+        (root / "backend" / "data").resolve(),
+    ]
+
+    if not any(str(p).startswith(str(ar)) for ar in allowed_roots):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Path is not under an allowed root. "
+                f"Allowed roots: {', '.join(str(ar) for ar in allowed_roots)}"
+            ),
+        )
+
+    if p.suffix.lower() not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file extension '{p.suffix}'. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
+        )
+
+    return p
+
+
 # Create router
 router = APIRouter(
     prefix="/express",
     tags=["EXPRESS Parser"],
     responses={404: {"description": "Not found"}},
+    dependencies=[Depends(get_api_key)],
 )
 
 
@@ -102,7 +153,8 @@ async def parse_file(request: ParseFileRequest) -> Dict[str, Any]:
     Returns parsed schema with entities, types, imports, and metadata.
     """
     parser = ExpressParser()
-    result = parser.parse_file(request.file_path)
+    safe_path = _resolve_safe_express_path(request.file_path)
+    result = parser.parse_file(str(safe_path))
     
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
@@ -208,7 +260,8 @@ async def get_file_info(
     
     Quick inspection of file size, schema name, and estimated counts.
     """
-    return get_express_file_info(file_path)
+    safe_path = _resolve_safe_express_path(file_path)
+    return get_express_file_info(str(safe_path))
 
 
 @router.post("/query/entities", response_model=Dict[str, Any])

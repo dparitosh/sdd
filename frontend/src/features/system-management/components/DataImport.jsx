@@ -65,6 +65,7 @@ const FILE_TYPES = [{
 export default function DataImport() {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedJobs, setUploadedJobs] = useState([]);
+  const [deletedJobIds, setDeletedJobIds] = useState(new Set());
   const fileInputRef = useRef(null);
   const uploadMutation = useMutation({
     mutationFn: async file => {
@@ -192,12 +193,51 @@ export default function DataImport() {
     return <Badge variant={variants[status] || 'default'}>{status.toUpperCase()}</Badge>;
   };
   const allJobs = [...uploadedJobs, ...(jobsData?.jobs || [])].reduce((acc, job) => {
+    if (deletedJobIds.has(job.job_id)) return acc;
     const existing = acc.find(j => j.job_id === job.job_id);
     if (!existing) {
       acc.push(job);
     }
     return acc;
   }, []);
+
+  // Compute elapsed time and stuck status for each job
+  const STUCK_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+  const getJobElapsed = (job) => {
+    if (!job.updated_at) return null;
+    const updated = new Date(job.updated_at);
+    const now = new Date();
+    const diffMs = now - updated;
+    return diffMs;
+  };
+  const formatElapsed = (ms) => {
+    if (ms == null) return '';
+    const sec = Math.floor(ms / 1000);
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    return `${hr}h ${min % 60}m ago`;
+  };
+  const isJobStuck = (job) => {
+    if (job.status !== 'processing' && job.status !== 'pending') return false;
+    const elapsed = getJobElapsed(job);
+    return elapsed != null && elapsed > STUCK_THRESHOLD_MS;
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    // Immediately hide from UI
+    setDeletedJobIds(prev => new Set([...prev, jobId]));
+    setUploadedJobs(prev => prev.filter(j => j.job_id !== jobId));
+    try {
+      await apiClient.delete(`/upload/job/${jobId}`);
+      refetch();
+      toast.success('Job removed');
+    } catch (e) {
+      logger.error('Failed to delete job:', e);
+      toast.error('Failed to delete job from server');
+    }
+  };
 
   const handleExport = async (format) => {
     try {
@@ -250,9 +290,7 @@ export default function DataImport() {
                 `}><Upload className="h-12 w-12 text-primary" /></div></div><div><p className="text-lg font-semibold">{isDragging ? 'Drop files here' : 'Drag & drop files here'}</p><p className="text-sm text-muted-foreground mt-1">or click to browse your computer</p></div>{uploadMutation.isPending && <div className="flex items-center justify-center gap-2 text-primary"><Loader2 className="h-5 w-5 animate-spin" /><span>Uploading...</span></div>}</div></div><div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">{FILE_TYPES.map(type => {
             const Icon = type.icon;
             return <Card key={type.name} className="border"><CardContent className="p-4 text-center space-y-2"><Icon className={`h-8 w-8 mx-auto ${type.color}`} /><div><div className="font-semibold">{type.name}</div><div className="text-xs text-muted-foreground">{type.desc}</div></div></CardContent></Card>;
-          })}</div></CardContent></Card>{allJobs.length > 0 && <Card className="card-corporate border-2"><CardHeader className="border-b bg-linear-to-r from-accent/10 to-accent/5"><div className="flex items-center justify-between"><CardTitle>Upload History</CardTitle><Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button></div></CardHeader><CardContent className="pt-6"><div className="rounded-lg border-2 overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead>Status</TableHead><TableHead>Filename</TableHead><TableHead>Progress</TableHead><TableHead>Message</TableHead><TableHead className="w-25">Actions</TableHead></TableRow></TableHeader><TableBody>{allJobs.map(job => <TableRow key={job.job_id}><TableCell><div className="flex items-center gap-2">{getStatusIcon(job.status)}{getStatusBadge(job.status)}</div></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><File className="h-4 w-4 text-muted-foreground" />{job.filename}</div></TableCell><TableCell><div className="space-y-2 min-w-50"><Progress value={job.progress} className="h-2" /><span className="text-xs text-muted-foreground">{job.progress}%</span></div></TableCell><TableCell className="max-w-md"><div className="space-y-1">{job.message && <p className="text-sm">{job.message}</p>}{job.error && <p className="text-sm text-red-500 flex items-center gap-1"><AlertCircle className="h-4 w-4" />{job.error}</p>}{job.stats && job.status === 'completed' && <div className="text-xs text-muted-foreground">{JSON.stringify(job.stats).slice(0, 100)}...</div>}</div></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => {
-                    setUploadedJobs(prev => prev.filter(j => j.job_id !== job.job_id));
-                  }}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" /></Button></TableCell></TableRow>)}</TableBody></Table></div></CardContent></Card>}
+          })}</div></CardContent></Card>{allJobs.length > 0 && <Card className="card-corporate border-2"><CardHeader className="border-b bg-linear-to-r from-accent/10 to-accent/5"><div className="flex items-center justify-between"><CardTitle>Upload History</CardTitle><div className="flex items-center gap-2"><Button variant="outline" size="sm" onClick={async () => { try { const r = await apiClient.post('/upload/cleanup-stuck'); toast.success(r.message || `Cleaned ${r.cleaned} stuck jobs`); refetch(); } catch(e) { toast.error('Cleanup failed: ' + e.message); } }}><AlertCircle className="h-4 w-4 mr-1" />Clear Stuck</Button><Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={async () => { if (!confirm('Delete ALL upload history?')) return; try { const r = await apiClient.delete('/upload/jobs/all'); setDeletedJobIds(new Set()); setUploadedJobs([]); toast.success(r.message || `Deleted ${r.deleted} jobs`); refetch(); } catch(e) { toast.error('Delete all failed: ' + e.message); } }}><Trash2 className="h-4 w-4 mr-1" />Clear All</Button><Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button></div></div></CardHeader><CardContent className="pt-6"><div className="rounded-lg border-2 overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead>Status</TableHead><TableHead>Filename</TableHead><TableHead>Progress</TableHead><TableHead>Message</TableHead><TableHead className="w-25">Actions</TableHead></TableRow></TableHeader><TableBody>{allJobs.map(job => <TableRow key={job.job_id} className={isJobStuck(job) ? 'bg-amber-50 dark:bg-amber-950/20' : ''}><TableCell><div className="flex items-center gap-2">{getStatusIcon(job.status)}{getStatusBadge(job.status)}{isJobStuck(job) && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">STUCK</Badge>}</div></TableCell><TableCell className="font-medium"><div className="flex items-center gap-2"><File className="h-4 w-4 text-muted-foreground" />{job.filename}</div></TableCell><TableCell><div className="space-y-2 min-w-50"><Progress value={job.progress} className={`h-2 ${isJobStuck(job) ? '[&>div]:bg-amber-500' : ''}`} /><span className="text-xs text-muted-foreground">{job.progress}%{(job.status === 'processing' || job.status === 'pending') && job.updated_at && <span className={`ml-2 ${isJobStuck(job) ? 'text-amber-600 font-medium' : ''}`}> · updated {formatElapsed(getJobElapsed(job))}</span>}</span></div></TableCell><TableCell className="max-w-md"><div className="space-y-1">{job.message && <p className="text-sm">{job.message}</p>}{job.error && <p className="text-sm text-red-500 flex items-center gap-1"><AlertCircle className="h-4 w-4" />{job.error}</p>}{job.stats && job.status === 'completed' && <div className="text-xs text-muted-foreground">{JSON.stringify(job.stats).slice(0, 100)}...</div>}</div></TableCell><TableCell><Button variant="ghost" size="sm" onClick={() => handleDeleteJob(job.job_id)}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" /></Button></TableCell></TableRow>)}</TableBody></Table></div></CardContent></Card>}
     </>
   );
 

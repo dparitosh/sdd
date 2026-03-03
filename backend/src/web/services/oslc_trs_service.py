@@ -149,3 +149,16 @@ class OSLCTRSService:
             logger.info(f"Published TRS Event: {event_type} on {resource_uri}")
         except Exception as e:
             logger.error(f"Failed to publish TRS event: {e}")
+
+    async def append_change_event(
+        self, resource_uri: str, change_type: str = "create"
+    ) -> None:
+        """Convenience wrapper around ``publish_event``.
+
+        Accepts ``change_type`` as 'create', 'update', or 'delete'.
+        Non-blocking: errors are logged but never raised.
+        """
+        try:
+            await self.publish_event(resource_uri, event_type=change_type)
+        except Exception as exc:
+            logger.warning(f"TRS append_change_event failed (non-blocking): {exc}")

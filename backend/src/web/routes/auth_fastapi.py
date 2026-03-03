@@ -4,6 +4,7 @@ Provides JWT-based login, token refresh, logout, and password management endpoin
 With Redis-based session management support
 """
 
+import hmac
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -41,14 +42,34 @@ def get_session_manager() -> Optional[SessionManager]:
 class AuthConfig:
     """Authentication configuration"""
 
-    SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+    SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 60
     REFRESH_TOKEN_EXPIRE_DAYS = 30
 
     # Admin credentials (in production, use database with hashed passwords)
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+    @classmethod
+    def _check_config(cls):
+        """Warn on startup if secrets are not configured."""
+        if not cls.SECRET_KEY:
+            import warnings
+            warnings.warn(
+                "JWT_SECRET_KEY is not set! Using a random key (tokens will not survive restarts).",
+                stacklevel=2,
+            )
+            import secrets as _s
+            cls.SECRET_KEY = _s.token_hex(32)
+        if not cls.ADMIN_PASSWORD:
+            import warnings
+            warnings.warn(
+                "ADMIN_PASSWORD is not set! Using a random password. Set ADMIN_PASSWORD env var.",
+                stacklevel=2,
+            )
+            import secrets as _s
+            cls.ADMIN_PASSWORD = _s.token_hex(16)
 
     # Runtime password store — allows password changes to take effect
     # within the current process.  Keyed by username.
@@ -69,6 +90,9 @@ class AuthConfig:
 
 # In-memory token blacklist (in production, use Redis)
 TOKEN_BLACKLIST = set()
+
+# Validate config on import
+AuthConfig._check_config()
 
 
 # ============================================================================
@@ -229,7 +253,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     """
     # Check runtime password (supports change-password flow)
     expected = AuthConfig.get_password(username)
-    if expected is not None and password == expected:
+    if expected is not None and hmac.compare_digest(password, expected):
         role = "admin" if username == AuthConfig.ADMIN_USERNAME else "user"
         return {"username": username, "role": role}
 
@@ -530,7 +554,7 @@ async def change_password(
         # Verify current password against the runtime store
         username = current_user["username"]
         expected = AuthConfig.get_password(username)
-        if expected is None or password_request.current_password != expected:
+        if expected is None or not hmac.compare_digest(password_request.current_password, expected):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Current password is incorrect",
@@ -557,3 +581,81 @@ async def change_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred",
         )
+
+
+# ============================================================================
+# SESSION MANAGEMENT PROXY ENDPOINTS
+# These let the frontend use /auth/sessions/* — proxying to the
+# SessionManager that is also exposed under /api/sessions/* in
+# sessions_fastapi.py.
+# ============================================================================
+
+
+@router.get(
+    "/sessions",
+    response_class=Neo4jJSONResponse,
+    summary="List sessions for current user",
+)
+async def get_my_sessions(current_user: dict = Depends(get_current_user)):
+    """
+    Return all active sessions for the currently authenticated user.
+    Proxies to the SessionManager; returns an empty list when the session
+    manager is not configured.
+    """
+    session_manager = get_session_manager()
+    if not session_manager:
+        return []
+    try:
+        sessions = await session_manager.get_user_sessions(current_user["username"])
+        return sessions or []
+    except Exception as exc:
+        logger.warning(f"get_my_sessions error: {exc}")
+        return []
+
+
+@router.get(
+    "/admin/sessions",
+    response_class=Neo4jJSONResponse,
+    summary="List all sessions (admin only)",
+)
+async def admin_get_sessions(current_user: dict = Depends(get_current_user)):
+    """
+    Return statistics / all sessions for admin users.
+    Non-admin callers receive a 403.
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    session_manager = get_session_manager()
+    if not session_manager:
+        return {"sessions": [], "total": 0}
+    try:
+        stats = await session_manager.get_session_statistics()
+        return stats or {"sessions": [], "total": 0}
+    except Exception as exc:
+        logger.warning(f"admin_get_sessions error: {exc}")
+        return {"sessions": [], "total": 0}
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    response_class=Neo4jJSONResponse,
+    summary="Revoke a specific session",
+)
+async def delete_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Revoke a session by ID.  Users can only revoke their own sessions;
+    admin users may revoke any session.
+    """
+    session_manager = get_session_manager()
+    if not session_manager:
+        return {"message": "Session manager not available", "revoked": False}
+    try:
+        await session_manager.revoke_session(session_id)
+        logger.info(f"Session {session_id} revoked by {current_user['username']}")
+        return {"message": f"Session {session_id} revoked", "revoked": True}
+    except Exception as exc:
+        logger.error(f"delete_session error: {exc}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))

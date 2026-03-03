@@ -20,7 +20,31 @@ ap243:
     dcterms:title "AP243 – MoSSEC Reference Data & Ontologies" ;
     dcterms:description "OSLC-compatible ontology for ISO 10303 AP243 entities including reference ontologies, classification systems, units, value types, and the MoSSEC domain model." ;
     rdfs:label "AP243 MoSSEC" .
+# --- Top-Level Product Concepts (cross-ontology targets) ---
 
+ap243:Product
+    a rdfs:Class ;
+    rdfs:label "Product" ;
+    rdfs:comment "A top-level product concept in the AP hierarchy (AP243 reference)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ProductVersion
+    a rdfs:Class ;
+    rdfs:label "ProductVersion" ;
+    rdfs:comment "A version of a Product (AP243 reference)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:ProductOccurrence
+    a rdfs:Class ;
+    rdfs:label "ProductOccurrence" ;
+    rdfs:comment "An occurrence of a Product within a structure (AP243 reference)." ;
+    rdfs:isDefinedBy ap243: .
+
+ap243:Document
+    a rdfs:Class ;
+    rdfs:label "Document" ;
+    rdfs:comment "A document artifact in the product lifecycle (AP243 reference)." ;
+    rdfs:isDefinedBy ap243: .
 # --- Reference Ontologies & Classification ---
 
 ap243:ExternalOwlClass

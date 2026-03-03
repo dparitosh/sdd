@@ -13,3 +13,9 @@ export const ingestOntology = (file: File) => {
 
 export const getOntologies = () =>
   apiClient.get<any[]>('/ontology');
+
+export const ingestStandardOntologies = () =>
+  apiClient.post<{ status: string; results: any[] }>('/ontology/ingest-standard');
+
+export const getClassificationStats = () =>
+  apiClient.get<{ label: string; classified: number; unclassified: number }[]>('/ontology/stats');

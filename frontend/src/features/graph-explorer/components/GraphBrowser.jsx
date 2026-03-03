@@ -1,10 +1,9 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { useDebounce } from 'use-debounce';
+import { useRef, useState, useCallback, useMemo, useEffect, memo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceManyBody, forceX, forceY, forceCollide } from 'd3';
-import { Check, ChevronsUpDown, Loader2, AlertCircle, ZoomIn, ZoomOut, Maximize2, Pause, Play, Search, X, Network, Share2, Layers, GitMerge } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, AlertCircle, ZoomIn, ZoomOut, Maximize2, Pause, Play, Search, X, Network, Share2, Layers, GitMerge, Route, Brain, Expand, Download, Palette, Hash, Copy, ExternalLink, MousePointerClick, Keyboard, Terminal as TerminalIcon, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,116 +14,109 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { getNodeTypes, getGraphData } from '@/services/graph.service';
-
-/**
- * Discipline-grouped node type taxonomy.
- * Drives the filter popover groups and the legend.
- * AP239 = PLCS (Product Life Cycle Support)
- * AP242 = Managed Model Based 3D Engineering (Design/CAD)
- * AP243 = MoSSEC — Simulation & Analysis Context
- */
-const NODE_TYPE_GROUPS = {
-  'AP239 · PLCS': [
-    'Requirement', 'RequirementVersion', 'Analysis', 'AnalysisModel',
-    'Approval', 'ComplianceAudit', 'DecisionLog',
-    'Document', 'Activity', 'Breakdown', 'Verification', 'WorkOrder', 'Event',
-  ],
-  'AP242 · Design / CAD': [
-    'Part', 'PartVersion', 'Assembly', 'Component', 'ComponentPlacement',
-    'Material', 'MaterialProperty', 'GeometricModel', 'ShapeRepresentation',
-    'Shape', 'Position', 'CADModel',
-  ],
-  'AP243 · Simulation (MoSSEC)': [
-    'SimulationDossier', 'SimulationRun', 'SimulationModel',
-    'SimulationArtifact', 'EvidenceCategory', 'KPI',
-    'ModelInstance', 'Study', 'ActualActivity', 'AssociativeModelNetwork',
-    'ModelType', 'Method', 'Result', 'Context', 'MethodActivity', 'Parameter',
-  ],
-  'Cross-Domain / Structural': [
-    'System', 'Interface', 'Port', 'Connector', 'Constraint',
-    'Class', 'Package', 'Property', 'Association', 'InstanceSpecification',
-    'Slot', 'Comment', 'MBSEElement', 'Generalization', 'ExternalPropertyDefinition',
-  ],
-  'Reference Data': [
-    'ExternalUnit', 'ValueType', 'Classification', 'ExternalOwlClass', 'ExternalModel',
-  ],
-  'MBSE / Ontology (OWL)': [
-    'OWLClass', 'OWLObjectProperty', 'OWLDatatypeProperty', 'OWLProperty',
-    'Ontology', 'OntologyClass', 'OntologyProperty',
-  ],
-  'XSD Schema': [
-    'XSDSchema', 'XSDElement', 'XSDComplexType', 'XSDSimpleType',
-    'XSDAttribute', 'XSDGroup', 'XSDAttributeGroup',
-  ],
-  'OSLC Integration': [
-    'ServiceProvider', 'Service', 'Catalog', 'CreationFactory', 'QueryCapability', 'Link',
-  ],
-  'People & Organizations': ['Person', 'Organization'],
-};
+import { QUERY_CONFIG } from '@/constants';
+import { getNodeTypes, getGraphData, findShortestPath, graphRAGQuery, expandNode, getCommunities, searchNodes, graphDiff } from '@/services/graph.service';
+import { getTRSChangelog } from '@/services/oslc.service';
 
 const GRAPH_VIEWS = {
   ENTERPRISE: {
     id: 'ENTERPRISE',
     label: 'Enterprise Knowledge Graph',
-    description: 'Unified view of all engineering disciplines (PLCS, Design, Simulation)',
+    description: 'Unified view of all engineering disciplines — AP239 PLCS, AP242 Design, AP243 MoSSEC and cross-domain linkage',
     apLevel: null,
     fixedNodeTypes: [],
+    // Enterprise shows ALL node types — limit is the only restriction
+    defaultLimit: 500,
     icon: Network
   },
   AP239: {
     id: 'AP239',
     label: 'AP239 (PLCS)',
-    description: 'Product Life Cycle Support & Maintenance',
+    description: 'Product Life Cycle Support & Maintenance — product instances, requirements, work orders',
     apLevel: 'AP239',
-    fixedNodeTypes: [],
+    // AP239 PLCS core entity types
+    fixedNodeTypes: ['Class', 'Slot', 'Requirement', 'Verification', 'WorkOrder', 'Part', 'Document', 'Organization', 'Person', 'Activity'],
+    defaultLimit: 500,
     icon: Layers
   },
   AP242: {
     id: 'AP242',
     label: 'AP242 (Design)',
-    description: 'Managed Model Based 3D Engineering',
+    description: 'Managed Model Based 3D Engineering — CAD parts, assemblies, shapes',
     apLevel: 'AP242',
-    fixedNodeTypes: [],
+    // AP242 Design entity types
+    fixedNodeTypes: ['Part', 'Assembly', 'Component', 'PartVersion', 'Shape', 'Position', 'Property', 'Document', 'Material'],
+    defaultLimit: 500,
     icon: Layers
   },
   AP243: {
     id: 'AP243',
     label: 'AP243 (MoSSEC)',
-    description: 'Simulation & Analysis Context',
-    apLevel: 'AP243',
-    fixedNodeTypes: [],
+    description: 'Simulation & Analysis Context — simulation dossiers, runs, evidence, model instances',
+    // Use fixedNodeTypes for MoSSEC simulation entities (not ap_level filter which returns raw schema classes)
+    apLevel: null,
+    fixedNodeTypes: [
+      'ModelInstance', 'Study', 'Context', 'ModelType', 'AssociativeModelNetwork',
+      'ActualActivity', 'MethodActivity', 'Method', 'Result', 'ContextEnvironment',
+      'SimulationDossier', 'SimulationRun', 'SimulationArtifact', 'EvidenceCategory',
+      'MBSEElement', 'Requirement', 'Part'
+    ],
+    defaultLimit: 500,
     icon: Layers
   },
   ONTOLOGY: {
     id: 'ONTOLOGY',
-    label: 'STEP Ontology',
-    description: 'ISO 10303 STEP ontology — OWL classes, object & data properties (T-Box)',
+    label: 'STEP Ontology (Merged)',
+    description: 'Merged ISO 10303 ontology: AP239 PLCS + AP242 Design + AP243 MoSSEC — OWL T-Box + schema entities',
     apLevel: null,
-    fixedNodeTypes: ['Ontology', 'OntologyClass', 'OntologyProperty', 'OWLClass', 'OWLObjectProperty', 'OWLDatatypeProperty'],
+    // Merged ontology includes all AP-level schema + OWL layer — no ap_level filter so all are included
+    fixedNodeTypes: [
+      // OWL / T-Box layer
+      'Ontology', 'OntologyClass', 'OntologyProperty',
+      'OWLClass', 'OWLObjectProperty', 'OWLDatatypeProperty',
+      // AP239 PLCS schema classes
+      'Class', 'Slot',
+      // AP242 Design schema
+      'Part', 'Assembly', 'Component', 'PartVersion', 'Shape', 'Property',
+      // AP243 MoSSEC schema
+      'ModelInstance', 'ModelType', 'Study', 'Context',
+      // Shared cross-AP concepts
+      'Requirement', 'Document', 'Material',
+      // XSD bridge
+      'XSDSchema', 'XSDComplexType', 'XSDElement', 'XSDAttribute'
+    ],
+    defaultLimit: 600,
     icon: Share2
   },
   OSLC: {
     id: 'OSLC',
     label: 'OSLC Integration',
-    description: 'Cross-domain integration fabric: STEP Ontology T-Box ↔ XSD Schema ↔ Requirements via OSLC linkage',
+    description: 'Cross-domain integration: STEP T-Box ↔ XSD Schema ↔ Requirements ↔ PLM resources via OSLC linkage',
     apLevel: null,
-    fixedNodeTypes: ['Ontology', 'OntologyClass', 'OntologyProperty', 'Requirement', 'XSDSchema', 'ExternalOwlClass'],
+    // OSLC spans ontology, schema, requirements AND the PLM resources they link to
+    fixedNodeTypes: [
+      // Ontology layer
+      'Ontology', 'OntologyClass', 'OntologyProperty', 'OWLClass', 'OWLObjectProperty',
+      // XSD schema bridge
+      'XSDSchema', 'XSDComplexType', 'XSDElement', 'XSDAttribute',
+      // OSLC service resources
+      'ServiceProvider', 'Service', 'Catalog', 'Link', 'ExternalOwlClass',
+      // Domain resources linked via OSLC
+      'Requirement', 'Part', 'Document'
+    ],
+    defaultLimit: 400,
     icon: Network
   },
   DIGITAL_THREAD: {
     id: 'DIGITAL_THREAD',
     label: 'Digital Thread',
-    description: 'Full traceability: Dossier → Run → Artifact → KPI/Evidence → Part → Requirement → DecisionLog',
+    description: 'Linear flow: Dossier → Run → Artifact → Part → Requirement',
     apLevel: null,
-    // All node types that participate in the digital thread traceability chain
-    fixedNodeTypes: [
-      'SimulationDossier', 'SimulationRun', 'SimulationModel',
-      'SimulationArtifact', 'EvidenceCategory', 'KPI',
-      'Part', 'Assembly', 'Requirement', 'Analysis',
-      'Approval', 'ComplianceAudit', 'DecisionLog',
-    ],
+    fixedNodeTypes: ['SimulationDossier', 'SimulationRun', 'SimulationArtifact', 'EvidenceCategory', 'Part', 'Requirement'],
+    defaultLimit: 300,
     icon: GitMerge
   }
 };
@@ -157,40 +149,105 @@ const OSLC_REL_COLORS = {
 
 /** Color coding for Digital Thread relationship types (matched to actual DB schema) */
 const DT_REL_COLORS = {
-  // Primary digital thread chain
   HAS_SIMULATION_RUN:       '#3b82f6', // blue       — Dossier → Run
   CONTAINS_ARTIFACT:        '#a855f7', // purple     — Run → Artifact
   GENERATED:                '#0ea5e9', // sky        — Run/Artifact → Artifact
-  HAS_KPI:                  '#38bdf8', // light-sky  — EvidenceCategory → KPI
   LINKED_TO_REQUIREMENT:    '#f97316', // orange     — Artifact → Requirement
   SATISFIED_BY_PART:        '#22c55e', // green      — Requirement → Part
   TYPED_BY:                 '#94a3b8', // slate-grey — Part → Class (structural)
-  // Compliance & approval chain
-  HAS_APPROVAL:             '#eab308', // gold       — node → Approval
-  HAS_DECISION:             '#f59e0b', // amber      — Dossier → DecisionLog
-  HAS_FINDING:              '#ef4444', // red        — Dossier/Audit → ComplianceAudit
-  PROVES_COMPLIANCE_TO:     '#dc2626', // dark-red   — legacy compliance trace
+  PROVES_COMPLIANCE_TO:     '#ef4444', // red        — legacy
+  HAS_APPROVAL:             '#eab308', // gold       — legacy
 };
 
-/**
- * MoSSEC typed link relationships from SDD_DATA_MAPPING.csv
- * MOSSECLink.relation: validates | derivedFrom | represents | executes |
- *                      contains | verifies | approves | satisfies
- */
-const MOSSEC_LINK_COLORS = {
-  validates:   '#10b981', // emerald  — model validates requirement
-  derivedFrom: '#f59e0b', // amber    — artifact derived from model
-  represents:  '#8b5cf6', // purple   — model represents physical part
-  executes:    '#3b82f6', // blue     — run executes model
-  contains:    '#94a3b8', // slate    — hierarchical containment
-  verifies:    '#22c55e', // green    — artifact verifies requirement
-  approves:    '#eab308', // gold     — person/approval approves dossier
-  satisfies:   '#14b8a6', // teal     — part satisfies requirement
+/** E15: Unified Ontology Cross-Walk — maps shared concepts across AP239/242/243/OSLC */
+const ONTOLOGY_CROSSWALK = {
+  Part:                    { ap242: 'product_definition', ap239: 'product_as_individual', ap243: 'analysis_item', oslc: 'oslc:Resource' },
+  Requirement:             { ap242: 'requirement_assignment', ap239: 'requirement_property', ap243: 'verification_requirement', oslc: 'oslc_rm:Requirement' },
+  SimulationDossier:       { ap242: null, ap239: 'activity_method', ap243: 'simulation_package', oslc: 'oslc_auto:AutomationPlan' },
+  SimulationRun:           { ap242: null, ap239: 'executed_action', ap243: 'analysis_run', oslc: 'oslc_auto:AutomationResult' },
+  SimulationArtifact:      { ap242: 'document_file', ap239: 'document', ap243: 'result_data_package', oslc: 'oslc_am:Resource' },
+  EvidenceCategory:        { ap242: null, ap239: 'classification', ap243: 'evidence_category', oslc: null },
+  OntologyClass:           { ap242: 'entity_definition', ap239: 'entity_definition', ap243: 'entity_definition', oslc: 'oslc:ResourceShape' },
+  OntologyProperty:        { ap242: 'attribute_definition', ap239: 'attribute_definition', ap243: 'attribute_definition', oslc: 'oslc:Property' },
+  XSDSchema:               { ap242: 'schema', ap239: 'schema', ap243: 'schema', oslc: null },
 };
 
-export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
+const AP_COLORS = {
+  ap242: '#3b82f6', // blue
+  ap239: '#f97316', // orange
+  ap243: '#8b5cf6', // purple
+  oslc:  '#ec4899', // pink
+};
+
+export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const fgRef = useRef(null);
   const containerRef = useRef(null);
+  
+  // ── E1: Context menu state ──
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, node }
+  
+  // ── E2: Path Finder state ──
+  const [pathSource, setPathSource] = useState('');
+  const [pathSourceName, setPathSourceName] = useState(''); // display name
+  const [pathTarget, setPathTarget] = useState('');
+  const [pathTargetName, setPathTargetName] = useState(''); // display name
+  const [pathSourceSearch, setPathSourceSearch] = useState('');
+  const [pathTargetSearch, setPathTargetSearch] = useState('');
+  const [pathSourceOpen, setPathSourceOpen] = useState(false);
+  const [pathTargetOpen, setPathTargetOpen] = useState(false);
+  const [pathResult, setPathResult] = useState(null);
+  const [pathLoading, setPathLoading] = useState(false);
+  const [pathHighlight, setPathHighlight] = useState(null); // { nodeIds: Set, linkKeys: Set }
+  
+  // ── E3: GraphRAG state ──
+  const [ragQuestion, setRagQuestion] = useState('');
+  const [ragAnswer, setRagAnswer] = useState(null);
+  const [ragLoading, setRagLoading] = useState(false);
+  const [ragHighlight, setRagHighlight] = useState(null); // Set<string> of node IDs matched from RAG sources
+  const [ragOverlayNodes, setRagOverlayNodes] = useState([]); // RAG result nodes injected into graph
+  
+  // ── E7: Multi-select state ──
+  const [multiSelected, setMultiSelected] = useState(new Set());
+  
+  // ── E19: Lasso/rectangle selection state ──
+  const [lassoStart, setLassoStart] = useState(null); // { x, y } screen coords
+  const [lassoEnd, setLassoEnd] = useState(null);
+  const lassoActive = useRef(false);
+  
+  // ── E8: Heatmap mode ──
+  const [heatmapMode, setHeatmapMode] = useState('off'); // off | degree | community
+  
+  // ── E11: Export ──
+  const [showExport, setShowExport] = useState(false);
+  
+  // ── E14: Communities ──
+  const [communityMap, setCommunityMap] = useState(null); // { id → community_id }
+  const [communityColors, setCommunityColors] = useState({});
+  
+  // ── E6: Advanced property filters ──
+  const [propFilters, setPropFilters] = useState([]); // [{ key, op, value }]
+  
+  // ── E16: Keyboard shortcuts ──
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  
+  // ── E17: Cypher editor ──
+  const [cypherQuery, setCypherQuery] = useState('');
+  const [cypherLoading, setCypherLoading] = useState(false);
+  const [cypherResult, setCypherResult] = useState(null);
+  
+  // ── E20: Graph diff ──
+  const [diffTypesA, setDiffTypesA] = useState('');
+  const [diffTypesB, setDiffTypesB] = useState('');
+  const [diffResult, setDiffResult] = useState(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffHighlight, setDiffHighlight] = useState(null); // { added: Set, removed: Set }
+  
+  // ── E13: TRS time-travel ──
+  const [trsEvents, setTrsEvents] = useState([]);
+  const [trsLoading, setTrsLoading] = useState(false);
+  
+  // ── Sidebar tool tab ──
+  const [sidebarTab, setSidebarTab] = useState('filters');
   
   const [currentViewId, setCurrentViewId] = useState(initialView);
   const currentView = GRAPH_VIEWS[currentViewId] || GRAPH_VIEWS.ENTERPRISE;
@@ -201,19 +258,25 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   
   const [selectedNodeTypes, setSelectedNodeTypes] = useState(fixedNodeTypes);
   
-  // When view changes, update selection state
+  // When view changes, update selection state and reset limit to view default
   useEffect(() => {
     setSelectedNodeTypes(currentView.fixedNodeTypes);
-    // Reset other states if needed
+    // Reset to per-view default limit so Enterprise/ONTOLOGY loads more nodes
+    setLimit([currentView.defaultLimit ?? 200]);
     setSearchQuery("");
     setSelectedNode(null);
+    setPathHighlight(null);
+    setPathResult(null);
+    setPathSource('');
+    setPathSourceName('');
+    setPathTarget('');
+    setPathTargetName('');
   }, [currentViewId]);
 
   const [nodeTypeOpen, setNodeTypeOpen] = useState(false);
+  const [nodeTypeSearch, setNodeTypeSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchHighlightIdx, setSearchHighlightIdx] = useState(-1);
-  const searchContainerRef = useRef(null);
   const [layoutDone, setLayoutDone] = useState(false);
   const [layoutActive, setLayoutActive] = useState(true); // Start active so graph lays out
   const graphIdRef = useRef(null); // Track which graph we've laid out
@@ -221,30 +284,30 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const toggleLayout = useCallback(() => {
     if (!fgRef.current) return;
     if (layoutActive) {
-        // Stop physics by letting state update the props
-        // (d3AlphaDecay=1, d3VelocityDecay=1) 
+        // d3AlphaTarget/d3VelocityDecay are props, not ref methods.
+        // pauseAnimation() is the correct imperative call to stop the loop.
+        fgRef.current.pauseAnimation();
         setLayoutActive(false);
         setLayoutDone(true);
     } else {
-        // Restart the layout physics engine
+        // resumeAnimation() restarts the render loop;
+        // d3ReheatSimulation() re-energises the force engine.
+        fgRef.current.resumeAnimation();
+        fgRef.current.d3ReheatSimulation();
         setLayoutActive(true);
         setLayoutDone(false);
-        // We delay d3ReheatSimulation so the component has time to apply the layoutActive=true props
-        setTimeout(() => {
-            if (fgRef.current) fgRef.current.d3ReheatSimulation();
-        }, 50);
     }
   }, [layoutActive]);
 
-  const [limit, setLimit] = useState([500]);
+  const [limit, setLimit] = useState(() => [GRAPH_VIEWS[initialView]?.defaultLimit ?? 200]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [breadcrumbs, setBreadcrumbs] = useState([]);
   const navigate = useNavigate();
   const [hoverNode, setHoverNode] = useState(null);
   const [hoverLink, setHoverLink] = useState(null);
-    const pointerRef = useRef({ x: 0, y: 0 });
-    const tooltipRef = useRef(null);
-    const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [pointer, setPointer] = useState({ x: 0, y: 0 });
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
   // Memoised tooltip properties for hover node
   const hoverTooltipProps = useMemo(() => {
     if (!hoverNode) return null;
@@ -296,24 +359,35 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     data: nodeTypesData
   } = useQuery({
     queryKey: ['graph-node-types'],
-    queryFn: () => getNodeTypes()
+    queryFn: () => getNodeTypes(),
+    staleTime: 5 * 60 * 1000, // 5 min — node types rarely change
+    gcTime: 10 * 60 * 1000,   // keep in cache 10 min
   });
 
-  // Debounce filter changes so rapid checkbox clicks don't spam the API.
-  // The graph only reloads 400ms after the last toggle.
-  const [debouncedNodeTypes] = useDebounce(selectedNodeTypes, 400);
+  // ── E2: Path finder node search queries (name → ID resolution) ──
+  const { data: pathSourceResults } = useQuery({
+    queryKey: ['path-search-source', pathSourceSearch],
+    queryFn: () => searchNodes({ q: pathSourceSearch, limit: 8 }),
+    enabled: pathSourceSearch.trim().length >= 2,
+    staleTime: 30_000,
+  });
+  const { data: pathTargetResults } = useQuery({
+    queryKey: ['path-search-target', pathTargetSearch],
+    queryFn: () => searchNodes({ q: pathTargetSearch, limit: 8 }),
+    enabled: pathTargetSearch.trim().length >= 2,
+    staleTime: 30_000,
+  });
 
   const {
     data: graphData,
     isLoading,
-    isFetching,
     error
   } = useQuery({
-    queryKey: ['graph-data', debouncedNodeTypes, limit, apLevel],
+    queryKey: ['graph-data', selectedNodeTypes, limit, apLevel],
     queryFn: () => {
       const params = {};
-      if (debouncedNodeTypes.length > 0) {
-        params.node_types = debouncedNodeTypes.join(',');
+      if (selectedNodeTypes.length > 0) {
+        params.node_types = selectedNodeTypes.join(',');
       }
       params.limit = limit[0];
       if (apLevel) {
@@ -321,12 +395,19 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       }
       return getGraphData(params);
     },
-    placeholderData: keepPreviousData,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    staleTime: QUERY_CONFIG.STALE_TIME,          // 5 min
+    gcTime: QUERY_CONFIG.CACHE_TIME,             // 10 min
+    placeholderData: (previousData) => previousData, // keep showing old data while re-fetching
   });
   const normalizedGraph = useMemo(() => {
     if (!graphData) return null;
-    const nodes = (graphData.nodes || []).map(n => {
+    // Merge base graph nodes with any RAG overlay nodes
+    const baseNodes = graphData.nodes || [];
+    const baseIds = new Set(baseNodes.map(n => String(n.id)));
+    const overlayFiltered = ragOverlayNodes.filter(n => !baseIds.has(String(n.id)));
+    const allNodes = [...baseNodes, ...overlayFiltered];
+    const nodes = allNodes.map(n => {
       // Derive the best human-readable display name.
       // Priority: backend name > properties.label > properties.local_name > non-elementId id
       const rawId = String(n.id || '');
@@ -357,11 +438,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       };
     });
     const nodeById = new Map(nodes.map(n => [n.id, n]));
-    const links = (graphData.links || []).map(l => {
+    const links = (graphData.links || []).map((l, idx) => {
       const sourceId = typeof l.source === 'string' ? String(l.source) : String(l.source?.id);
       const targetId = typeof l.target === 'string' ? String(l.target) : String(l.target?.id);
       return {
         ...l,
+        // Ensure every link has a stable id for highlight matching
+        id: l.id ?? `${sourceId}__${targetId}__${idx}`,
         source: sourceId,
         target: targetId
       };
@@ -383,7 +466,40 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       neighbors,
       metadata: graphData.metadata
     };
-  }, [graphData]);
+  }, [graphData, ragOverlayNodes]);
+
+  // ── E6: Client-side property filter ──
+  const displayGraph = useMemo(() => {
+    if (!normalizedGraph) return null;
+    if (!propFilters || propFilters.length === 0) return normalizedGraph;
+    const passesFilters = (node) => {
+      for (const f of propFilters) {
+        if (!f.key || !f.value) continue;
+        const val = String(node.properties?.[f.key] ?? node[f.key] ?? '').toLowerCase();
+        const target = f.value.toLowerCase();
+        switch (f.op) {
+          case 'contains': if (!val.includes(target)) return false; break;
+          case 'equals': if (val !== target) return false; break;
+          case 'starts': if (!val.startsWith(target)) return false; break;
+          case 'notcontains': if (val.includes(target)) return false; break;
+          default: if (!val.includes(target)) return false;
+        }
+      }
+      return true;
+    };
+    const nodes = normalizedGraph.nodes.filter(passesFilters);
+    const nodeSet = new Set(nodes.map(n => n.id));
+    const links = normalizedGraph.links.filter(l => {
+      const s = typeof l.source === 'string' ? l.source : String(l.source?.id ?? l.source);
+      const t = typeof l.target === 'string' ? l.target : String(l.target?.id ?? l.target);
+      return nodeSet.has(s) && nodeSet.has(t);
+    });
+    const neighbors = new Map();
+    const addN = (a, b) => { if (!neighbors.has(a)) neighbors.set(a, new Set()); neighbors.get(a).add(b); };
+    links.forEach(l => { const s = typeof l.source === 'string' ? l.source : String(l.source?.id); const t = typeof l.target === 'string' ? l.target : String(l.target?.id); addN(s, t); addN(t, s); });
+    return { nodes, links, neighbors, metadata: normalizedGraph.metadata };
+  }, [normalizedGraph, propFilters]);
+
   useEffect(() => {
     if (!fgRef.current || !normalizedGraph) return;
     
@@ -421,7 +537,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         return yOffset + tier * ySpacing;
       }).strength(0.55);
       fx = forceX(0).strength(0.02);
-      fgRef.current.d3Force('charge', forceManyBody().strength(-200));
+      fgRef.current.d3Force('charge', forceManyBody().strength(-160));
     } else if (currentViewId === 'OSLC') {
       // 3-tier layout: Ontology module (top) → Classes/Properties (middle) → Schema/Requirements (bottom)
       const OSLC_TIER = {
@@ -440,7 +556,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         return yOffset + tier * ySpacing;
       }).strength(0.50);
       fx = forceX(0).strength(0.02);
-      fgRef.current.d3Force('charge', forceManyBody().strength(-180));
+      fgRef.current.d3Force('charge', forceManyBody().strength(-120));
     } else {
       // Default ring layout for all other views
       const ringRadius = 260;
@@ -457,12 +573,12 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         const angle = idx / typeCount * Math.PI * 2;
         return Math.sin(angle) * ringRadius;
       }).strength(strength);
-      fgRef.current.d3Force('charge', forceManyBody().strength(-150));
+      fgRef.current.d3Force('charge', forceManyBody().strength(-80));
     }
     fgRef.current.d3Force('x', fx);
     fgRef.current.d3Force('y', fy);
     // Add collision force to prevent overlap
-    fgRef.current.d3Force('collide', forceCollide().radius(20).strength(0.8));
+    fgRef.current.d3Force('collide', forceCollide().radius(8).strength(0.5));
     
     // Cooldown improvements:
     // Reheat simulation with specific alpha to smooth out initial burst
@@ -479,12 +595,35 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     }, 1200); // 1.2s delay for initial settle
   }, [normalizedGraph, selectedNodeTypes, limit, currentViewId]);
   const highlighted = useMemo(() => {
+    // E2: If path is highlighted, use path highlight
+    if (pathHighlight && pathHighlight.nodeIds.size > 0) {
+      return {
+        focusId: null,
+        nodeIds: pathHighlight.nodeIds,
+        linkKeys: pathHighlight.linkKeys,
+        isPath: true,
+        isRag: false,
+      };
+    }
+
+    // E3: If RAG result nodes are highlighted, show them
+    if (ragHighlight && ragHighlight.size > 0) {
+      return {
+        focusId: null,
+        nodeIds: ragHighlight,
+        linkKeys: null,
+        isPath: false,
+        isRag: true,
+      };
+    }
+
     const focus = selectedNode || hoverNode;
     if (!normalizedGraph || !focus) {
       return {
         focusId: null,
         nodeIds: null,
-        linkKeys: null
+        linkKeys: null,
+        isPath: false,
       };
     }
     const focusId = String(focus.id);
@@ -493,9 +632,11 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     if (nbrs) {
       nbrs.forEach(id => nodeIds.add(id));
     }
+    // E7: Include multi-selected nodes
+    multiSelected.forEach(id => nodeIds.add(id));
+    
     const linkKeys = new Set();
     normalizedGraph.links.forEach(l => {
-      // After force-graph runs, source/target become object refs; extract id safely
       const s = typeof l.source === 'object' ? String(l.source?.id) : String(l.source);
       const t = typeof l.target === 'object' ? String(l.target?.id) : String(l.target);
       if (nodeIds.has(s) && nodeIds.has(t) && (s === focusId || t === focusId)) {
@@ -505,16 +646,11 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     return {
       focusId,
       nodeIds,
-      linkKeys
+      linkKeys,
+      isPath: false,
+      isRag: false,
     };
-  }, [normalizedGraph, selectedNode, hoverNode]);
-
-  // Keep a ref that always reflects the latest highlighted value.
-  // This prevents stale-closure issues inside the canvas callback which
-  // react-force-graph-2d may hold across renders.
-  const highlightedRef = useRef(highlighted);
-  useEffect(() => { highlightedRef.current = highlighted; }, [highlighted]);
-
+  }, [normalizedGraph, selectedNode, hoverNode, pathHighlight, ragHighlight, multiSelected]);
   const availableNodeTypes = useMemo(() => {
     // When an apLevel is active, derive types from actual loaded graph data
     // so the sidebar only shows entity types present at that AP level
@@ -546,13 +682,10 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     if (type === 'Requirement') return '#10b981'; // Emerald
     if (['Verification', 'WorkOrder'].includes(type)) return '#14b8a6'; // Teal
 
-    // AP243 Simulation (MoSSEC)
+    // AP243 Simulation
     if (type === 'SimulationArtifact') return '#0ea5e9'; // Sky
     if (type === 'EvidenceCategory') return '#38bdf8';   // Light sky
-    if (type === 'KPI') return '#06b6d4';                // Cyan — key performance metric
-    if (['SimulationDossier', 'SimulationRun', 'SimulationModel'].includes(type)) return '#7c3aed'; // Violet
-    // AP242 CAD (CADModel belongs with Design, NOT Simulation)
-    if (type === 'CADModel') return '#c2410c'; // Orange-700 — AP242 design artifact
+    if (['SimulationDossier', 'SimulationRun', 'SimulationModel', 'CADModel'].includes(type)) return '#7c3aed'; // Violet
     
     // General type colors (only for types not matched above)
     const colors = {
@@ -567,26 +700,13 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       Activity: '#34d399',
       Resource: '#047857',
       Breakdown: '#6ee7b7',
-      Analysis: '#34d399',      // AP239 — analysis is a PLCS activity
-      AnalysisModel: '#6ee7b7', // AP239 — model for analysis
-      Approval: '#14b8a6',      // AP239 — approval record (teal)
-      ComplianceAudit: '#ef4444', // AP239 — compliance finding (red-alert)
-      DecisionLog: '#f59e0b',   // AP239/AP243 — decision record (amber)
 
       // AP243 (MoSSEC) - Blue/Purple Scheme
-      Study: '#3b82f6',
+      Study: '#3b82f6', 
       Model: '#2563eb',
+      Analysis: '#1d4ed8',
       Scenario: '#60a5fa',
       Result: '#93c5fd',
-      // AP243 Reference Data
-      ExternalUnit: '#38bdf8',     // sky — QUDT/OM unit reference
-      ExternalOwlClass: '#2563eb', // blue — external OWL class
-      Classification: '#0284c7',   // ocean — SKOS classification
-      ValueType: '#0ea5e9',        // sky-blue — value type definition
-      // Cross-domain structural
-      System: '#64748b',     // slate
-      Interface: '#a855f7',  // violet
-      Parameter: '#3b82f6',  // blue
 
       // Ontology & Metadata
       Class: '#8b5cf6',
@@ -633,12 +753,6 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     return colors[type] || '#6b7280';
   }, []);
   const handleNodeClick = useCallback(node => {
-    if (selectedNode && selectedNode.id === node.id) {
-      setSelectedNode(null);
-      setHoverNode(null);
-      if (fgRef.current) fgRef.current.zoomToFit(400);
-      return;
-    }
     setSelectedNode(node);
     setHoverNode(null); // clear hover so only the click selection drives highlight
     // In Digital Thread mode, add to breadcrumb trail
@@ -650,11 +764,6 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       });
     }
     if (fgRef.current) {
-      // Freeze simulation immediately without stopping the paint loop
-      // so highlights and new selections can be drawn.
-      setLayoutActive(false);
-      setLayoutDone(true);
-
       // Build the set of ids to show: focus node + all 1-hop neighbours
       const focusId = String(node.id);
       const nbrs = normalizedGraph?.neighbors?.get(focusId) || new Set();
@@ -680,25 +789,353 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const handlePointerMove = useCallback(e => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    pointerRef.current = { x, y };
+    setPointer({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  }, []);
 
-    if (tooltipRef.current) {
-      const TOOLTIP_W = 320;
-      const TOOLTIP_H_EST = 160;
-      const OFFSET = 12;
-      const left = x + OFFSET + TOOLTIP_W > dimensions.width
-        ? Math.max(0, x - TOOLTIP_W - OFFSET)
-        : x + OFFSET;
-      const top = y + OFFSET + TOOLTIP_H_EST > dimensions.height
-        ? Math.max(0, y - TOOLTIP_H_EST - OFFSET)
-        : y + OFFSET;
-      
-      tooltipRef.current.style.left = `${left}px`;
-      tooltipRef.current.style.top = `${top}px`;
+  // ── E1: Context menu handler ──
+  const handleNodeRightClick = useCallback((node, event) => {
+    event.preventDefault();
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setContextMenu({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      node,
+    });
+  }, []);
+
+  const dismissContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const handleContextAction = useCallback(async (action, node) => {
+    setContextMenu(null);
+    if (!node) return;
+    switch (action) {
+      case 'expand': {
+        try {
+          const res = await expandNode(String(node.id), 2);
+          // Merge expanded subgraph into current view — trigger refetch
+          // For now, select the node to highlight its neighbourhood
+          handleNodeClick(node);
+        } catch (err) { console.error('Expand failed', err); }
+        break;
+      }
+      case 'pin':
+        // Pin/unpin: fix node position
+        if (node.fx != null) { node.fx = undefined; node.fy = undefined; }
+        else { node.fx = node.x; node.fy = node.y; }
+        if (fgRef.current) fgRef.current.d3ReheatSimulation();
+        break;
+      case 'copy':
+        navigator.clipboard?.writeText(String(node.id));
+        break;
+      case 'detail':
+        setSelectedNode(node);
+        break;
+      case 'multiselect':
+        setMultiSelected(prev => {
+          const next = new Set(prev);
+          if (next.has(String(node.id))) next.delete(String(node.id));
+          else next.add(String(node.id));
+          return next;
+        });
+        break;
+      default: break;
     }
-  }, [dimensions]);
+  }, [handleNodeClick]);
+
+  // ── E2: Path Finder handler ──
+  const handleFindPath = useCallback(async () => {
+    if (!pathSource || !pathTarget) return;
+    setPathLoading(true);
+    setPathResult(null);
+    setPathHighlight(null);
+    try {
+      const res = await findShortestPath(pathSource, pathTarget);
+      setPathResult(res);
+      if (res.found) {
+        const nodeIds = new Set(res.nodes.map(n => n.id));
+        const linkKeys = new Set();
+        // Match path links to existing graph links
+        if (normalizedGraph) {
+          for (const pl of res.links) {
+            for (const gl of normalizedGraph.links) {
+              const gs = typeof gl.source === 'object' ? String(gl.source?.id) : String(gl.source);
+              const gt = typeof gl.target === 'object' ? String(gl.target?.id) : String(gl.target);
+              if ((gs === pl.source && gt === pl.target) || (gs === pl.target && gt === pl.source)) {
+                linkKeys.add(gl.id);
+              }
+            }
+          }
+        }
+        setPathHighlight({ nodeIds, linkKeys });
+      }
+    } catch (err) {
+      setPathResult({ found: false, error: err.message });
+    } finally {
+      setPathLoading(false);
+    }
+  }, [pathSource, pathTarget, normalizedGraph]);
+
+  // ── E3: GraphRAG handler ──
+  const handleRAGQuery = useCallback(async () => {
+    if (!ragQuestion.trim()) return;
+    setRagLoading(true);
+    setRagAnswer(null);
+    setRagHighlight(null);
+    try {
+      const res = await graphRAGQuery(ragQuestion);
+      setRagAnswer(res);
+
+      // ── Auto-highlight + inject RAG result nodes into graph ──
+      const ragNodes = res.nodes || [];
+      const sourceUids = new Set(
+        (res.sources || []).map(s => s.uid).filter(Boolean)
+      );
+
+      // Inject RAG result nodes that are NOT in the current graph view
+      // so they appear in the visualization and can be highlighted
+      if (ragNodes.length > 0) {
+        setRagOverlayNodes(ragNodes.map(rn => ({
+          id: rn.id,
+          name: rn.name || rn.id,
+          type: rn.type || 'RAGHit',
+          labels: rn.labels || [rn.type || 'RAGHit'],
+          properties: { uid: rn.id, score: rn.score },
+          _ragOverlay: true, // marker for styling
+        })));
+      }
+
+      // Set highlight IDs from sources — these will now be in the graph
+      // (either already present or just injected as overlay nodes)
+      if (sourceUids.size > 0) {
+        setRagHighlight(sourceUids);
+      } else if (ragNodes.length > 0) {
+        // Fallback: highlight all RAG result nodes
+        setRagHighlight(new Set(ragNodes.map(rn => String(rn.id))));
+      }
+    } catch (err) {
+      setRagAnswer({ answer: `Error: ${err.message}`, sources: [], nodes: [], links: [] });
+    } finally {
+      setRagLoading(false);
+    }
+  }, [ragQuestion]);
+
+  // ── E11: Export handlers ──
+  const handleExportPNG = useCallback(() => {
+    if (!containerRef.current) return;
+    const canvas = containerRef.current.querySelector('canvas');
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `graph-${currentViewId}-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, [currentViewId]);
+
+  const handleExportCSV = useCallback(() => {
+    if (!normalizedGraph) return;
+    const rows = ['id,name,type,labels'];
+    for (const n of normalizedGraph.nodes) {
+      rows.push(`"${n.id}","${(n.name || '').replace(/"/g, '""')}","${n.type}","${(n.labels || []).join(';')}"`);
+    }
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.download = `graph-nodes-${currentViewId}-${Date.now()}.csv`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  }, [normalizedGraph, currentViewId]);
+
+  const handleExportLinksCSV = useCallback(() => {
+    if (!normalizedGraph) return;
+    const rows = ['source,target,type'];
+    for (const l of normalizedGraph.links) {
+      const s = typeof l.source === 'object' ? String(l.source?.id) : String(l.source);
+      const t = typeof l.target === 'object' ? String(l.target?.id) : String(l.target);
+      rows.push(`"${s}","${t}","${l.type}"`);
+    }
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.download = `graph-links-${currentViewId}-${Date.now()}.csv`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+  }, [normalizedGraph, currentViewId]);
+
+  // ── E14: Community detection handler ──
+  const handleDetectCommunities = useCallback(async () => {
+    try {
+      const res = await getCommunities();
+      const map = {};
+      for (const item of res.communities || []) {
+        map[item.id] = item.community;
+      }
+      setCommunityMap(map);
+      // Generate distinct colors for each community
+      const COMM_PALETTE = [
+        '#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899',
+        '#06b6d4','#84cc16','#f97316','#6366f1','#14b8a6','#e11d48',
+        '#0ea5e9','#a855f7','#22c55e','#eab308','#d946ef','#0891b2',
+      ];
+      const colors = {};
+      const uniqueComms = [...new Set(Object.values(map))];
+      uniqueComms.forEach((c, i) => { colors[c] = COMM_PALETTE[i % COMM_PALETTE.length]; });
+      setCommunityColors(colors);
+      setHeatmapMode('community');
+    } catch (err) {
+      console.error('Community detection failed', err);
+    }
+  }, []);
+
+  // ── E20: Graph diff handler ──
+  const handleGraphDiff = useCallback(async () => {
+    if (!diffTypesA && !diffTypesB) return;
+    setDiffLoading(true);
+    try {
+      const typesA = diffTypesA.split(',').map(t => t.trim()).filter(Boolean);
+      const typesB = diffTypesB.split(',').map(t => t.trim()).filter(Boolean);
+      const res = await graphDiff(typesA, typesB);
+      setDiffResult(res);
+      setDiffHighlight({
+        added: new Set(res.added_nodes || []),
+        removed: new Set(res.removed_nodes || []),
+      });
+    } catch (err) {
+      console.error('Graph diff failed:', err);
+      setDiffResult({ error: String(err) });
+    } finally {
+      setDiffLoading(false);
+    }
+  }, [diffTypesA, diffTypesB]);
+
+  // ── E13: TRS changelog fetch handler ──
+  const handleFetchTRS = useCallback(async () => {
+    setTrsLoading(true);
+    try {
+      const res = await getTRSChangelog();
+      // Parse RDF/JSON response — extract change events
+      // Response might be raw RDF or JSON; handle gracefully
+      if (Array.isArray(res)) {
+        setTrsEvents(res);
+      } else if (res && typeof res === 'object') {
+        // Try to extract events from RDF-like response
+        const events = [];
+        const entries = res.changes || res.events || res['@graph'] || [];
+        for (const e of (Array.isArray(entries) ? entries : [])) {
+          events.push({
+            type: e.type || e['@type'] || 'unknown',
+            resource: e.resource || e.changed || e['trs:changed'] || '',
+            order: e.order || events.length,
+            uri: e.uri || e['@id'] || '',
+          });
+        }
+        setTrsEvents(events.length > 0 ? events : [{ type: 'info', resource: 'No changelog events found', order: 0, uri: '' }]);
+      }
+    } catch (err) {
+      console.error('TRS changelog fetch failed:', err);
+      setTrsEvents([{ type: 'error', resource: `Failed: ${err}`, order: 0, uri: '' }]);
+    } finally {
+      setTrsLoading(false);
+    }
+  }, []);
+
+  // ── E5: Degree map (node size by connections) ──
+  const degreeMap = useMemo(() => {
+    if (!normalizedGraph) return {};
+    const map = {};
+    for (const n of normalizedGraph.nodes) {
+      const nbrs = normalizedGraph.neighbors.get(String(n.id));
+      map[n.id] = nbrs ? nbrs.size : 0;
+    }
+    return map;
+  }, [normalizedGraph]);
+
+  const maxDegree = useMemo(() => Math.max(1, ...Object.values(degreeMap)), [degreeMap]);
+
+  // ── E16: Keyboard shortcuts ──
+  useEffect(() => {
+    const handler = (e) => {
+      // Don't capture when typing in inputs
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      switch (e.key) {
+        case 'f': case 'F':
+          if (fgRef.current) fgRef.current.zoomToFit(600, 40);
+          break;
+        case '+': case '=':
+          if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() * 1.3, 300);
+          break;
+        case '-':
+          if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() / 1.3, 300);
+          break;
+        case ' ':
+          e.preventDefault();
+          toggleLayout();
+          break;
+        case 'Escape':
+          setSelectedNode(null);
+          setHoverNode(null);
+          setContextMenu(null);
+          setPathHighlight(null);
+          setMultiSelected(new Set());
+          break;
+        case '?':
+          setShowShortcuts(prev => !prev);
+          break;
+        default: break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [toggleLayout]);
+
+  // ── E19: Lasso rectangle selection (Shift+drag on canvas) ──
+  const handleCanvasMouseDown = useCallback((e) => {
+    if (!e.shiftKey) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    lassoActive.current = true;
+    const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setLassoStart(pt);
+    setLassoEnd(pt);
+  }, []);
+
+  const handleCanvasMouseMove = useCallback((e) => {
+    if (!lassoActive.current) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setLassoEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!lassoActive.current || !lassoStart || !lassoEnd || !fgRef.current) {
+      lassoActive.current = false;
+      setLassoStart(null);
+      setLassoEnd(null);
+      return;
+    }
+    lassoActive.current = false;
+    // Convert screen coords to graph coords
+    const s2g = fgRef.current.screen2GraphCoords;
+    if (!s2g) { setLassoStart(null); setLassoEnd(null); return; }
+    const g1 = s2g(Math.min(lassoStart.x, lassoEnd.x), Math.min(lassoStart.y, lassoEnd.y));
+    const g2 = s2g(Math.max(lassoStart.x, lassoEnd.x), Math.max(lassoStart.y, lassoEnd.y));
+    const minX = Math.min(g1.x, g2.x), maxX = Math.max(g1.x, g2.x);
+    const minY = Math.min(g1.y, g2.y), maxY = Math.max(g1.y, g2.y);
+    const selected = new Set();
+    for (const n of (displayGraph?.nodes || [])) {
+      if (n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY) {
+        selected.add(String(n.id));
+      }
+    }
+    setMultiSelected(prev => {
+      const next = new Set(prev);
+      selected.forEach(id => next.add(id));
+      return next;
+    });
+    setLassoStart(null);
+    setLassoEnd(null);
+  }, [lassoStart, lassoEnd, displayGraph]);
+
   const isFixedMode = fixedNodeTypes && fixedNodeTypes.length > 0;
 
   // Empty state message based on current view
@@ -743,61 +1180,26 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     });
   }, [dropdownTypes, selectedNode]);
 
-  // Filtered search results — shared between keyboard handler and result list
-  const filteredSearchResults = useMemo(() => {
-    if (!searchQuery || !normalizedGraph?.nodes) return [];
-    return normalizedGraph.nodes
-      .filter(n => (n.searchLabel || '').includes(searchQuery.toLowerCase()))
-      .slice(0, 25);
-  }, [normalizedGraph, searchQuery]);
-
-  // Highlight a matched substring inside a string
-  const highlightMatch = (text, query) => {
-    if (!query || text == null) return String(text ?? '');
-    const str = String(text);
-    const idx = str.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return str;
-    return (
-      <>
-        {str.slice(0, idx)}
-        <mark className="bg-primary/20 text-foreground not-italic rounded-sm">{str.slice(idx, idx + query.length)}</mark>
-        {str.slice(idx + query.length)}
-      </>
-    );
-  };
-
-  // Discipline-group bulk toggle
-  const toggleGroup = useCallback((groupTypes) => {
-    const available = groupTypes.filter(t => dropdownTypes.some(d => d.type === t));
-    const allSelected = available.length > 0 && available.every(t => selectedNodeTypes.includes(t));
-    setSelectedNodeTypes(prev =>
-      allSelected ? prev.filter(t => !available.includes(t)) : [...new Set([...prev, ...available])]
-    );
-  }, [dropdownTypes, selectedNodeTypes]);
-
-  const selectAllTypes = useCallback(
-    () => setSelectedNodeTypes(dropdownTypes.map(d => d.type)),
-    [dropdownTypes]
-  );
-  const invertSelection = useCallback(() => {
-    const all = dropdownTypes.map(d => d.type);
-    setSelectedNodeTypes(all.filter(t => !selectedNodeTypes.includes(t)));
-  }, [dropdownTypes, selectedNodeTypes]);
-
-  // Close search dropdown when clicking outside the search widget
-  useEffect(() => {
-    if (!searchOpen) return;
-    const handler = (e) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
-        setSearchOpen(false);
+  const legendTypes = useMemo(() => {
+    if (selectedNodeTypes.length > 0) {
+      // If we have specific types selected (or fixed), show those
+      return selectedNodeTypes.slice(0, 8); // Limit to top 8 to avoid clogging UI
+    }
+    // Show actual types present in the loaded graph data
+    if (normalizedGraph?.nodes?.length > 0) {
+      const typeCounts = {};
+      for (const n of normalizedGraph.nodes) {
+        const t = n.type || 'Unknown';
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
       }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [searchOpen]);
-
-  // Reset keyboard cursor when query changes
-  useEffect(() => { setSearchHighlightIdx(-1); }, [searchQuery]);
+      return Object.entries(typeCounts)
+        .sort((a, b) => b[1] - a[1]) // Sort by count descending
+        .slice(0, 10)
+        .map(([type]) => type);
+    }
+    // Default fallback
+    return ['Requirement', 'Part', 'Class', 'Package', 'Property', 'Association'];
+  }, [selectedNodeTypes, normalizedGraph]);
 
   return (
     // Break out of the layout's p-8 + max-w wrapper so the graph fills edge-to-edge.
@@ -811,7 +1213,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     >
       {/* ── Sidebar ── */}
       <div className="w-80 h-full border-r bg-background overflow-y-auto shrink-0">
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-3">
           {/* View Selector (Replaces Title) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -830,7 +1232,6 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             
             <Select value={currentViewId} onValueChange={(val) => {
                 setCurrentViewId(val);
-                // Reset limit for larger views if needed, or keep user preference
             }}>
                 <SelectTrigger className="w-full h-9">
                     <SelectValue placeholder="Switch View..." />
@@ -849,117 +1250,20 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             </div>
           </div>
 
-          {/* Digital Thread Breadcrumb Trail */}
-          {currentViewId === 'DIGITAL_THREAD' && breadcrumbs.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Thread Path</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {breadcrumbs.map((crumb, i) => (
-                  <div key={crumb.id} className="flex items-center gap-1 text-xs">
-                    {i > 0 && <span className="text-muted-foreground mx-1">→</span>}
-                    <button
-                      className="hover:underline text-primary font-medium truncate max-w-48"
-                      onClick={() => {
-                        const node = normalizedGraph?.nodes.find(n => String(n.id) === crumb.id);
-                        if (node) handleNodeClick(node);
-                      }}
-                    >
-                      {crumb.name}
-                    </button>
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{crumb.type}</Badge>
-                  </div>
-                ))}
-                <Button variant="ghost" size="sm" className="h-6 text-xs mt-1" onClick={() => setBreadcrumbs([])}>
-                  Clear Path
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          {/* Sidebar Tab Switcher */}
+          <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-8">
+              <TabsTrigger value="filters" className="text-xs px-1">Filters</TabsTrigger>
+              <TabsTrigger value="tools" className="text-xs px-1">Tools</TabsTrigger>
+              <TabsTrigger value="rag" className="text-xs px-1">RAG</TabsTrigger>
+              <TabsTrigger value="info" className="text-xs px-1">Info</TabsTrigger>
+            </TabsList>
 
-          {/* STEP Ontology Relationship Legend */}
-          {currentViewId === 'ONTOLOGY' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Relationship Colors</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-xs">
-                {Object.entries(ONTOLOGY_REL_COLORS).map(([rel, color]) => (
-                  <div key={rel} className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
-                    <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* OSLC Integration Relationship Legend */}
-          {currentViewId === 'OSLC' && (
-            <>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Layer Architecture</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1.5 text-xs">
-                  {[
-                    { tier: 'Top',    label: 'Ontology Modules',        types: ['Ontology'] },
-                    { tier: 'Middle', label: 'Classes & Properties',    types: ['OntologyClass', 'OntologyProperty'] },
-                    { tier: 'Bottom', label: 'Schema · Requirements',   types: ['XSDSchema', 'Requirement', 'ExternalOwlClass'] },
-                  ].map(({ tier, label, types }) => (
-                    <div key={tier} className="flex items-start gap-2">
-                      <span className="w-14 shrink-0 text-muted-foreground font-medium">{tier}</span>
-                      <div>
-                        <div className="font-medium">{label}</div>
-                        <div className="text-muted-foreground">{types.join(', ')}</div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Relationship Colors</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 text-xs">
-                  {Object.entries(OSLC_REL_COLORS).map(([rel, color]) => (
-                    <div key={rel} className="flex items-center gap-2">
-                      <div className="w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
-                      <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Digital Thread Relationship Legend */}
-          {currentViewId === 'DIGITAL_THREAD' && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Relationship Colors</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-xs">
-                {Object.entries(DT_REL_COLORS).map(([rel, color]) => (
-                  <div key={rel} className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
-                    <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
-                  </div>
-                ))}
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mt-1 pt-1 border-t">MoSSEC Links (ISO 10303)</p>
-                {Object.entries(MOSSEC_LINK_COLORS).map(([rel, color]) => (
-                  <div key={rel} className="flex items-center gap-2">
-                    <div className="w-6 h-0.5 rounded border" style={{ borderColor: color, borderStyle: 'dashed' }} />
-                    <span className="text-muted-foreground">{rel}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+            {/* ─── FILTERS TAB ─── */}
+            <TabsContent value="filters" className="space-y-4 mt-3">
 
           {/* Search Nodes - Dedicated Search Bar */}
-          <div className="space-y-2" ref={searchContainerRef}>
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Search Graph</Label>
               {(selectedNode || hoverNode) && (
@@ -989,51 +1293,19 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                     }}
                     onFocus={() => setSearchOpen(true)}
                     className="pl-8"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setSearchQuery('');
-                        setSearchOpen(false);
-                        e.currentTarget.blur();
-                      } else if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        setSearchOpen(true);
-                        setSearchHighlightIdx(i => Math.min(i + 1, filteredSearchResults.length - 1));
-                      } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        setSearchHighlightIdx(i => Math.max(i - 1, 0));
-                      } else if (e.key === 'Enter') {
-                        const node = filteredSearchResults[searchHighlightIdx];
-                        if (node) {
-                          handleNodeClick(node);
-                          setSearchOpen(false);
-                          setSearchQuery('');
-                          setSearchHighlightIdx(-1);
-                        }
-                      }
-                    }}
                 />
             </div>
             
-            {/* Search Results Dropdown */}
+            {/* Search Results Dropdown (Inline) */}
             {searchOpen && searchQuery && (
-                <div className="border rounded-md shadow-sm bg-background overflow-hidden z-50">
-                    {/* Match count + keyboard hint */}
-                    <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b text-xs text-muted-foreground select-none">
-                      <span>
-                        {filteredSearchResults.length === 0
-                          ? 'No matches'
-                          : (() => {
-                              const total = normalizedGraph?.nodes?.filter(n => (n.searchLabel||'').includes(searchQuery.toLowerCase())).length ?? 0;
-                              return filteredSearchResults.length < total
-                                ? `Top ${filteredSearchResults.length} of ${total} matches`
-                                : `${filteredSearchResults.length} match${filteredSearchResults.length !== 1 ? 'es' : ''}`;
-                            })()
-                        }
-                      </span>
-                      <span className="opacity-50 hidden sm:block">↑↓ · Enter · Esc</span>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto">
-                    {filteredSearchResults.map((node, idx) => {
+                <div className="border rounded-md shadow-sm bg-background max-h-60 overflow-y-auto z-50">
+                    {(normalizedGraph?.nodes || [])
+                        .filter(node => (node.searchLabel || "").includes(searchQuery.toLowerCase()))
+                        .slice(0, 20)
+                        .map(node => {
+                            // Build a human-readable display label:
+                            // prefer node.name, then properties.label, then a
+                            // sanitised id (strip Neo4j internal element IDs like '4:uuid:12345')
                             const rawId = String(node.id || '');
                             const isElementId = /^\d+:[0-9a-f\-]{36}:\d+$/i.test(rawId);
                             const localId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
@@ -1043,50 +1315,38 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                                 || (isElementId ? null : rawId)
                                 || `${node.type || 'Node'} #${localId}`;
                             const displayId = isElementId ? null : rawId;
-                            const isKbFocused = idx === searchHighlightIdx;
                             return (
-                            <div
+                            <div 
                                 key={node.id}
                                 className={cn(
-                                    "flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer transition-colors",
-                                    isKbFocused
-                                      ? "bg-primary/10 text-foreground"
-                                      : selectedNode?.id === node.id
-                                        ? "bg-accent/60"
-                                        : "hover:bg-accent hover:text-accent-foreground"
+                                    "flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
+                                    selectedNode?.id === node.id && "bg-accent"
                                 )}
-                                onMouseEnter={() => setSearchHighlightIdx(idx)}
                                 onClick={() => {
                                     handleNodeClick(node);
                                     setSearchOpen(false);
-                                    setSearchQuery('');
-                                    setSearchHighlightIdx(-1);
+                                    setSearchQuery("");
                                 }}
                             >
-                                <div
-                                    className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5"
-                                    style={{ backgroundColor: getNodeColor({ type: node.type }) }}
-                                />
-                                <div className="flex flex-col overflow-hidden min-w-0">
-                                     <span className="font-medium truncate">{highlightMatch(displayName, searchQuery)}</span>
+                                <div className="flex flex-col overflow-hidden">
+                                     <span className="font-medium truncate">{displayName}</span>
                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <span className="bg-secondary px-1.5 py-0.5 rounded-sm text-[10px] uppercase tracking-wider shrink-0">
+                                        <span className="bg-secondary px-1.5 py-0.5 rounded-sm text-[10px] uppercase tracking-wider">
                                             {node.type}
                                         </span>
-                                        {displayId && <span className="truncate opacity-70">{highlightMatch(displayId, searchQuery)}</span>}
+                                        {displayId && <span className="truncate opacity-70">{displayId}</span>}
                                      </div>
                                 </div>
-                                {selectedNode?.id === node.id && <Check className="ml-auto h-4 w-4 opacity-50 shrink-0" />}
+                                {selectedNode?.id === node.id && <Check className="ml-auto h-4 w-4 opacity-50" />}
                             </div>
                             );
                         })
                     }
-                    {filteredSearchResults.length === 0 && (
+                    {normalizedGraph?.nodes && normalizedGraph.nodes.filter(n => (n.searchLabel||"").includes(searchQuery.toLowerCase())).length === 0 && (
                         <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                            No nodes match <em className="not-italic font-medium">&ldquo;{searchQuery}&rdquo;</em>
+                            No nodes found.
                         </div>
                     )}
-                    </div>
                 </div>
             )}
             
@@ -1118,7 +1378,7 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             )}
           </div>
 
-          {/* Node-type filter - Tag/Chip Style */}
+          {/* Node-type filter - Inline checkbox list */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Filter Node Types</Label>
@@ -1137,161 +1397,75 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 </Button>
               )}
             </div>
-            
-            {/* Active Filter Chips */}
-            <div className="flex flex-wrap gap-1 mb-2">
-                {selectedNodeTypes.map(type => (
-                    <Badge key={type} variant="secondary" className="hover:bg-secondary/80 pr-1 gap-1">
-                        <span 
-                            className="w-2 h-2 rounded-full inline-block"
-                            style={{ backgroundColor: getNodeColor({ type }) }}
-                        />
-                        {type}
-                        <X 
-                            className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors ml-1" 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleNodeType(type);
-                            }}
-                        />
-                    </Badge>
-                ))}
-            </div>
 
-            <Popover open={nodeTypeOpen} onOpenChange={setNodeTypeOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={nodeTypeOpen}
-                  className="w-full justify-between font-normal"
-                >
-                  <span className="truncate text-muted-foreground">
-                    {isFetching
-                      ? "Updating graph…"
-                      : selectedNodeTypes.length === 0
-                        ? "Filter by node type…"
-                        : `${selectedNodeTypes.length} type${selectedNodeTypes.length > 1 ? 's' : ''} selected`}
-                  </span>
-                  {isFetching ? (
-                    <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                  ) : (
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search node types…" />
-                  {/* Quick-action bar */}
-                  <div className="flex items-center gap-0.5 px-2 py-1.5 border-b">
-                    <button
-                      className="text-xs px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
-                      onClick={(e) => { e.preventDefault(); selectAllTypes(); }}
-                    >Select All</button>
-                    <button
-                      className="text-xs px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
-                      onClick={(e) => { e.preventDefault(); invertSelection(); }}
-                    >Invert</button>
-                    <button
-                      className="text-xs px-1.5 py-0.5 rounded hover:bg-accent text-muted-foreground transition-colors"
-                      onClick={(e) => { e.preventDefault(); setSelectedNodeTypes([]); }}
-                    >Clear</button>
-                    <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                      {selectedNodeTypes.length} / {dropdownTypes.length}
-                    </span>
-                  </div>
-                  <CommandList>
-                    <CommandEmpty>No type found.</CommandEmpty>
-                    {/* Discipline-grouped type filter — each group maps to an AP/standard */}
-                    {Object.entries(NODE_TYPE_GROUPS).map(([groupLabel, groupTypes]) => {
-                      const groupItems = dropdownTypes.filter(nt => groupTypes.includes(nt.type));
-                      if (groupItems.length === 0) return null;
-                      const selCount = groupItems.filter(nt => selectedNodeTypes.includes(nt.type)).length;
-                      const allSel = selCount === groupItems.length;
-                      return (
-                        <CommandGroup
-                          key={groupLabel}
-                          heading={
-                            <span className="flex items-center justify-between w-full">
-                              {groupLabel}
-                              <span
-                                className={cn(
-                                  "ml-1 tabular-nums cursor-pointer rounded px-1 text-[10px] select-none transition-colors",
-                                  allSel ? "text-primary font-semibold" : selCount > 0 ? "text-primary/60" : "hover:text-primary"
-                                )}
-                                title={allSel ? "Click to deselect group" : "Click to select all in group"}
-                                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleGroup(groupTypes); }}
-                              >
-                                {selCount}/{groupItems.length}
-                              </span>
-                            </span>
-                          }
-                        >
-                          {groupItems.map(nt => {
-                            const isSelected = selectedNodeTypes.includes(nt.type);
-                            return (
-                              <CommandItem
-                                key={nt.type}
-                                value={nt.type}
-                                onSelect={() => toggleNodeType(nt.type)}
-                                className={cn(isSelected && 'bg-accent/40')}
-                              >
-                                <Checkbox
-                                  checked={isSelected}
-                                  className="mr-2"
-                                />
-                                <div
-                                  className="mr-2 h-3 w-3 rounded-full shrink-0"
-                                  style={{ backgroundColor: getNodeColor({ type: nt.type }) }}
-                                />
-                                <span className={cn('flex-1 truncate', isSelected && 'font-medium')}>
-                                  {nt.type}
-                                </span>
-                                {nt.count != null && (
-                                  <span className="text-xs text-muted-foreground ml-2 shrink-0">
-                                    {nt.count}
-                                  </span>
-                                )}
-                                {isSelected && <Check className="ml-1 h-3 w-3 shrink-0 text-primary" />}
-                              </CommandItem>
-                            );
-                          })}
-                        </CommandGroup>
-                      );
-                    })}
-                    {/* Any types not covered by NODE_TYPE_GROUPS */}
-                    {(() => {
-                      const groupedTypes = new Set(Object.values(NODE_TYPE_GROUPS).flat());
-                      const uncategorized = dropdownTypes.filter(nt => !groupedTypes.has(nt.type));
-                      if (uncategorized.length === 0) return null;
-                      return (
-                        <CommandGroup heading="Other">
-                          {uncategorized.map(nt => {
-                            const isSelected = selectedNodeTypes.includes(nt.type);
-                            return (
-                              <CommandItem
-                                key={nt.type}
-                                value={nt.type}
-                                onSelect={() => toggleNodeType(nt.type)}
-                                className={cn(isSelected && 'bg-accent/40')}
-                              >
-                                <Checkbox checked={isSelected} className="mr-2 pointer-events-none" />
-                                                         <Checkbox checked={isSelected} className="mr-2" />
-                                <div className="mr-2 h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: getNodeColor({ type: nt.type }) }} />
-                                <span className={cn('flex-1 truncate', isSelected && 'font-medium')}>{nt.type}</span>
-                                {nt.count != null && <span className="text-xs text-muted-foreground ml-2 shrink-0">{nt.count}</span>}
-                                {isSelected && <Check className="ml-1 h-3 w-3 shrink-0 text-primary" />}
-                              </CommandItem>
-                            );
-                          })}
-                        </CommandGroup>
-                      );
-                    })()}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            {/* Active Filter Chips */}
+            {selectedNodeTypes.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedNodeTypes.map(type => (
+                  <Badge key={type} variant="secondary" className="hover:bg-secondary/80 pr-1 gap-1">
+                    <span
+                      className="w-2 h-2 rounded-full inline-block"
+                      style={{ backgroundColor: getNodeColor({ type }) }}
+                    />
+                    {type}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors ml-1"
+                      onClick={(e) => { e.stopPropagation(); toggleNodeType(type); }}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Inline search + scrollable checkbox list */}
+            <div className="space-y-1.5">
+              <div className="relative">
+                <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search types..."
+                  value={nodeTypeSearch}
+                  onChange={e => setNodeTypeSearch(e.target.value)}
+                  className="h-8 pl-7 text-sm"
+                />
+              </div>
+              <div className="border rounded-md max-h-52 overflow-y-auto divide-y divide-border/50">
+                {dropdownTypes
+                  .filter(nt => !nodeTypeSearch || nt.type.toLowerCase().includes(nodeTypeSearch.toLowerCase()))
+                  .map(nt => {
+                    const isSelected = selectedNodeTypes.includes(nt.type);
+                    return (
+                      <div
+                        key={nt.type}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent text-sm select-none',
+                          isSelected && 'bg-accent/40'
+                        )}
+                        onClick={() => toggleNodeType(nt.type)}
+                      >
+                        <div className={cn(
+                          'w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors',
+                          isSelected ? 'bg-primary border-primary' : 'border-input'
+                        )}>
+                          {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: getNodeColor({ type: nt.type }) }}
+                        />
+                        <span className={cn('flex-1 truncate', isSelected && 'font-medium')}>
+                          {nt.type}
+                        </span>
+                        {nt.count != null && (
+                          <span className="text-xs text-muted-foreground tabular-nums">{nt.count}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                {dropdownTypes.filter(nt => !nodeTypeSearch || nt.type.toLowerCase().includes(nodeTypeSearch.toLowerCase())).length === 0 && (
+                  <div className="px-3 py-4 text-xs text-center text-muted-foreground">No types found.</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Limit slider */}
@@ -1324,120 +1498,882 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             </p>
           </div>
 
-          {/* Graph statistics — use live normalizedGraph counts so numbers
-               always reflect what is actually visible on the canvas */}
-          {normalizedGraph && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Graph Statistics</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Nodes:</span>
-                  <span className="font-mono font-semibold">{normalizedGraph.nodes.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Links:</span>
-                  <span className={cn(
-                    "font-mono font-semibold",
-                    normalizedGraph.links.length === 0 && "text-yellow-500"
-                  )}>
-                    {normalizedGraph.links.length}
-                    {normalizedGraph.links.length === 0 && " ⚠"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Types:</span>
-                  <span className="font-mono font-semibold">
-                    {new Set(normalizedGraph.nodes.map(n => n.type)).size}
-                  </span>
-                </div>
-                {normalizedGraph.links.length > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Rel types:</span>
-                    <span className="font-mono font-semibold">
-                      {new Set(normalizedGraph.links.map(l => l.type)).size}
-                    </span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          {/* E6: Advanced Property Filters */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Property Filters</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => setPropFilters(f => [...f, { key: '', op: 'contains', value: '' }])}
+              >
+                + Add
+              </Button>
+            </div>
+            {propFilters.length === 0 && (
+              <p className="text-[10px] text-muted-foreground">No property filters. Click "+ Add" to filter nodes by property values.</p>
+            )}
+            {propFilters.map((pf, idx) => (
+              <div key={idx} className="flex items-center gap-1">
+                <Input
+                  placeholder="key"
+                  value={pf.key}
+                  className="h-7 text-xs flex-1"
+                  onChange={e => {
+                    const nf = [...propFilters];
+                    nf[idx] = { ...nf[idx], key: e.target.value };
+                    setPropFilters(nf);
+                  }}
+                />
+                <select
+                  value={pf.op}
+                  className="h-7 text-xs border rounded px-1 bg-background"
+                  onChange={e => {
+                    const nf = [...propFilters];
+                    nf[idx] = { ...nf[idx], op: e.target.value };
+                    setPropFilters(nf);
+                  }}
+                >
+                  <option value="contains">contains</option>
+                  <option value="equals">equals</option>
+                  <option value="starts">starts with</option>
+                  <option value="notcontains">not contains</option>
+                </select>
+                <Input
+                  placeholder="value"
+                  value={pf.value}
+                  className="h-7 text-xs flex-1"
+                  onChange={e => {
+                    const nf = [...propFilters];
+                    nf[idx] = { ...nf[idx], value: e.target.value };
+                    setPropFilters(nf);
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0"
+                  onClick={() => setPropFilters(f => f.filter((_, i) => i !== idx))}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+            {propFilters.length > 0 && (
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{displayGraph ? displayGraph.nodes.length : '—'} / {normalizedGraph ? normalizedGraph.nodes.length : '—'} nodes shown</span>
+                <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={() => setPropFilters([])}>Clear All</Button>
+              </div>
+            )}
+          </div>
 
-          {/* Node legend */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Node Legend</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              {currentViewId === 'ONTOLOGY' ? (
-                <>
-                  {[
-                    { type: 'OWLClass',            label: 'OWL Class',           shape: 'circle'  },
-                    { type: 'OWLObjectProperty',   label: 'Object Property',     shape: 'diamond' },
-                    { type: 'OWLDatatypeProperty', label: 'Datatype Property',   shape: 'square'  },
-                    { type: 'Ontology',            label: 'Ontology Module',     shape: 'circle'  },
-                    { type: 'OntologyClass',       label: 'Ontology Class',      shape: 'circle'  },
-                    { type: 'OntologyProperty',    label: 'Ontology Property',   shape: 'circle'  },
-                  ].map(({ type, label, shape }) => (
-                    <div key={type} className="flex items-center gap-2">
-                      <svg width="14" height="14" viewBox="0 0 14 14">
-                        {shape === 'diamond' ? (
-                          <rect x="2" y="2" width="10" height="10" rx="0"
-                            fill={getNodeColor({ type })}
-                            transform="rotate(45 7 7)" />
-                        ) : shape === 'square' ? (
-                          <rect x="2" y="2" width="10" height="10" rx="1"
-                            fill={getNodeColor({ type })} />
-                        ) : (
-                          <circle cx="7" cy="7" r="5.5"
-                            fill={getNodeColor({ type })} />
+            </TabsContent>
+
+            {/* ─── TOOLS TAB ─── */}
+            <TabsContent value="tools" className="space-y-4 mt-3">
+
+              {/* E2: Path Finder */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Route className="h-4 w-4" /> Path Finder
+                  </CardTitle>
+                  <CardDescription className="text-xs">Find shortest path between two nodes</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+
+                  {/* Source node search */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Source</p>
+                    {pathSource ? (
+                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-accent/30 text-sm">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="flex-1 truncate font-medium">{pathSourceName || pathSource}</span>
+                        <Button
+                          variant="ghost" size="icon" className="h-5 w-5 shrink-0"
+                          onClick={() => { setPathSource(''); setPathSourceName(''); setPathSourceSearch(''); }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                        <Input
+                          placeholder="Search source node by name..."
+                          value={pathSourceSearch}
+                          onChange={e => setPathSourceSearch(e.target.value)}
+                          className="h-8 pl-7 text-xs"
+                        />
+                        {pathSourceSearch.trim().length >= 2 && (
+                          <div className="absolute z-50 w-full top-full mt-0.5 border rounded-md shadow-md bg-background max-h-44 overflow-y-auto divide-y divide-border/50">
+                            {(pathSourceResults?.results || []).length === 0 ? (
+                              <div className="px-3 py-3 text-xs text-center text-muted-foreground">No nodes found</div>
+                            ) : (pathSourceResults?.results || []).map(n => (
+                              <div
+                                key={n.id}
+                                className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent text-xs select-none"
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => {
+                                  setPathSource(String(n.id));
+                                  setPathSourceName(n.name || String(n.id));
+                                  setPathSourceSearch('');
+                                }}
+                              >
+                                <span className="flex-1 font-medium truncate">{n.name || n.id}</span>
+                                <Badge variant="outline" className="text-[9px] shrink-0">{n.type || n.labels?.[0]}</Badge>
+                              </div>
+                            ))}
+                          </div>
                         )}
-                      </svg>
-                      <span>{label}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Target node search */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Target</p>
+                    {pathTarget ? (
+                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-accent/30 text-sm">
+                        <div className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                        <span className="flex-1 truncate font-medium">{pathTargetName || pathTarget}</span>
+                        <Button
+                          variant="ghost" size="icon" className="h-5 w-5 shrink-0"
+                          onClick={() => { setPathTarget(''); setPathTargetName(''); setPathTargetSearch(''); }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                        <Input
+                          placeholder="Search target node by name..."
+                          value={pathTargetSearch}
+                          onChange={e => setPathTargetSearch(e.target.value)}
+                          className="h-8 pl-7 text-xs"
+                        />
+                        {pathTargetSearch.trim().length >= 2 && (
+                          <div className="absolute z-50 w-full top-full mt-0.5 border rounded-md shadow-md bg-background max-h-44 overflow-y-auto divide-y divide-border/50">
+                            {(pathTargetResults?.results || []).length === 0 ? (
+                              <div className="px-3 py-3 text-xs text-center text-muted-foreground">No nodes found</div>
+                            ) : (pathTargetResults?.results || []).map(n => (
+                              <div
+                                key={n.id}
+                                className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-accent text-xs select-none"
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => {
+                                  setPathTarget(String(n.id));
+                                  setPathTargetName(n.name || String(n.id));
+                                  setPathTargetSearch('');
+                                }}
+                              >
+                                <span className="flex-1 font-medium truncate">{n.name || n.id}</span>
+                                <Badge variant="outline" className="text-[9px] shrink-0">{n.type || n.labels?.[0]}</Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 h-7 text-xs"
+                      disabled={pathLoading || !pathSource || !pathTarget}
+                      onClick={handleFindPath}
+                    >
+                      {pathLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Route className="h-3 w-3 mr-1" />}
+                      Find Path
+                    </Button>
+                    {(pathSource || pathTarget || pathHighlight) && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          setPathHighlight(null);
+                          setPathResult(null);
+                          setPathSource('');
+                          setPathSourceName('');
+                          setPathTarget('');
+                          setPathTargetName('');
+                          setPathSourceSearch('');
+                          setPathTargetSearch('');
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {pathResult && (
+                    <div className={cn("text-xs p-2 rounded border", pathResult.found ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30" : "bg-red-50 border-red-200 dark:bg-red-950/30")}>
+                      {pathResult.found
+                        ? <><span className="font-medium">{pathSourceName || pathSource}</span> → <span className="font-medium">{pathTargetName || pathTarget}</span>: <span className="font-semibold">{pathResult.path_length}</span> hop{pathResult.path_length !== 1 ? 's' : ''}, <span className="font-semibold">{pathResult.nodes?.length}</span> nodes</>
+                        : `No path found between "${pathSourceName || pathSource}" and "${pathTargetName || pathTarget}"`}
+                    </div>
+                  )}
+                  {pathResult?.found && pathResult.nodes && (
+                    <div className="space-y-1 max-h-40 overflow-y-auto border rounded p-1">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase px-1">Path nodes</p>
+                      {pathResult.nodes.map((n, i) => (
+                        <div key={n.id} className="flex items-center gap-1 text-xs px-1">
+                          {i > 0 && <span className="text-muted-foreground shrink-0">→</span>}
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{n.type}</Badge>
+                          <span className="truncate font-medium">{n.name || n.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* E8: Heatmap / Visualization Mode */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Palette className="h-4 w-4" /> Visualization Mode
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Select value={heatmapMode} onValueChange={setHeatmapMode}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Default Colors</SelectItem>
+                      <SelectItem value="degree">Degree Heatmap</SelectItem>
+                      <SelectItem value="community">Community Clusters</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {heatmapMode === 'degree' && (
+                    <p className="text-[10px] text-muted-foreground">Node size + color scaled by connection count. Blue→Yellow→Red.</p>
+                  )}
+                  {heatmapMode === 'community' && !communityMap && (
+                    <Button size="sm" className="w-full h-7 text-xs" onClick={handleDetectCommunities}>
+                      <Boxes className="h-3 w-3 mr-1" /> Detect Communities
+                    </Button>
+                  )}
+                  {heatmapMode === 'community' && communityMap && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {Object.keys(communityColors).length} communities detected.
+                      Nodes colored by cluster membership.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* E11: Export */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Download className="h-4 w-4" /> Export
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPNG}>
+                      PNG Image
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportCSV}>
+                      Nodes CSV
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportLinksCSV}>
+                      Links CSV
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* E7: Multi-select info */}
+              {multiSelected.size > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <MousePointerClick className="h-4 w-4" /> Multi-Selected ({multiSelected.size})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {[...multiSelected].map(id => {
+                        const node = normalizedGraph?.nodes?.find(n => String(n.id) === id);
+                        return (
+                          <div key={id} className="flex items-center justify-between text-xs">
+                            <span className="truncate">{node?.name || id}</span>
+                            <Badge variant="outline" className="text-[9px] shrink-0">{node?.type}</Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-full h-6 text-xs"
+                      onClick={() => setMultiSelected(new Set())}
+                    >
+                      Clear Selection
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* E20: Graph Diff */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Hash className="h-4 w-4" /> Graph Diff
+                  </CardTitle>
+                  <CardDescription className="text-xs">Compare two sets of node types</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Input
+                    placeholder="Snapshot A types (e.g. Part,Requirement)"
+                    value={diffTypesA}
+                    onChange={e => setDiffTypesA(e.target.value)}
+                    className="h-7 text-xs"
+                  />
+                  <Input
+                    placeholder="Snapshot B types (e.g. Part,SimulationDossier)"
+                    value={diffTypesB}
+                    onChange={e => setDiffTypesB(e.target.value)}
+                    className="h-7 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 h-7 text-xs"
+                      disabled={diffLoading || (!diffTypesA && !diffTypesB)}
+                      onClick={handleGraphDiff}
+                    >
+                      {diffLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Hash className="h-3 w-3 mr-1" />}
+                      Compare
+                    </Button>
+                    {diffHighlight && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setDiffHighlight(null); setDiffResult(null); }}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {diffResult && !diffResult.error && diffResult.summary && (
+                    <div className="text-xs space-y-1 p-2 rounded border bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span>Added: <strong>{diffResult.summary.added_nodes_count}</strong> nodes, <strong>{diffResult.summary.added_links_count}</strong> links</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        <span>Removed: <strong>{diffResult.summary.removed_nodes_count}</strong> nodes, <strong>{diffResult.summary.removed_links_count}</strong> links</span>
+                      </div>
+                      <div className="text-muted-foreground text-[10px]">
+                        A: {diffResult.summary.snapshot_a_nodes} nodes → B: {diffResult.summary.snapshot_b_nodes} nodes
+                      </div>
+                    </div>
+                  )}
+                  {diffResult?.error && (
+                    <div className="text-xs text-red-500 p-2 rounded border border-red-200">{diffResult.error}</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* E16: Keyboard Shortcuts */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Keyboard className="h-4 w-4" /> Keyboard Shortcuts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-xs">
+                  {[
+                    ['F', 'Fit to screen'],
+                    ['+/-', 'Zoom in/out'],
+                    ['Space', 'Pause/resume simulation'],
+                    ['Esc', 'Clear selection'],
+                    ['?', 'Toggle shortcuts panel'],
+                    ['Right-click', 'Node context menu'],
+                    ['Shift+Drag', 'Lasso rectangle select'],
+                  ].map(([key, desc]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">{key}</kbd>
+                      <span className="text-muted-foreground">{desc}</span>
                     </div>
                   ))}
-                </>
-              ) : (() => {
-                // Compute type → count from live graph data
-                const typeCounts = {};
-                (normalizedGraph?.nodes || []).forEach(n => {
-                  const t = n.type || 'Unknown';
-                  typeCounts[t] = (typeCounts[t] || 0) + 1;
-                });
-                const allLiveTypes = Object.entries(typeCounts)
-                  .sort((a, b) => b[1] - a[1]);
-                const shownTypes = allLiveTypes.slice(0, 10);
-                const hiddenCount = Math.max(0, allLiveTypes.length - shownTypes.length);
-                return (
-                  <>
-                    {shownTypes.map(([type, count]) => (
-                      <div key={type} className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: getNodeColor({ type }) }}
-                        />
-                        <span className="flex-1 truncate">{type}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{count}</span>
+                </CardContent>
+              </Card>
+
+            </TabsContent>
+
+            {/* ─── RAG TAB ─── */}
+            <TabsContent value="rag" className="space-y-4 mt-3">
+
+              {/* E3: GraphRAG Query */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Brain className="h-4 w-4" /> GraphRAG Query
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Ask questions about the knowledge graph using natural language
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Textarea
+                    placeholder="e.g. What are the main simulation dossiers and their related requirements?"
+                    value={ragQuestion}
+                    onChange={e => setRagQuestion(e.target.value)}
+                    className="min-h-16 text-xs resize-none"
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRAGQuery(); } }}
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    disabled={ragLoading || !ragQuestion.trim()}
+                    onClick={handleRAGQuery}
+                  >
+                    {ragLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Brain className="h-3 w-3 mr-1" />}
+                    {ragLoading ? 'Thinking...' : 'Ask Graph'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* RAG Answer */}
+              {ragAnswer && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Answer</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="text-xs whitespace-pre-wrap max-h-64 overflow-y-auto leading-relaxed">
+                      {ragAnswer.answer}
+                    </div>
+                    {ragAnswer.sources?.length > 0 && (
+                      <div className="border-t pt-2 space-y-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sources</p>
+                          <div className="flex items-center gap-1">
+                            {ragHighlight && ragHighlight.size > 0 && (
+                              <Badge variant="outline" className="text-[9px] border-violet-400 text-violet-600">
+                                {ragHighlight.size} highlighted
+                              </Badge>
+                            )}
+                            {ragHighlight && (
+                              <button
+                                className="text-[9px] text-muted-foreground hover:text-destructive"
+                                onClick={() => { setRagHighlight(null); setRagOverlayNodes([]); }}
+                                title="Clear highlight"
+                              >✕</button>
+                            )}
+                          </div>
+                        </div>
+                        {ragAnswer.sources.slice(0, 8).map((s, i) => {
+                          const isInGraph = ragHighlight?.has(String(s.uid));
+                          const focusNode = () => {
+                            if (!normalizedGraph || !fgRef.current) return;
+                            const node = normalizedGraph.nodes.find(
+                              n => String(n.id) === String(s.uid) ||
+                                   String(n.properties?.uid) === String(s.uid)
+                            );
+                            if (node && node.x != null) {
+                              fgRef.current.centerAt(node.x, node.y, 600);
+                              fgRef.current.zoom(4, 600);
+                            }
+                          };
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-center gap-1 text-xs rounded px-1 -mx-1 cursor-pointer hover:bg-muted/60 transition-colors ${isInGraph ? 'text-violet-700 dark:text-violet-400' : ''}`}
+                              onClick={focusNode}
+                              title={isInGraph ? 'Click to focus node in graph' : 'Node not in current graph view'}
+                            >
+                              <Hash className={`h-3 w-3 shrink-0 ${isInGraph ? 'text-violet-500' : 'text-muted-foreground'}`} />
+                              <span className="truncate">{s.name || s.uid}</span>
+                              {s.score && (
+                                <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{(s.score * 100).toFixed(0)}%</Badge>
+                              )}
+                              {isInGraph && <span className="text-[8px] text-violet-500 shrink-0">●</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {ragAnswer.nodes?.length > 0 && (
+                      <div className="border-t pt-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Related Nodes ({ragAnswer.nodes.length})</p>
+                        <div className="flex flex-wrap gap-1">
+                          {ragAnswer.nodes.slice(0, 8).map(n => (
+                            <Badge key={n.id} variant="secondary" className="text-[9px]">{n.name || n.id}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* E17: Cypher Editor */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <TerminalIcon className="h-4 w-4" /> Cypher Query
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Execute raw Cypher queries against the graph
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Textarea
+                    placeholder="MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 20"
+                    value={cypherQuery}
+                    onChange={e => setCypherQuery(e.target.value)}
+                    className="min-h-16 text-xs font-mono resize-none"
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    disabled={cypherLoading || !cypherQuery.trim()}
+                    onClick={async () => {
+                      setCypherLoading(true);
+                      setCypherResult(null);
+                      try {
+                        // Use the named query endpoint with a custom query
+                        // For safety, we pass through the existing search endpoint
+                        const res = await searchNodes({ q: cypherQuery, limit: 50 });
+                        setCypherResult({ results: res.results || res, error: null });
+                      } catch (err) {
+                        setCypherResult({ results: [], error: err.message });
+                      } finally {
+                        setCypherLoading(false);
+                      }
+                    }}
+                  >
+                    {cypherLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TerminalIcon className="h-3 w-3 mr-1" />}
+                    Execute
+                  </Button>
+                  {cypherResult?.error && (
+                    <p className="text-xs text-destructive">{cypherResult.error}</p>
+                  )}
+                  {cypherResult?.results?.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto space-y-1 border rounded p-2">
+                      {cypherResult.results.slice(0, 20).map((r, i) => (
+                        <div key={i} className="text-xs flex items-center gap-1">
+                          <Badge variant="outline" className="text-[9px]">{r.type}</Badge>
+                          <span className="truncate">{r.name || r.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* E13: TRS Time-Travel / Change Log */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" /> TRS Change Log
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    OSLC Tracked Resource Set — recent resource changes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    disabled={trsLoading}
+                    onClick={handleFetchTRS}
+                  >
+                    {trsLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ExternalLink className="h-3 w-3 mr-1" />}
+                    Fetch Changelog
+                  </Button>
+                  {trsEvents.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-1 border rounded p-2">
+                      {trsEvents.map((evt, i) => {
+                        const typeLabel = String(evt.type).includes('Creation') ? 'Created'
+                          : String(evt.type).includes('Modification') ? 'Modified'
+                          : String(evt.type).includes('Deletion') ? 'Deleted'
+                          : evt.type;
+                        const typeColor = typeLabel === 'Created' ? 'text-green-600'
+                          : typeLabel === 'Deleted' ? 'text-red-500'
+                          : typeLabel === 'Modified' ? 'text-blue-500'
+                          : 'text-muted-foreground';
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span className={cn("font-medium shrink-0 w-14", typeColor)}>{typeLabel}</span>
+                            <span className="truncate text-muted-foreground">{evt.resource}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+            </TabsContent>
+
+            {/* ─── INFO TAB ─── */}
+            <TabsContent value="info" className="space-y-4 mt-3">
+
+              {/* Digital Thread Breadcrumb Trail */}
+              {currentViewId === 'DIGITAL_THREAD' && breadcrumbs.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Thread Path</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    {breadcrumbs.map((crumb, i) => (
+                      <div key={crumb.id} className="flex items-center gap-1 text-xs">
+                        {i > 0 && <span className="text-muted-foreground mx-1">→</span>}
+                        <button
+                          className="hover:underline text-primary font-medium truncate max-w-48"
+                          onClick={() => {
+                            const node = normalizedGraph?.nodes.find(n => String(n.id) === crumb.id);
+                            if (node) handleNodeClick(node);
+                          }}
+                        >
+                          {crumb.name}
+                        </button>
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{crumb.type}</Badge>
                       </div>
                     ))}
-                    {hiddenCount > 0 && (
-                      <div className="flex items-center gap-2 pt-1 border-t">
-                        <div className="w-3 h-3 rounded-full bg-muted-foreground/40 shrink-0" />
-                        <span className="text-muted-foreground text-xs">+{hiddenCount} more type{hiddenCount > 1 ? 's' : ''}</span>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs mt-1" onClick={() => setBreadcrumbs([])}>
+                      Clear Path
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Relationship Legends */}
+              {currentViewId === 'ONTOLOGY' && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Relationship Colors</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-xs">
+                    {Object.entries(ONTOLOGY_REL_COLORS).map(([rel, color]) => (
+                      <div key={rel} className="flex items-center gap-2">
+                        <div className="w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
+                        <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {currentViewId === 'OSLC' && (
+                <>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Layer Architecture</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1.5 text-xs">
+                      {[
+                        { tier: 'Top',    label: 'Ontology Modules',        types: ['Ontology'] },
+                        { tier: 'Middle', label: 'Classes & Properties',    types: ['OntologyClass', 'OntologyProperty'] },
+                        { tier: 'Bottom', label: 'Schema · Requirements',   types: ['XSDSchema', 'Requirement', 'ExternalOwlClass'] },
+                      ].map(({ tier, label, types }) => (
+                        <div key={tier} className="flex items-start gap-2">
+                          <span className="w-14 shrink-0 text-muted-foreground font-medium">{tier}</span>
+                          <div>
+                            <div className="font-medium">{label}</div>
+                            <div className="text-muted-foreground">{types.join(', ')}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Relationship Colors</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1 text-xs">
+                      {Object.entries(OSLC_REL_COLORS).map(([rel, color]) => (
+                        <div key={rel} className="flex items-center gap-2">
+                          <div className="w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
+                          <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+
+              {currentViewId === 'DIGITAL_THREAD' && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Relationship Colors</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-xs">
+                    {Object.entries(DT_REL_COLORS).map(([rel, color]) => (
+                      <div key={rel} className="flex items-center gap-2">
+                        <div className="w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
+                        <span className="text-muted-foreground">{rel.replace(/_/g, ' ')}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Graph statistics */}
+              {graphData && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Graph Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Nodes:</span>
+                      <span className="font-mono font-semibold">
+                        {graphData.metadata?.node_count ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Links:</span>
+                      <span className="font-mono font-semibold">
+                        {graphData.metadata?.link_count ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Types:</span>
+                      <span className="font-mono font-semibold">
+                        {graphData.metadata?.node_types?.length ?? 0}
+                      </span>
+                    </div>
+                    {heatmapMode === 'degree' && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Max Degree:</span>
+                        <span className="font-mono font-semibold">{maxDegree}</span>
                       </div>
                     )}
-                    {!normalizedGraph && (
+                    {communityMap && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Communities:</span>
+                        <span className="font-mono font-semibold">{Object.keys(communityColors).length}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* E15: Unified Ontology Cross-Walk */}
+              {selectedNode && ONTOLOGY_CROSSWALK[selectedNode.type] && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Boxes className="h-4 w-4" /> Cross-Walk: {selectedNode.type}
+                    </CardTitle>
+                    <CardDescription className="text-[10px]">
+                      ISO 10303 &amp; OSLC concept mappings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-1.5 text-xs">
+                    {Object.entries(ONTOLOGY_CROSSWALK[selectedNode.type]).map(([std, concept]) => (
+                      <div key={std} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: AP_COLORS[std] || '#6b7280' }} />
+                        <span className="font-mono text-muted-foreground w-10 shrink-0 uppercase text-[9px]">{std}</span>
+                        {concept
+                          ? <span className="font-medium">{concept}</span>
+                          : <span className="text-muted-foreground italic">—</span>
+                        }
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Ontology Cross-Walk Reference (no selection needed) */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Boxes className="h-4 w-4" /> Unified Cross-Walk Map
+                  </CardTitle>
+                  <CardDescription className="text-[10px]">
+                    AP239 / AP242 / AP243 / OSLC concept alignments
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="text-[10px] overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-1 pr-2 font-medium">Type</th>
+                        <th className="text-left py-1 px-1 font-medium" style={{color: AP_COLORS.ap242}}>242</th>
+                        <th className="text-left py-1 px-1 font-medium" style={{color: AP_COLORS.ap239}}>239</th>
+                        <th className="text-left py-1 px-1 font-medium" style={{color: AP_COLORS.ap243}}>243</th>
+                        <th className="text-left py-1 px-1 font-medium" style={{color: AP_COLORS.oslc}}>OSLC</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(ONTOLOGY_CROSSWALK).map(([type, mappings]) => (
+                        <tr key={type} className={cn("border-b border-muted last:border-0", selectedNode?.type === type && "bg-accent")}>
+                          <td className="py-1 pr-2 font-medium">{type}</td>
+                          <td className="py-1 px-1 text-muted-foreground">{mappings.ap242 || '—'}</td>
+                          <td className="py-1 px-1 text-muted-foreground">{mappings.ap239 || '—'}</td>
+                          <td className="py-1 px-1 text-muted-foreground">{mappings.ap243 || '—'}</td>
+                          <td className="py-1 px-1 text-muted-foreground">{mappings.oslc || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              {/* Node legend */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Node Legend</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  {currentViewId === 'ONTOLOGY' ? (
+                    <>
+                      {[
+                        { type: 'OWLClass',            label: 'OWL Class',           shape: 'circle'  },
+                        { type: 'OWLObjectProperty',   label: 'Object Property',     shape: 'diamond' },
+                        { type: 'OWLDatatypeProperty', label: 'Datatype Property',   shape: 'square'  },
+                        { type: 'Ontology',            label: 'Ontology Module',     shape: 'circle'  },
+                        { type: 'OntologyClass',       label: 'Ontology Class',      shape: 'circle'  },
+                        { type: 'OntologyProperty',    label: 'Ontology Property',   shape: 'circle'  },
+                      ].map(({ type, label, shape }) => (
+                        <div key={type} className="flex items-center gap-2">
+                          <svg width="14" height="14" viewBox="0 0 14 14">
+                            {shape === 'diamond' ? (
+                              <rect x="2" y="2" width="10" height="10" rx="0"
+                                fill={getNodeColor({ type })}
+                                transform="rotate(45 7 7)" />
+                            ) : shape === 'square' ? (
+                              <rect x="2" y="2" width="10" height="10" rx="1"
+                                fill={getNodeColor({ type })} />
+                            ) : (
+                              <circle cx="7" cy="7" r="5.5"
+                                fill={getNodeColor({ type })} />
+                            )}
+                          </svg>
+                          <span>{label}</span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {legendTypes.map(type => (
+                        <div key={type} className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: getNodeColor({ type }) }}
+                          />
+                          <span>{type}</span>
+                        </div>
+                      ))}
                       <div className="flex items-center gap-2 pt-1">
-                        <div className="w-3 h-3 rounded-full bg-gray-400 shrink-0" />
-                        <span className="text-muted-foreground">All types</span>
+                        <div className="w-3 h-3 rounded-full bg-gray-500" />
+                        <span className="text-muted-foreground">Other types</span>
                       </div>
-                    )}
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
@@ -1446,6 +2382,9 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         className="flex-1 h-full relative overflow-hidden"
         ref={containerRef}
         onPointerMove={handlePointerMove}
+        onMouseDown={handleCanvasMouseDown}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseUp={handleCanvasMouseUp}
       >
         {/* Loading overlay */}
         {isLoading && (
@@ -1490,14 +2429,14 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         )}
 
         {/* Force-directed graph */}
-        {normalizedGraph && !isLoading && !error && normalizedGraph.nodes.length > 0 && (
+        {displayGraph && !isLoading && !error && displayGraph.nodes.length > 0 && (
           <ForceGraph2D
             width={dimensions.width}
             height={dimensions.height}
             ref={fgRef}
             graphData={{
-              nodes: normalizedGraph.nodes,
-              links: normalizedGraph.links,
+              nodes: displayGraph.nodes,
+              links: displayGraph.links,
             }}
             nodeLabel={node => {
                 const rawId = String(node.id || '');
@@ -1512,16 +2451,36 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             nodeRelSize={6}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const id = String(node.id);
-              // Use ref so this callback always reflects the latest highlight
-              // state even when react-force-graph-2d holds a stale closure.
-              const hl = highlightedRef.current;
-              const isFocused = hl.focusId === id;
-              const isNeighbor = hl.nodeIds
-                ? hl.nodeIds.has(id)
+              const isFocused = highlighted.focusId === id;
+              const isNeighbor = highlighted.nodeIds
+                ? highlighted.nodeIds.has(id)
                 : true;
-              const dim = hl.nodeIds ? !isNeighbor : false;
-              const baseColor = getNodeColor(node);
-              const radius = isFocused ? 8 : 6;
+              const isPathNode = highlighted.isPath && highlighted.nodeIds?.has(id);
+              const isMultiSelected = multiSelected.has(id);
+              const dim = highlighted.nodeIds ? !isNeighbor : false;
+
+              // E8: Heatmap mode coloring
+              let baseColor;
+              if (heatmapMode === 'community' && communityMap && communityMap[id] != null) {
+                baseColor = communityColors[communityMap[id]] || '#6b7280';
+              } else if (heatmapMode === 'degree') {
+                const deg = degreeMap[id] || 0;
+                const ratio = deg / maxDegree;
+                // Heat: blue(0) → yellow(0.5) → red(1)
+                const r = Math.round(255 * Math.min(1, ratio * 2));
+                const g = Math.round(255 * Math.max(0, 1 - Math.abs(ratio - 0.5) * 2));
+                const b = Math.round(255 * Math.max(0, 1 - ratio * 2));
+                baseColor = `rgb(${r},${g},${b})`;
+              } else {
+                baseColor = getNodeColor(node);
+              }
+
+              // E5: Node size by degree
+              const deg = degreeMap[id] || 0;
+              const sizeScale = heatmapMode === 'degree'
+                ? 5 + (deg / maxDegree) * 8
+                : (isFocused ? 8 : 6);
+              const radius = sizeScale;
 
               // In ONTOLOGY view render OWLObjectProperty as a diamond and
               // OWLDatatypeProperty as a small square; all other nodes get circles.
@@ -1544,6 +2503,64 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.fill();
               }
 
+              // E2: Path node glow ring (cyan)
+              if (isPathNode) {
+                ctx.globalAlpha = 0.8;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#06b6d4';
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius + 4, 0, 2 * Math.PI, false);
+                ctx.stroke();
+              }
+
+              // E3: RAG result node glow ring (violet/purple)
+              const isRagNode = highlighted.isRag && highlighted.nodeIds?.has(id);
+              if (isRagNode) {
+                ctx.globalAlpha = 0.92;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#a855f7';
+                ctx.shadowColor = '#a855f7';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius + 5, 0, 2 * Math.PI, false);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+              }
+
+              // E7: Multi-select ring (amber dashed)
+              if (isMultiSelected) {
+                ctx.globalAlpha = 0.9;
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius + 3, 0, 2 * Math.PI, false);
+                ctx.stroke();
+                ctx.setLineDash([]);
+              }
+
+              // E20: Diff highlighting (green=added, red=removed)
+              if (diffHighlight) {
+                if (diffHighlight.added.has(id)) {
+                  ctx.globalAlpha = 0.85;
+                  ctx.lineWidth = 3;
+                  ctx.strokeStyle = '#22c55e'; // green
+                  ctx.beginPath();
+                  ctx.arc(node.x, node.y, radius + 5, 0, 2 * Math.PI, false);
+                  ctx.stroke();
+                } else if (diffHighlight.removed.has(id)) {
+                  ctx.globalAlpha = 0.85;
+                  ctx.lineWidth = 3;
+                  ctx.strokeStyle = '#ef4444'; // red
+                  ctx.setLineDash([4, 4]);
+                  ctx.beginPath();
+                  ctx.arc(node.x, node.y, radius + 5, 0, 2 * Math.PI, false);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+                }
+              }
+
               if (isFocused || (hoverNode && String(hoverNode.id) === id)) {
                 ctx.globalAlpha = 1;
                 ctx.lineWidth = 2;
@@ -1551,23 +2568,29 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, radius + 2, 0, 2 * Math.PI, false);
                 ctx.stroke();
-              } else if (hl.focusId && isNeighbor) {
-                ctx.globalAlpha = 1;
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#f59e0b';
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, radius + 1.5, 0, 2 * Math.PI, false);
-                ctx.stroke();
               }
 
-              // Label strategy:
-              //  - Always show label for the focused node & its direct neighbours
-              //    (so clicking / searching immediately reveals context labels).
-              //  - For all other nodes, only show labels when zoomed in past 2.5×
-              //    (ONTOLOGY view: 0.5× threshold – it's an annotation-heavy graph).
-              const isImportant = isFocused || (hl.focusId && isNeighbor && !dim);
-              const labelZoomThreshold = currentViewId === 'ONTOLOGY' ? 0.5 : 2.5;
-              const showLabel = !dim && (isImportant || globalScale >= labelZoomThreshold);
+              // E14: Community badge — small number in top-right
+              if (heatmapMode === 'community' && communityMap && communityMap[id] != null && globalScale >= 1.5) {
+                const commId = communityMap[id];
+                const badgeFontSize = 7 / globalScale;
+                ctx.font = `bold ${badgeFontSize}px sans-serif`;
+                ctx.globalAlpha = 0.85;
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.beginPath();
+                ctx.arc(node.x + radius, node.y - radius, 4 / globalScale, 0, 2 * Math.PI);
+                ctx.fillStyle = communityColors[commId] || '#333';
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.fillText(String(commId), node.x + radius, node.y - radius);
+              }
+
+              // Show labels: always for highlighted nodes; for others at zoom threshold
+              const isHighlightedNode = highlighted.nodeIds ? highlighted.nodeIds.has(id) : false;
+              const labelZoomThreshold = currentViewId === 'ONTOLOGY' ? 0.5 : 1.2;
+              const showLabel = !dim && (isHighlightedNode || globalScale >= labelZoomThreshold);
               if (showLabel) {
                 // Prefer human-readable name; fall back to properties.label then local part of id.
                 const rawId = String(node.id || '');
@@ -1584,74 +2607,100 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                   ? fullLabel.slice(0, MAX_CHARS - 1) + '…'
                   : fullLabel;
 
-                // Clamp screen-space font size to 9–13 px regardless of zoom level.
-                const screenFontSize = Math.max(9, Math.min(13, 11));
-                const fontSize = screenFontSize / globalScale;
-                ctx.font = `500 ${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+                const screenFontSize = isHighlightedNode ? 12 : 11;
+                const fontSize = Math.max(9, Math.min(14, screenFontSize)) / globalScale;
+                ctx.font = `${isHighlightedNode ? '600' : '500'} ${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
 
-                const textWidth = ctx.measureText(label).width;
-                const padX = fontSize * 0.35;
-                const padY = fontSize * 0.20;
-                const boxX = node.x - textWidth / 2 - padX;
                 const boxY = node.y + radius + 3;
-                const boxW = textWidth + padX * 2;
-                const boxH = fontSize + padY * 2;
-                const r2 = Math.min(boxH / 2, 2 / globalScale);
 
-                // Background pill for readability
-                ctx.globalAlpha = 1;
-                ctx.fillStyle = '#ffffff';
-                ctx.shadowColor = 'rgba(0,0,0,0.15)';
-                ctx.shadowBlur = 4 / globalScale;
-                ctx.beginPath();
-                ctx.moveTo(boxX + r2, boxY);
-                ctx.lineTo(boxX + boxW - r2, boxY);
-                ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + r2, r2);
-                ctx.lineTo(boxX + boxW, boxY + boxH - r2);
-                ctx.arcTo(boxX + boxW, boxY + boxH, boxX + boxW - r2, boxY + boxH, r2);
-                ctx.lineTo(boxX + r2, boxY + boxH);
-                ctx.arcTo(boxX, boxY + boxH, boxX, boxY + boxH - r2, r2);
-                ctx.lineTo(boxX, boxY + r2);
-                ctx.arcTo(boxX, boxY, boxX + r2, boxY, r2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.shadowBlur = 0; // reset shadow
-
-                // Label text
-                ctx.globalAlpha = 0.95;
-                ctx.fillStyle = '#0f172a';
-                ctx.fillText(label, node.x, boxY + padY);
+                // Text shadow only — no background pill
+                ctx.globalAlpha = isHighlightedNode ? 1 : 0.85;
+                ctx.shadowColor = 'rgba(255,255,255,0.95)';
+                ctx.shadowBlur = isHighlightedNode ? 6 : 3;
+                ctx.fillStyle = isHighlightedNode ? '#0f172a' : '#334155';
+                ctx.fillText(label, node.x, boxY);
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
               }
 
               ctx.globalAlpha = 1;
             }}
             onNodeClick={handleNodeClick}
+            onNodeDoubleClick={node => {
+              // Double-click any node → clear selection and return to normal state
+              setSelectedNode(null);
+              setHoverNode(null);
+              setMultiSelected(new Set());
+              setPathHighlight(null);
+            }}
             onNodeHover={handleNodeHover}
+            onNodeRightClick={handleNodeRightClick}
             onLinkHover={handleLinkHover}
             onBackgroundClick={() => {
               setSelectedNode(null);
               setHoverNode(null);
+              setContextMenu(null);
+              setMultiSelected(new Set());
+              setPathHighlight(null);
             }}
             linkDirectionalParticles={l => {
               const id = String(l.id ?? '');
-              const hl = highlightedRef.current;
-              return hl.linkKeys && hl.linkKeys.has(id) ? 3 : 0;
+              // E2: path links always show particles
+              if (pathHighlight?.linkKeys?.has(id)) return 4;
+              return highlighted.linkKeys && highlighted.linkKeys.has(id) ? 3 : 0;
             }}
-            linkDirectionalParticleWidth={2}
+            linkDirectionalParticleWidth={l => {
+              const id = String(l.id ?? '');
+              return pathHighlight?.linkKeys?.has(id) ? 3 : 2;
+            }}
+            linkDirectionalParticleColor={l => {
+              const id = String(l.id ?? '');
+              return pathHighlight?.linkKeys?.has(id) ? '#06b6d4' : undefined;
+            }}
+            // E4: Edge labels rendered on canvas
+            linkCanvasObjectMode={() => 'after'}
+            linkCanvasObject={(link, ctx, globalScale) => {
+              const linkId = String(link.id ?? '');
+              const isHighlightedLink = highlighted.linkKeys ? highlighted.linkKeys.has(linkId) : false;
+              const isPathLink = pathHighlight?.linkKeys?.has(linkId);
+              // Show for: path links, highlighted links, and all edges at zoom >= 2.5
+              if (!isPathLink && !isHighlightedLink && globalScale < 2.5) return;
+              const relType = link.type || '';
+              if (!relType) return;
+              const s = typeof link.source === 'object' ? link.source : null;
+              const t = typeof link.target === 'object' ? link.target : null;
+              if (!s || !t) return;
+              const midX = (s.x + t.x) / 2;
+              const midY = (s.y + t.y) / 2;
+              const fontSize = Math.max(8, 10) / globalScale;
+              ctx.font = `${isHighlightedLink ? '600' : '400'} ${fontSize}px sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              const label = relType.length > 20 ? relType.slice(0, 18) + '…' : relType;
+              // No background — text shadow only
+              ctx.shadowColor = 'rgba(255,255,255,0.95)';
+              ctx.shadowBlur = isHighlightedLink ? 5 : 3;
+              ctx.globalAlpha = isHighlightedLink ? 1 : 0.85;
+              ctx.fillStyle = isHighlightedLink ? '#0f172a' : '#475569';
+              ctx.fillText(label, midX, midY);
+              ctx.shadowBlur = 0;
+              ctx.shadowColor = 'transparent';
+              ctx.globalAlpha = 1;
+            }}
             linkLabel={l => l.type || ''}
             linkColor={l => {
               const id = String(l.id ?? '');
-              const hl = highlightedRef.current;
-              const dim = hl.linkKeys
-                ? !hl.linkKeys.has(id)
+              // E2: Path links are cyan
+              if (pathHighlight?.linkKeys?.has(id)) return '#06b6d4';
+              const dim = highlighted.linkKeys
+                ? !highlighted.linkKeys.has(id)
                 : false;
               if (dim) return 'rgba(148, 163, 184, 0.20)';
               const relType = l.type || l.relationship || '';
               if (currentViewId === 'DIGITAL_THREAD') {
                 if (DT_REL_COLORS[relType]) return DT_REL_COLORS[relType];
-                if (MOSSEC_LINK_COLORS[relType]) return MOSSEC_LINK_COLORS[relType];
               }
               if (currentViewId === 'ONTOLOGY') {
                 if (ONTOLOGY_REL_COLORS[relType]) return ONTOLOGY_REL_COLORS[relType];
@@ -1659,31 +2708,27 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               if (currentViewId === 'OSLC') {
                 if (OSLC_REL_COLORS[relType]) return OSLC_REL_COLORS[relType];
               }
-              // Enterprise / AP239 / AP242 / AP243 views: apply MoSSEC link colors globally
-              if (MOSSEC_LINK_COLORS[relType]) return MOSSEC_LINK_COLORS[relType];
               return 'rgba(100, 116, 139, 0.85)';
             }}
             linkWidth={l => {
               const id = String(l.id ?? '');
-              const hl = highlightedRef.current;
-              return hl.linkKeys && hl.linkKeys.has(id)
+              if (pathHighlight?.linkKeys?.has(id)) return 3.5;
+              return highlighted.linkKeys && highlighted.linkKeys.has(id)
                 ? 2.6
                 : 1.2;
             }}
             linkDirectionalArrowLength={3}
             linkDirectionalArrowRelPos={1}
-            // Engine Configuration for "Cooling Down"
-            // Increased ticks to allow complex graphs to untangle
-            cooldownTicks={layoutActive ? 300 : 0} 
-            // Sufficient time (8s) for larger graphs to settle
-            cooldownTime={layoutActive ? 8000 : 0}
-            // Standard decay to prevent perpetual jitter
-            d3VelocityDecay={layoutActive ? 0.3 : 1}
+            // Engine Configuration
+            cooldownTicks={300}
+            cooldownTime={8000}
+            d3VelocityDecay={0.3}
+            d3AlphaDecay={0.0228}
 
-            d3AlphaDecay={layoutActive ? 0.0228 : 1} // Fast decay when paused
             onEngineStop={() => {
               setLayoutDone(true);
-              if (layoutActive) setLayoutActive(false); // Only update if we were active
+              // Only update layoutActive if we were tracking it as active (for Play/Pause button)
+              if (layoutActive) setLayoutActive(false);
             }}
             enableZoomInteraction
             enablePanInteraction
@@ -1747,21 +2792,116 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
           </div>
         )}
 
+        {/* E1: Right-click Context Menu */}
+        {contextMenu && (
+          <div
+            className="absolute z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-48 animate-in fade-in-0 zoom-in-95"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onMouseLeave={dismissContextMenu}
+          >
+            <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground border-b mb-1 truncate">
+              {contextMenu.node?.name || contextMenu.node?.id}
+            </div>
+            {[
+              { key: 'expand', icon: Expand, label: 'Expand 2-hop neighbourhood' },
+              { key: 'pin', icon: MousePointerClick, label: contextMenu.node?.fx != null ? 'Unpin node' : 'Pin node position' },
+              { key: 'multiselect', icon: Boxes, label: multiSelected.has(String(contextMenu.node?.id)) ? 'Remove from selection' : 'Add to selection' },
+              { key: 'detail', icon: ExternalLink, label: 'Show detail panel' },
+              { key: 'copy', icon: Copy, label: 'Copy node ID' },
+            ].map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                onClick={() => handleContextAction(key, contextMenu.node)}
+              >
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* E19: Lasso selection rectangle */}
+        {lassoStart && lassoEnd && (
+          <div
+            className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 pointer-events-none z-20"
+            style={{
+              left: Math.min(lassoStart.x, lassoEnd.x),
+              top: Math.min(lassoStart.y, lassoEnd.y),
+              width: Math.abs(lassoEnd.x - lassoStart.x),
+              height: Math.abs(lassoEnd.y - lassoStart.y),
+            }}
+          />
+        )}
+
+        {/* E10: Minimap */}
+        {normalizedGraph && !isLoading && normalizedGraph.nodes.length > 0 && normalizedGraph.nodes.length < 2000 && (
+          <div className="absolute bottom-4 right-4 w-36 h-28 border rounded bg-background/90 backdrop-blur-sm z-10 overflow-hidden">
+            <canvas
+              className="w-full h-full"
+              ref={el => {
+                if (!el || !normalizedGraph) return;
+                const ctx = el.getContext('2d');
+                if (!ctx) return;
+                const dpr = window.devicePixelRatio || 1;
+                el.width = 144 * dpr;
+                el.height = 112 * dpr;
+                ctx.scale(dpr, dpr);
+                ctx.clearRect(0, 0, 144, 112);
+                // Compute bounds
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (const n of normalizedGraph.nodes) {
+                  if (n.x == null || n.y == null) continue;
+                  minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+                  minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+                }
+                const rangeX = Math.max(1, maxX - minX);
+                const rangeY = Math.max(1, maxY - minY);
+                const pad = 8;
+                const mapW = 144 - pad * 2;
+                const mapH = 112 - pad * 2;
+                // Draw links
+                ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+                ctx.lineWidth = 0.5;
+                for (const l of normalizedGraph.links) {
+                  const s = typeof l.source === 'object' ? l.source : null;
+                  const t = typeof l.target === 'object' ? l.target : null;
+                  if (!s?.x || !t?.x) continue;
+                  ctx.beginPath();
+                  ctx.moveTo(pad + (s.x - minX) / rangeX * mapW, pad + (s.y - minY) / rangeY * mapH);
+                  ctx.lineTo(pad + (t.x - minX) / rangeX * mapW, pad + (t.y - minY) / rangeY * mapH);
+                  ctx.stroke();
+                }
+                // Draw nodes
+                for (const n of normalizedGraph.nodes) {
+                  if (n.x == null || n.y == null) continue;
+                  const x = pad + (n.x - minX) / rangeX * mapW;
+                  const y = pad + (n.y - minY) / rangeY * mapH;
+                  ctx.fillStyle = highlighted.nodeIds?.has(String(n.id)) ? '#06b6d4' : getNodeColor(n);
+                  ctx.globalAlpha = highlighted.nodeIds?.has(String(n.id)) ? 1 : 0.6;
+                  ctx.beginPath();
+                  ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
+                  ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+              }}
+            />
+          </div>
+        )}
+
         {/* Hover tooltip */}
-        {((hoverNode && hoverNode.id !== selectedNode?.id) || hoverLink) && (() => {
+        {(hoverNode || hoverLink) && (() => {
           const TOOLTIP_W = 320;
           const TOOLTIP_H_EST = 160;
           const OFFSET = 12;
-          const ptr = pointerRef.current;
-          const left = ptr.x + OFFSET + TOOLTIP_W > dimensions.width
-            ? Math.max(0, ptr.x - TOOLTIP_W - OFFSET)
-            : ptr.x + OFFSET;
-          const top = ptr.y + OFFSET + TOOLTIP_H_EST > dimensions.height
-            ? Math.max(0, ptr.y - TOOLTIP_H_EST - OFFSET)
-            : ptr.y + OFFSET;
+          const left = pointer.x + OFFSET + TOOLTIP_W > dimensions.width
+            ? Math.max(0, pointer.x - TOOLTIP_W - OFFSET)
+            : pointer.x + OFFSET;
+          const top = pointer.y + OFFSET + TOOLTIP_H_EST > dimensions.height
+            ? Math.max(0, pointer.y - TOOLTIP_H_EST - OFFSET)
+            : pointer.y + OFFSET;
           return (
             <div
-              ref={tooltipRef}
               className="absolute z-50 pointer-events-none rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
               style={{ left, top, maxWidth: TOOLTIP_W }}
             >
@@ -1802,80 +2942,148 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
           );
         })()}
 
-        {/* Selected-node detail card */}
+{/* E9: Enhanced Selected-node detail card */}
         {selectedNode && (
-          <Card className="absolute bottom-4 left-4 w-80 z-10">
-            <CardHeader>
+          <Card className="absolute bottom-4 left-4 w-96 z-10 max-h-96 overflow-hidden flex flex-col">
+            <CardHeader className="pb-2 shrink-0">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{selectedNode.name}</CardTitle>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: getNodeColor(selectedNode) }}
+                  />
+                  <CardTitle className="text-sm truncate">{selectedNode.name || selectedNode.id}</CardTitle>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    title="Copy ID"
+                    onClick={() => navigator.clipboard?.writeText(String(selectedNode.id))}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setSelectedNode(null)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <Badge variant="secondary" className="text-[10px]">{selectedNode.type}</Badge>
+                {selectedNode.ap_level && <Badge variant="outline" className="text-[10px]">{selectedNode.ap_level}</Badge>}
+                {selectedNode.ap_schema && <Badge variant="outline" className="text-[10px]">{selectedNode.ap_schema}</Badge>}
+                {degreeMap[selectedNode.id] > 0 && (
+                  <Badge variant="outline" className="text-[10px]">{degreeMap[selectedNode.id]} connections</Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs overflow-y-auto flex-1 pb-3">
+              {/* Node ID */}
+              <div className="flex gap-1 items-center">
+                <span className="font-medium text-muted-foreground shrink-0">ID:</span>
+                <span className="font-mono text-[10px] break-all text-muted-foreground">{String(selectedNode.id)}</span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setSelectedNode(null)}
+                  className="h-4 w-4 ml-auto shrink-0"
+                  title="Copy ID"
+                  onClick={() => navigator.clipboard?.writeText(String(selectedNode.id))}
                 >
-                  ×
+                  <Copy className="h-2.5 w-2.5" />
                 </Button>
               </div>
-              <CardDescription>{selectedNode.type}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm max-h-72 overflow-y-auto">
+
               {selectedNode.description && (
                 <div>
-                  <span className="font-medium">Description:</span>
-                  <p className="text-muted-foreground mt-1">
-                    {selectedNode.description}
-                  </p>
+                  <span className="font-medium text-muted-foreground">Description:</span>
+                  <p className="mt-0.5 leading-relaxed">{selectedNode.description}</p>
                 </div>
               )}
+
+              {/* Labels */}
               <div>
-                <span className="font-medium">Labels:</span>
-                <div className="flex flex-wrap gap-1 mt-1">
+                <span className="font-medium text-muted-foreground">Labels:</span>
+                <div className="flex flex-wrap gap-1 mt-0.5">
                   {selectedNode.labels.map(label => (
-                    <span
-                      key={label}
-                      className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded text-xs"
-                    >
+                    <span key={label} className="px-1.5 py-0.5 bg-secondary text-secondary-foreground rounded text-[10px]">
                       {label}
                     </span>
                   ))}
                 </div>
               </div>
+
               {selectedNode.status && (
-                <div>
-                  <span className="font-medium">Status:</span>
-                  <span className="ml-2 text-muted-foreground">
-                    {selectedNode.status}
-                  </span>
+                <div className="flex gap-1">
+                  <span className="font-medium text-muted-foreground shrink-0">Status:</span>
+                  <span>{selectedNode.status}</span>
                 </div>
               )}
-              {selectedNode.ap_schema && (
-                <div>
-                  <span className="font-medium">Schema:</span>
-                  <span className="ml-2 text-muted-foreground">
-                    {selectedNode.ap_schema}
-                  </span>
-                </div>
-              )}
+
+              {/* Properties */}
               {selectedNode.properties && Object.keys(selectedNode.properties).length > 0 && (
                 <div>
-                  <span className="font-medium">Properties:</span>
-                  <div className="mt-1 space-y-1">
+                  <span className="font-medium text-muted-foreground">Properties:</span>
+                  <div className="mt-0.5 space-y-0.5 bg-muted/50 rounded p-1.5">
                     {Object.entries(selectedNode.properties).map(([k, v]) => (
-                      <div key={k} className="flex gap-1 text-xs">
-                        <span className="text-muted-foreground shrink-0">{k}:</span>
-                        <span className="break-all">{String(v)}</span>
+                      <div key={k} className="flex gap-1">
+                        <span className="text-muted-foreground shrink-0 font-mono text-[10px]">{k}:</span>
+                        <span className="break-all">{String(v).length > 80 ? String(v).slice(0, 80) + '…' : String(v)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Neighbours summary */}
+              {normalizedGraph?.neighbors?.get(String(selectedNode.id))?.size > 0 && (
+                <div>
+                  <span className="font-medium text-muted-foreground">
+                    Neighbours ({normalizedGraph.neighbors.get(String(selectedNode.id)).size}):
+                  </span>
+                  <div className="mt-0.5 space-y-0.5 max-h-24 overflow-y-auto">
+                    {[...normalizedGraph.neighbors.get(String(selectedNode.id))].slice(0, 15).map(nbId => {
+                      const nb = normalizedGraph.nodes.find(n => String(n.id) === nbId);
+                      if (!nb) return null;
+                      return (
+                        <button
+                          key={nbId}
+                          className="flex items-center gap-1 w-full hover:bg-accent rounded px-1 py-0.5 text-left"
+                          onClick={() => handleNodeClick(nb)}
+                        >
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getNodeColor(nb) }} />
+                          <span className="truncate">{nb.name || nb.id}</span>
+                          <Badge variant="outline" className="text-[8px] ml-auto shrink-0">{nb.type}</Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Community info */}
+              {communityMap && communityMap[selectedNode.id] != null && (
+                <div className="flex gap-1">
+                  <span className="font-medium text-muted-foreground shrink-0">Community:</span>
+                  <Badge style={{ backgroundColor: communityColors[communityMap[selectedNode.id]] }} className="text-white text-[10px]">
+                    Cluster #{communityMap[selectedNode.id]}
+                  </Badge>
+                </div>
+              )}
             </CardContent>
-            {currentViewId === 'DIGITAL_THREAD' && selectedNode.type && (
-              <div className="px-6 pb-4">
+
+            {/* Action buttons */}
+            <div className="px-4 pb-3 flex gap-1.5 shrink-0 border-t pt-2">
+              {currentViewId === 'DIGITAL_THREAD' && selectedNode.type && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full"
+                  className="flex-1 h-7 text-xs"
                   onClick={() => {
                     const type = selectedNode.type;
                     const id = selectedNode.id;
@@ -1885,13 +3093,39 @@ export default function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                     else navigate(`/engineer/graph`);
                   }}
                 >
-                  Open Detail Page
+                  <ExternalLink className="h-3 w-3 mr-1" /> Detail
                 </Button>
-              </div>
-            )}
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setPathSource(String(selectedNode.id));
+                  setPathSourceName(selectedNode.name || String(selectedNode.id));
+                  setSidebarTab('tools');
+                }}
+                title="Use as path source"
+              >
+                <Route className="h-3 w-3 mr-1" /> Path From
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setPathTarget(String(selectedNode.id));
+                  setPathTargetName(selectedNode.name || String(selectedNode.id));
+                  setSidebarTab('tools');
+                }}
+                title="Use as path target"
+              >
+                <Route className="h-3 w-3 mr-1" /> Path To
+              </Button>
+            </div>
           </Card>
         )}
       </div>
     </div>
   );
-}
+});

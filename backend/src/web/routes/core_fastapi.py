@@ -83,6 +83,12 @@ class Artifact(BaseModel):
     name: Optional[str] = "Unknown"
     type: Optional[str] = None
     comment: Optional[str] = None
+    description: Optional[str] = None
+    source_file: Optional[str] = None
+    ap_level: Optional[str] = None
+    product_id: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
 
 
 class Statistics(BaseModel):
@@ -446,7 +452,10 @@ async def get_artifacts(
             params["name"] = name
 
         if comment:
-            where_clauses.append("toLower(coalesce(n.comment, '')) CONTAINS toLower($comment)")
+            where_clauses.append(
+                "(toLower(coalesce(n.comment, '')) CONTAINS toLower($comment) "
+                "OR toLower(coalesce(n.description, '')) CONTAINS toLower($comment))"
+            )
             params["comment"] = comment
 
         where_str = " AND ".join(where_clauses)
@@ -458,7 +467,13 @@ async def get_artifacts(
         RETURN coalesce(n.id, elementId(n)) AS id,
                n.name AS name,
                labels(n)[0] AS type,
-               n.comment AS comment
+               n.comment AS comment,
+               n.description AS description,
+               n.source_file AS source_file,
+               n.ap_level AS ap_level,
+               n.product_id AS product_id,
+               n.status AS status,
+               n.priority AS priority
         ORDER BY {order_by}
         LIMIT $limit
         """
@@ -469,7 +484,13 @@ async def get_artifacts(
                 "id": r["id"],
                 "name": r["name"],
                 "type": r["type"],
-                "comment": r["comment"],
+                "comment": r.get("comment") or r.get("description") or None,
+                "description": r.get("description"),
+                "source_file": r.get("source_file"),
+                "ap_level": r.get("ap_level"),
+                "product_id": r.get("product_id"),
+                "status": r.get("status"),
+                "priority": r.get("priority"),
             }
             for r in result
             if r.get("name")  # Ensure name exists

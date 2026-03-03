@@ -10,18 +10,19 @@ Endpoints for Product Lifecycle Management operations:
 
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services import get_neo4j_service
+from src.web.dependencies import get_api_key
 
 # ============================================================================
 # ROUTER CONFIGURATION
 # ============================================================================
 
-router = APIRouter(prefix="/plm", tags=["PLM Integration"])
+router = APIRouter(prefix="/plm", tags=["PLM Integration"], dependencies=[Depends(get_api_key)])
 
 
 # ============================================================================

@@ -191,6 +191,89 @@ class Neo4jService:
             self._connection_verified = False
             logger.info("Neo4j service closed")
 
+    # ========================================================================
+    # Index & Constraint Management (Performance)
+    # ========================================================================
+
+    def ensure_indexes(self) -> int:
+        """
+        Ensure performance-critical indexes exist on commonly-queried node
+        properties.  Runs ``CREATE INDEX IF NOT EXISTS`` so it is safe to call
+        on every startup — already-existing indexes are silently skipped.
+
+        Returns:
+            Number of index statements executed.
+        """
+        # ── Property indexes on `id` for the most commonly queried labels ──
+        # The graph/data relationship query uses ``source.id IN $ids`` which
+        # benefits hugely from a per-label RANGE index on `id`.
+        LABELS_NEEDING_ID_INDEX = [
+            # Core MBSE / structural
+            "MBSEElement", "Class", "Package", "Property", "Association",
+            "Port", "Constraint", "Slot", "Comment",
+            "InstanceSpecification", "Connector", "Generalization",
+            # AP239 PLCS
+            "Requirement", "RequirementVersion", "Analysis", "AnalysisModel",
+            "Approval", "Document", "Activity", "Breakdown", "Verification",
+            # AP242 Design
+            "Part", "PartVersion", "Assembly", "Component", "Material",
+            "MaterialProperty", "GeometricModel", "ShapeRepresentation",
+            # AP243 MoSSEC Simulation
+            "SimulationDossier", "SimulationRun", "SimulationModel",
+            "SimulationArtifact", "EvidenceCategory", "ModelInstance",
+            "Study", "ActualActivity", "AssociativeModelNetwork",
+            "ModelType", "Method", "Result", "Context",
+            # OWL Ontology
+            "OWLClass", "OWLObjectProperty", "OWLDatatypeProperty",
+            "OntologyClass", "OntologyProperty", "Ontology",
+            "ExternalOwlClass",
+            # XSD Schema
+            "XSDSchema", "XSDElement", "XSDComplexType", "XSDSimpleType",
+            # OSLC
+            "ServiceProvider", "Service", "Catalog",
+            # People
+            "Person", "Organization",
+        ]
+
+        # ── Composite / extra indexes ──
+        EXTRA_INDEXES = [
+            # ap_level filter in graph/data endpoint
+            ("idx_node_ap_level", "CREATE INDEX idx_node_ap_level IF NOT EXISTS FOR (n:MBSEElement) ON (n.ap_level)"),
+            # name lookups / search
+            ("idx_node_name_mbse", "CREATE INDEX idx_node_name_mbse IF NOT EXISTS FOR (n:MBSEElement) ON (n.name)"),
+            ("idx_node_name_owlclass", "CREATE INDEX idx_node_name_owlclass IF NOT EXISTS FOR (n:OWLClass) ON (n.name)"),
+            ("idx_node_name_req", "CREATE INDEX idx_node_name_req IF NOT EXISTS FOR (n:Requirement) ON (n.name)"),
+            ("idx_node_name_part", "CREATE INDEX idx_node_name_part IF NOT EXISTS FOR (n:Part) ON (n.name)"),
+            # uid lookups used by CRUD methods
+            ("idx_node_uid_mbse", "CREATE INDEX idx_node_uid_mbse IF NOT EXISTS FOR (n:MBSEElement) ON (n.uid)"),
+        ]
+
+        count = 0
+        try:
+            with self.driver.session(database=self.database) as session:
+                for label in LABELS_NEEDING_ID_INDEX:
+                    safe_label = label.replace(" ", "_")
+                    stmt = (
+                        f"CREATE INDEX idx_{safe_label}_id IF NOT EXISTS "
+                        f"FOR (n:{label}) ON (n.id)"
+                    )
+                    session.run(stmt)
+                    count += 1
+
+                for name, stmt in EXTRA_INDEXES:
+                    session.run(stmt)
+                    count += 1
+
+            logger.info(f"✓ Ensured {count} Neo4j indexes (IF NOT EXISTS)")
+        except Exception as e:
+            logger.warning(f"Index creation partially failed (non-fatal): {e}")
+
+        return count
+
+    # Default query execution timeout (seconds).  Prevents runaway Cypher
+    # queries from holding a connection + server thread indefinitely.
+    DEFAULT_QUERY_TIMEOUT_S: int = 30
+
     def execute_query(
         self,
         query: str,
@@ -198,6 +281,7 @@ class Neo4jService:
         database: str = None,
         use_cache: bool = True,
         ttl: int = None,
+        timeout: int = None,
     ) -> List[Dict[str, Any]]:
         """
         Execute a Cypher query and return results as list of dictionaries.
@@ -209,6 +293,7 @@ class Neo4jService:
             database: Database name (defaults to instance database)
             use_cache: Whether to use cache (default: True)
             ttl: Cache TTL in seconds (default: 300s/5min for queries)
+            timeout: Query-level timeout in seconds (default: 30s)
 
         Returns:
             List of record dictionaries
@@ -266,9 +351,17 @@ class Neo4jService:
                     return cached_result
 
         # Execute query (cache miss or caching disabled)
+        query_timeout_s = timeout if timeout is not None else self.DEFAULT_QUERY_TIMEOUT_S
         try:
-            with self.driver.session(database=db) as session:
-                result = session.run(query, parameters if parameters_provided else None)
+            with self.driver.session(
+                database=db,
+                default_access_mode="READ",
+            ) as session:
+                result = session.run(
+                    query,
+                    parameters if parameters_provided else None,
+                    timeout=query_timeout_s,
+                )
                 # Consume result within context manager to prevent resource leaks
                 records = list(result)
                 result_dicts = [dict(record) for record in records]
@@ -425,7 +518,7 @@ class Neo4jService:
                 where_clauses.append(f"n.{key} = ${param_name}")
                 params[param_name] = value
 
-        where_clause = " AND " + " AND ".join(where_clauses) if where_clauses else ""
+        where_clause = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
         query = f"""
             MATCH (n:{label})
@@ -449,7 +542,7 @@ class Neo4jService:
                 where_clauses.append(f"n.{key} = ${param_name}")
                 params[param_name] = value
 
-        where_clause = " AND " + " AND ".join(where_clauses) if where_clauses else ""
+        where_clause = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
 
         query = f"""
             MATCH (n:{label})

@@ -5,14 +5,15 @@ Endpoints for monitoring and controlling Redis query cache
 
 from typing import Dict
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 
 from src.web.services.neo4j_service import get_neo4j_service
 from src.web.services.query_cache import get_query_cache
+from src.web.dependencies import get_api_key
 
 
-router = APIRouter(prefix="/cache", tags=["Cache Management"])
+router = APIRouter(prefix="/cache", tags=["Cache Management"], dependencies=[Depends(get_api_key)])
 
 
 # ============================================================================

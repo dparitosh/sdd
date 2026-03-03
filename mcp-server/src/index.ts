@@ -33,6 +33,7 @@ const neo4jClient = new Neo4jClient({
   uri: process.env.NEO4J_URI || '',
   user: process.env.NEO4J_USER || 'neo4j',
   password: process.env.NEO4J_PASSWORD || '',
+  database: process.env.NEO4J_DATABASE || undefined,
 });
 
 // Define available tools
@@ -272,6 +273,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 // Handle tool execution
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+
+  // Coerce numeric args to integers (MCP protocol may send floats like 5.0)
+  if (args?.limit != null) args.limit = Math.floor(args.limit as number);
+  if (args?.depth != null) args.depth = Math.floor(args.depth as number);
+  if (args?.maxNodes != null) args.maxNodes = Math.floor(args.maxNodes as number);
 
   try {
     switch (name) {

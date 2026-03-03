@@ -9,14 +9,14 @@ import os
 import importlib
 from typing import Annotated, Any, Literal, Optional, TypedDict
 
-import requests
+import httpx
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
     HumanMessage,
     SystemMessage,
 )
-from langchain_core.tools import Tool
+from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from loguru import logger
@@ -59,7 +59,7 @@ def _resolve_llm(api_key: Optional[str] = None):
             ) from e
 
         base_url = os.getenv("OLLAMA_BASE_URL") or "http://localhost:11434"
-        model = os.getenv("OLLAMA_MODEL") or "llama3.1"
+        model = os.getenv("OLLAMA_CHAT_MODEL") or os.getenv("OLLAMA_MODEL") or "llama3:latest"
         temperature = _env_float("OLLAMA_TEMPERATURE", 0.7)
         return ChatOllama(base_url=base_url, model=model, temperature=temperature)
 
@@ -116,92 +116,99 @@ class MBSETools:
         # FastAPI protects most endpoints via X-API-Key when API_KEY is configured.
         # Default to env API_KEY so agents work in secured deployments.
         resolved_api_key = api_key or os.getenv("API_KEY")
-        self.session = requests.Session()
+        # Use an async HTTP client to avoid blocking the event loop when tools are invoked
+        self.client = httpx.AsyncClient(timeout=30.0)
         if resolved_api_key:
-            self.session.headers.update({"X-API-Key": resolved_api_key})
+            self.client.headers.update({"X-API-Key": resolved_api_key})
 
-    def search_artifacts(self, query: str, limit: int = 10) -> str:
-        """Search for artifacts by name or description"""
+    async def aclose(self):
+        """Close the underlying httpx client to release connections."""
+        await self.client.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        await self.aclose()
+
+    async def search_artifacts(self, query: str, limit: int = 10) -> str:
+        """Search for artifacts by name or description (async)
+
+        Running this in an async httpx client prevents blocking the FastAPI event loop
+        when the agent invokes tools that call back into the same service.
+        """
         try:
-            response = self.session.post(
-                f"{self.api_core}/search", json={"name": query, "limit": limit}
-            )
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.post(f"{self.api_core}/search", json={"name": query, "limit": limit})
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error searching artifacts: {str(e)}"
 
-    def get_artifact_details(self, artifact_type: str, artifact_id: str) -> str:
-        """Get detailed information about a specific artifact"""
+    async def get_artifact_details(self, artifact_type: str, artifact_id: str) -> str:
+        """Get detailed information about a specific artifact (async)"""
         try:
-            response = self.session.get(
-                f"{self.api_core}/artifacts/{artifact_type}/{artifact_id}"
-            )
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.get(f"{self.api_core}/artifacts/{artifact_type}/{artifact_id}")
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error getting artifact details: {str(e)}"
 
-    def get_traceability(
+    async def get_traceability(
         self,
         source_type: Optional[str] = None,
         target_type: Optional[str] = None,
         depth: int = 2,
     ) -> str:
-        """Get traceability matrix between artifacts"""
+        """Get traceability matrix between artifacts (async)"""
         try:
             params: dict[str, Any] = {"depth": depth}
             if source_type:
                 params["source_type"] = source_type
             if target_type:
                 params["target_type"] = target_type
-            response = self.session.get(f"{self.api_v1}/traceability", params=params)
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.get(f"{self.api_v1}/traceability", params=params)
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error getting traceability: {str(e)}"
 
-    def get_impact_analysis(self, node_id: str, depth: int = 3) -> str:
-        """Analyze change impact for a node"""
+    async def get_impact_analysis(self, node_id: str, depth: int = 3) -> str:
+        """Analyze change impact for a node (async)"""
         try:
-            response = self.session.get(
-                f"{self.api_v1}/impact/{node_id}", params={"depth": depth}
-            )
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.get(f"{self.api_v1}/impact/{node_id}", params={"depth": depth})
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error analyzing impact: {str(e)}"
 
-    def get_parameters(self, class_name: Optional[str] = None, limit: int = 20) -> str:
-        """Extract design parameters"""
+    async def get_parameters(self, class_name: Optional[str] = None, limit: int = 20) -> str:
+        """Extract design parameters (async)"""
         try:
             params: dict[str, Any] = {"limit": limit}
             if class_name:
                 params["class"] = class_name
-            response = self.session.get(f"{self.api_v1}/parameters", params=params)
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.get(f"{self.api_v1}/parameters", params=params)
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error getting parameters: {str(e)}"
 
-    def execute_cypher(self, query: str) -> str:
-        """Execute custom Cypher query"""
+    async def execute_cypher(self, query: str) -> str:
+        """Execute custom Cypher query (async)"""
         try:
-            response = self.session.post(
-                f"{self.api_core}/cypher", json={"query": query}
-            )
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.post(f"{self.api_core}/cypher", json={"query": query})
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error executing Cypher: {str(e)}"
 
-    def get_statistics(self) -> str:
-        """Get database statistics"""
+    async def get_statistics(self) -> str:
+        """Get database statistics (async)"""
         try:
-            response = self.session.get(f"{self.api_core}/stats")
-            response.raise_for_status()
-            return json.dumps(response.json(), indent=2)
-        except requests.RequestException as e:
+            r = await self.client.get(f"{self.api_core}/stats")
+            r.raise_for_status()
+            return json.dumps(r.json(), indent=2)
+        except httpx.RequestError as e:
             return f"Error getting statistics: {str(e)}"
 
 
@@ -232,41 +239,42 @@ class MBSEAgent:
         # Defaults to OpenAI to preserve existing behavior.
         self.llm = _resolve_llm(api_key=api_key)
 
-        # Create LangChain tools
+        # Create LangChain tools — use StructuredTool.from_function with coroutine= so
+        # async tool methods are properly awaited inside the React agent event loop.
         self.tools = [
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.search_artifacts,
                 name="search_artifacts",
-                func=self.tools_api.search_artifacts,
                 description="Search for artifacts (classes, packages, requirements) by name. Input: query string, Returns: JSON list of matching artifacts",
             ),
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.get_artifact_details,
                 name="get_artifact_details",
-                func=self.tools_api.get_artifact_details,
                 description="Get detailed information about a specific artifact. Input: artifact_type (Class/Package/Requirement), artifact_id, Returns: JSON with full details",
             ),
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.get_traceability,
                 name="get_traceability",
-                func=self.tools_api.get_traceability,
                 description="Get traceability matrix between artifacts (e.g., requirements to design). Input: source_type, target_type, depth, Returns: JSON traceability matrix",
             ),
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.get_impact_analysis,
                 name="get_impact_analysis",
-                func=self.tools_api.get_impact_analysis,
                 description="Analyze change impact for a node showing upstream and downstream dependencies. Input: node_id, depth, Returns: JSON impact analysis",
             ),
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.get_parameters,
                 name="get_parameters",
-                func=self.tools_api.get_parameters,
                 description="Extract design parameters from classes. Input: class_name (optional), limit, Returns: JSON list of parameters",
             ),
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.execute_cypher,
                 name="execute_cypher",
-                func=self.tools_api.execute_cypher,
                 description="Execute custom Cypher query for complex analysis. Input: cypher query string, Returns: JSON query results",
             ),
-            Tool(
+            StructuredTool.from_function(
+                coroutine=self.tools_api.get_statistics,
                 name="get_statistics",
-                func=self.tools_api.get_statistics,
                 description="Get database statistics (node counts, relationships, types). Input: none, Returns: JSON statistics",
             ),
         ]
@@ -356,34 +364,32 @@ Based on the task, decide which tool to use next. If you have enough information
         return "respond"
 
     def _execute_tool(self, state: AgentState) -> AgentState:
-        """Execute the selected tool"""
+        """Execute the selected tool (legacy helper — real execution goes through create_react_agent).
+
+        Uses tool.run() which handles both sync and async StructuredTool instances.
+        """
         next_action = state["next_action"]
 
-        # Parse tool name and arguments from LLM response
-        tool_name = None
-        tool_func = None
-
+        # Parse tool name from LLM response
+        matched_tool = None
         for tool in self.tools:
             if tool.name in next_action.lower():
-                tool_name = tool.name
-                tool_func = tool.func
+                matched_tool = tool
                 break
 
-        if not tool_name or not tool_func:
+        if not matched_tool:
             state["error"] = "Could not determine which tool to use"
             return state
 
-        # Execute tool directly
         try:
-            # For simplified execution, call tool function directly
-            result = tool_func()
+            # StructuredTool.run() works for both sync and coroutine-backed tools
+            result = matched_tool.run({})
 
-            state["tool_results"][tool_name] = result
+            state["tool_results"][matched_tool.name] = result
             state["reasoning_steps"].append(
-                f"Executed {tool_name}: Got {len(str(result))} chars of data"
+                f"Executed {matched_tool.name}: Got {len(str(result))} chars of data"
             )
-
-            logger.info(f"Tool execution: {tool_name} succeeded")
+            logger.info(f"Tool execution: {matched_tool.name} succeeded")
         except Exception as e:  # noqa: BLE001 pylint: disable=broad-exception-caught
             state["error"] = str(e)
             logger.error(f"Tool execution failed: {e}")

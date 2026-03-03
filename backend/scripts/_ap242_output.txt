@@ -1,0 +1,54 @@
+=== PRODUCT_DEFINITION_FORMATION ===
+
+=== NEXT_ASSEMBLY_USAGE_OCCURRENCE ===
+  #382 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'LAMINATED ROTOR CORE',
+'LAMINATED ROTOR CORE','LAMINATED ROTOR CORE',#835674,#835675,''
+  #383 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Rotor Shaft Machined',
+'Rotor Shaft Machined','Rotor Shaft Machined',#835674,#835676,''
+  #384 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Rotor Core Assembly with Shaft',
+'Rotor Core Assembly with Shaft','Rotor Core Assembly with Shaft',#835673,
+#835674,''
+  #385 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Coil for Three Phase Winding',
+'Coil for Three Phase Winding','Coil for Three Phase Winding',#835677,#835678,
+''
+  #386 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Laminated Stator Core',
+'Laminated Stator Core','Laminated Stator Core',#835677,#835679,''
+  #387 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Stator Assembly','Stator Assembly',
+'Stator Assembly',#835673,#835677,''
+  #388 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'External Circlip',
+'External Circlip','External Circlip',#835673,#835680,''
+  #389 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Bearing Holder_Machined',
+'Bearing Holder_Machined','Bearing Holder_Machined',#835673,#835681,''
+  #390 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Centrifugal_Fan','Centrifugal_Fan',
+'Centrifugal_Fan',#835673,#835682,''
+  #391 [INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp]: 'Rotor Shaft Key','Rotor Shaft Key',
+'Rotor Shaft Key',#835673,#835683,''
+
+=== APPLICATION_CONTEXT ===
+  #520: 'managed model based 3d engineering'
+  #520: 'managed model based 3d engineering'
+  #283: 'managed model based 3d engineering'
+
+=== Files with NAUO ===
+  INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_9cfff885.stp: 38 NAUO
+  INDUCTION MOTOR ASSEMBLY 5HP (2022_12_17 01_44_39 UTC)_5fda08bd.stp: 38 NAUO
+  motor_assy_temp_1675947e.stp: 38 NAUO
+
+=== Unique PRODUCT names ===
+  000700_A;1-Rotor Shaft Key: 2
+  000699_A;1-SKF_6306-2Z7097_Prt3: 1
+  000680_A;1-SKF_6306-2Z7097_Prt3: 1
+  000681_A;1-External Circlip: 1
+  000686_A;1-Terminal Box_Machined: 1
+  000688_A;1-Bearing Holder_Machined: 1
+  000678_A;1-SKF_6306-2Z7097_Prt2: 1
+  000701_A;1-SKF_6205-2Z16653_Prt1: 1
+  000698_A;1-SKF_6306-2Z7097_Prt2: 1
+  000697_A;1-SKF_6306-2Z7097_Prt1: 1
+  000679_A;1-End Bell_Machined: 1
+  000692_A;1-Flange_Machined: 1
+  000682_A;1-Laminated Stator Core: 1
+  000684_B;1-Rotor Shaft Machined: 1
+  000683_A;1-Centrifugal Fan: 1
+  000693_A;1-Fan Cover: 1
+  000689_A;1-Motor Cover Machined: 1

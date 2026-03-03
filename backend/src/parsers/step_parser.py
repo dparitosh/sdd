@@ -26,8 +26,8 @@ import re
 import xml.etree.ElementTree as ET
 
 
-_PART21_SCHEMA_RE = re.compile(r"FILE_SCHEMA\(\(\s*'([^']+)'\s*\)\)\s*;", re.IGNORECASE)
-_PART21_FILENAME_RE = re.compile(r"FILE_NAME\(\s*'([^']*)'\s*,", re.IGNORECASE)
+_PART21_SCHEMA_RE = re.compile(r"FILE_SCHEMA\s*\(\s*\(\s*'([^']+)'\s*\)\s*\)\s*;", re.IGNORECASE)
+_PART21_FILENAME_RE = re.compile(r"FILE_NAME\s*\(\s*'([^']*)'\s*,", re.IGNORECASE)
 
 
 @dataclass(frozen=True)

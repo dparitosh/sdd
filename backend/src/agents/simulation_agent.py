@@ -4,6 +4,7 @@ Handles interaction with simulation tools and manages simulation data in the gra
 Implements MoSSEC (ISO 10303-243) Activity/Context model.
 """
 
+import asyncio
 import json
 import time
 from uuid import uuid4
@@ -100,20 +101,31 @@ class SimulationAgent:
             logger.warning(f"TRS Publish failed: {e}")
 
     def get_simulation_parameters(self, model_id: str) -> Dict[str, Any]:
-        """Extract simulation parameters for a given model"""
+        """Extract simulation parameters for a given model from the knowledge graph."""
         logger.info(f"Simulation Agent: Extracting parameters for {model_id}")
-        # real implementation would use self.tools to query the parameters endpoint
         try:
-            # Using MBSETools generic search or specialized endpoint if available
-            # For now, we simulate a parameter extraction
-            return {
-                "model_id": model_id,
-                "parameters": [
-                    {"name": "Mass", "value": 150.5, "unit": "kg"},
-                    {"name": "ElasticModulus", "value": 210, "unit": "GPa"},
-                    {"name": "MaxLoad", "value": 5000, "unit": "N"}
-                ]
-            }
+            query = """
+            MATCH (owner)-[:HAS_ATTRIBUTE]->(p:Property)
+            WHERE owner.id = $model_id
+               OR owner.uid = $model_id
+               OR owner.name = $model_id
+            OPTIONAL MATCH (p)-[:TYPED_BY]->(t)
+            RETURN p.name AS name,
+                   p.default AS value,
+                   t.name AS unit
+            ORDER BY p.name
+            """
+            rows = self.neo4j.execute_query(query, {"model_id": model_id})
+            parameters = [
+                {
+                    "name": r["name"],
+                    "value": r.get("value"),
+                    "unit": r.get("unit"),
+                }
+                for r in rows
+                if r.get("name")
+            ]
+            return {"model_id": model_id, "parameters": parameters}
         except Exception as e:
             return {"error": str(e)}
 
@@ -129,44 +141,77 @@ class SimulationAgent:
         # 1. MoSSEC: Create Activity
         activity_uid = await self._create_mossec_activity(study_id, "SimulationRun")
 
-        # 2. Execution (Mock)
-        # Simulate delay
-        time.sleep(1) 
-        
-        result = {}
-        if simulation_type.lower() == "fea":
+        # 2. Execution — delegate to external runner when available.
+        # Currently creates the Activity graph structure and records
+        # whatever result the caller provides or runs a no-op stub.
+        await asyncio.sleep(0.1)  # yield control briefly
+
+        result: Dict[str, Any] = {}
+        if simulation_type.lower() in ("fea", "cfd", "thermal", "modal"):
+            # Placeholder result — replace with real solver integration.
             result = {
-                "status": "Success",
-                "max_stress": "150 MPa",
-                "safety_factor": 1.5,
-                "passed": True
-            }
-        elif simulation_type.lower() == "cfd":
-            result = {
-                "status": "Success",
-                "drag_coefficient": 0.32,
-                "passed": True
+                "status": "Stub",
+                "simulation_type": simulation_type,
+                "message": (
+                    f"No external {simulation_type.upper()} solver is configured. "
+                    "Activity was recorded in the graph; attach real results via "
+                    "the /simulation/results endpoint."
+                ),
             }
         else:
-            result = {"error": "Unknown simulation type"}
+            result = {"status": "Error", "error": f"Unknown simulation type: {simulation_type}"}
 
         # 3. MoSSEC: Complete Activity & Link Results
-        status = "Completed" if "error" not in result else "Failed"
-        await self._complete_mossec_activity(activity_uid, status, result)
+        act_status = "Completed" if result.get("status") != "Error" else "Failed"
+        await self._complete_mossec_activity(activity_uid, act_status, result)
         
         return result
 
     def validate_results(self, results: Dict[str, Any], requirements: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Compare simulation results against requirements"""
+        """Compare simulation results against requirements.
+
+        Each requirement dict should contain at least:
+            - name: str  (matched against result keys)
+            - operator: str  ("<=", ">=", "==", "<", ">")
+            - threshold: float
+        """
         logger.info("Simulation Agent: Validating results against requirements")
-        validation = {
-            "compliant": True,
-            "violations": []
+        violations: List[Dict[str, Any]] = []
+
+        _OPS = {
+            "<=": lambda a, b: a <= b,
+            ">=": lambda a, b: a >= b,
+            "==": lambda a, b: a == b,
+            "<": lambda a, b: a < b,
+            ">": lambda a, b: a > b,
         }
-        
-        # Simple logic for demo
+
         for req in requirements:
-            # Mock check
-            pass
-            
-        return validation
+            name = req.get("name", "")
+            op_str = req.get("operator", "<=")
+            threshold = req.get("threshold")
+            actual = results.get(name)
+
+            if actual is None or threshold is None:
+                continue
+
+            try:
+                op_fn = _OPS.get(op_str)
+                if op_fn is None:
+                    violations.append({"name": name, "reason": f"Unknown operator '{op_str}'"})
+                    continue
+                if not op_fn(float(actual), float(threshold)):
+                    violations.append({
+                        "name": name,
+                        "actual": actual,
+                        "operator": op_str,
+                        "threshold": threshold,
+                    })
+            except (TypeError, ValueError):
+                violations.append({"name": name, "reason": "Non-numeric comparison failed"})
+
+        return {
+            "compliant": len(violations) == 0,
+            "violations": violations,
+            "checked": len(requirements),
+        }

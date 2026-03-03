@@ -4,6 +4,7 @@ Uses Python's built-in functools.lru_cache and custom TTL cache
 """
 
 import time
+import threading
 from datetime import datetime, timedelta
 from functools import lru_cache, wraps
 from typing import Any, Callable, Optional
@@ -14,7 +15,7 @@ from loguru import logger
 class TTLCache:
     """
     Time-To-Live cache that expires entries after a specified duration.
-    Thread-safe simple implementation for single-process applications.
+    Thread-safe implementation using a reentrant lock.
     """
 
     def __init__(self, default_ttl_seconds: int = 300):
@@ -28,6 +29,7 @@ class TTLCache:
         self.cache = {}
         self.timestamps = {}
         self.custom_ttls = {}  # Store per-key custom TTLs
+        self._lock = threading.RLock()
 
     def get(self, key: str, default: Any = None) -> Optional[Any]:
         """
@@ -40,17 +42,18 @@ class TTLCache:
         Returns:
             Cached value, default value if expired/missing
         """
-        if key not in self.cache:
-            return default
+        with self._lock:
+            if key not in self.cache:
+                return default
 
-        # Check if expired (use custom TTL if set, otherwise default)
-        timestamp = self.timestamps.get(key, 0)
-        ttl = self.custom_ttls.get(key, self.default_ttl)
-        if time.time() - timestamp > ttl:
-            self.delete(key)
-            return default
+            # Check if expired (use custom TTL if set, otherwise default)
+            timestamp = self.timestamps.get(key, 0)
+            ttl = self.custom_ttls.get(key, self.default_ttl)
+            if time.time() - timestamp > ttl:
+                self.delete(key)
+                return default
 
-        return self.cache[key]
+            return self.cache[key]
 
     def set(self, key: str, value: Any, ttl: int = None):
         """
@@ -61,48 +64,53 @@ class TTLCache:
             value: Value to cache
             ttl: Custom TTL in seconds (optional, uses default if not provided)
         """
-        self.cache[key] = value
-        self.timestamps[key] = time.time()
+        with self._lock:
+            self.cache[key] = value
+            self.timestamps[key] = time.time()
 
-        # Store custom TTL if provided
-        if ttl is not None:
-            self.custom_ttls[key] = ttl
-        elif key in self.custom_ttls:
-            # Remove custom TTL if key is being reset with default
-            del self.custom_ttls[key]
+            # Store custom TTL if provided
+            if ttl is not None:
+                self.custom_ttls[key] = ttl
+            elif key in self.custom_ttls:
+                # Remove custom TTL if key is being reset with default
+                del self.custom_ttls[key]
 
     def delete(self, key: str):
         """Delete key from cache"""
-        self.cache.pop(key, None)
-        self.timestamps.pop(key, None)
-        self.custom_ttls.pop(key, None)
+        with self._lock:
+            self.cache.pop(key, None)
+            self.timestamps.pop(key, None)
+            self.custom_ttls.pop(key, None)
 
     def clear(self):
         """Clear all cache entries"""
-        self.cache.clear()
-        self.timestamps.clear()
-        self.custom_ttls.clear()
-        logger.info("Cache cleared")
+        with self._lock:
+            self.cache.clear()
+            self.timestamps.clear()
+            self.custom_ttls.clear()
+            logger.info("Cache cleared")
 
     def size(self) -> int:
         """Get number of cached entries"""
-        return len(self.cache)
+        with self._lock:
+            return len(self.cache)
 
     def cleanup_expired(self):
         """Remove expired entries from cache"""
-        current_time = time.time()
-        expired_keys = []
+        with self._lock:
+            current_time = time.time()
+            expired_keys = []
 
-        for key, timestamp in self.timestamps.items():
-            ttl = self.custom_ttls.get(key, self.default_ttl)
-            if current_time - timestamp > ttl:
-                expired_keys.append(key)
+            for key, timestamp in self.timestamps.items():
+                ttl = self.custom_ttls.get(key, self.default_ttl)
+                if current_time - timestamp > ttl:
+                    expired_keys.append(key)
 
-        for key in expired_keys:
-            self.delete(key)
+            for key in expired_keys:
+                self.delete(key)
 
-        if expired_keys:
-            logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
+            if expired_keys:
+                logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
 
 
 # Global cache instance

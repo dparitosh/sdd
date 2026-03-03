@@ -84,18 +84,17 @@ class BaselineOrchestrator(Orchestrator):
                 goal, tool_registry=self.tool_registry, retriever=self.retriever
             )
 
-            # Re-plan here to provide reflector inputs.
+            # Build a plan for the reflector to inspect — but do NOT re-execute
+            # tools, since agent.run() already executed them above.
             last_plan = self.planner.plan(goal, context=None)
             last_results = []
             for step in last_plan.steps:
                 if step.tool_call is None:
                     continue
-                try:
-                    last_results.append(self.tool_registry.call(step.tool_call))
-                except Exception as e:  # noqa: BLE001
-                    last_results.append(
-                        ToolResult(name=step.tool_call.name, output=f"Error: {e}")
-                    )
+                # Provide a synthetic result so the reflector has something to review.
+                last_results.append(
+                    ToolResult(name=step.tool_call.name, output="(executed by agent)")
+                )
 
             reflection = self.reflector.reflect(
                 goal=goal,

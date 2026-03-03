@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { searchArtifacts } from '@/services/query.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
@@ -12,12 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@ui/table';
 import { Badge } from '@ui/badge';
 import { Skeleton } from '@ui/skeleton';
-import { Search, ExternalLink, List, Network, ChevronLeft, ChevronRight, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Loader2, Download } from 'lucide-react';
+import { Search, ExternalLink, Eye, List, Network, ChevronLeft, ChevronRight, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Loader2, Download } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { toast } from 'sonner';
-const ARTIFACT_TYPES = ['All', 'Class', 'Package', 'Property', 'Association', 'Requirement', 'Constraint', 'Enumeration', 'Port', 'Slot', 'InstanceSpecification'];
+const ARTIFACT_TYPES = ['All', 'Class', 'Package', 'Property', 'Association', 'Requirement', 'Constraint', 'Enumeration', 'Port', 'Slot', 'InstanceSpecification', 'StepFile', 'StepEntityType', 'AP242Product', 'AP242AssemblyOccurrence', 'AP242ProductDefinition', 'AP242Shape', 'Part', 'RequirementSpecification', 'ReqIFFile', 'SimulationDossier', 'SimulationRun'];
 const NODE_TYPE_PROPERTIES = {
-  'All': ['name', 'comment', 'id'],
+  'All': ['name', 'comment', 'id', 'description'],
   'Class': ['name', 'comment', 'qualified_name', 'id', 'isAbstract', 'visibility'],
   'Package': ['name', 'comment', 'qualified_name', 'id', 'uri'],
   'Property': ['name', 'comment', 'qualified_name', 'id', 'aggregation', 'isDerived'],
@@ -27,7 +28,18 @@ const NODE_TYPE_PROPERTIES = {
   'Enumeration': ['name', 'comment', 'qualified_name', 'id'],
   'Port': ['name', 'comment', 'id', 'direction'],
   'Slot': ['name', 'comment', 'id', 'value'],
-  'InstanceSpecification': ['name', 'comment', 'id']
+  'InstanceSpecification': ['name', 'comment', 'id'],
+  'StepFile': ['name', 'id', 'ap_schema', 'source_file'],
+  'StepEntityType': ['name', 'id', 'description'],
+  'AP242Product': ['name', 'id', 'product_id', 'description', 'source_file'],
+  'AP242AssemblyOccurrence': ['name', 'id', 'nauo_id', 'source_file'],
+  'AP242ProductDefinition': ['name', 'id', 'source_file'],
+  'AP242Shape': ['name', 'id', 'source_file'],
+  'Part': ['name', 'id', 'description', 'status'],
+  'RequirementSpecification': ['name', 'id', 'revision'],
+  'ReqIFFile': ['name', 'id', 'source_tool'],
+  'SimulationDossier': ['name', 'id', 'description', 'status'],
+  'SimulationRun': ['name', 'id', 'status']
 };
 const SEARCH_OPERATORS = [{
   value: 'contains',
@@ -50,6 +62,7 @@ export default function AdvancedSearch({
     title = "Advanced Search",
     enableHeader = true
 } = {}) {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useState({
     type: defaultType,
     name: '',
@@ -330,17 +343,21 @@ export default function AdvancedSearch({
             </DropdownMenuItem>
         </DropdownMenuContent>
     </DropdownMenu>
-    <Tabs value={viewMode} onValueChange={v => setViewMode(v)}><TabsList><TabsTrigger value="table" className="flex items-center gap-1"><List className="h-4 w-4" />Table</TabsTrigger><TabsTrigger value="graph" className="flex items-center gap-1"><Network className="h-4 w-4" />Graph</TabsTrigger></TabsList></Tabs></div></div></CardHeader><CardContent>{!isLoading && <PaginationControls />}{isLoading ? <div className="space-y-2 mt-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div> : results && results.length > 0 ? <><Tabs value={viewMode}><TabsContent value="table" className="mt-0"><div className="rounded-lg border-2 shadow-sm overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow className="hover:bg-muted/50"><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('type')}><div className="flex items-center font-semibold">Type<SortIcon field="type" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('name')}><div className="flex items-center font-semibold">Name<SortIcon field="name" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('id')}><div className="flex items-center font-semibold">UID<SortIcon field="id" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('comment')}><div className="flex items-center font-semibold">Comment<SortIcon field="comment" /></div></TableHead><TableHead className="w-25"><div className="font-semibold">Actions</div></TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((artifact, index) => <TableRow key={artifact.id || artifact.uid || index}><TableCell><Badge variant="outline">{artifact.type}</Badge></TableCell><TableCell className="font-medium">{artifact.name || '(unnamed)'}</TableCell><TableCell><code className="text-xs">{artifact.id || artifact.uid}</code></TableCell><TableCell className="max-w-md truncate">{artifact.comment || '-'}</TableCell><TableCell><Button variant="ghost" size="sm" disabled={!artifact.id && !artifact.uid} onClick={() => {
+    <Tabs value={viewMode} onValueChange={v => setViewMode(v)}><TabsList><TabsTrigger value="table" className="flex items-center gap-1"><List className="h-4 w-4" />Table</TabsTrigger><TabsTrigger value="graph" className="flex items-center gap-1"><Network className="h-4 w-4" />Graph</TabsTrigger></TabsList></Tabs></div></div></CardHeader><CardContent>{!isLoading && <PaginationControls />}{isLoading ? <div className="space-y-2 mt-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div> : results && results.length > 0 ? <><Tabs value={viewMode}><TabsContent value="table" className="mt-0"><div className="rounded-lg border-2 shadow-sm overflow-hidden"><Table><TableHeader className="bg-muted/50"><TableRow className="hover:bg-muted/50"><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('type')}><div className="flex items-center font-semibold">Type<SortIcon field="type" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('name')}><div className="flex items-center font-semibold">Name<SortIcon field="name" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('id')}><div className="flex items-center font-semibold">UID<SortIcon field="id" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('comment')}><div className="flex items-center font-semibold">Comment<SortIcon field="comment" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('description')}><div className="flex items-center font-semibold">Description<SortIcon field="description" /></div></TableHead><TableHead className="cursor-pointer select-none hover:bg-muted transition-colors" onClick={() => handleSort('source_file')}><div className="flex items-center font-semibold">Source<SortIcon field="source_file" /></div></TableHead><TableHead className="w-25"><div className="font-semibold">Actions</div></TableHead></TableRow></TableHeader><TableBody>{paginatedResults.map((artifact, index) => <TableRow key={artifact.id || artifact.uid || index}><TableCell><Badge variant="outline">{artifact.type}</Badge></TableCell><TableCell className="font-medium">{artifact.name || '(unnamed)'}</TableCell><TableCell><code className="text-xs">{artifact.id || artifact.uid}</code></TableCell><TableCell className="max-w-md truncate">{artifact.comment || '-'}</TableCell><TableCell className="max-w-sm truncate">{artifact.description || '-'}</TableCell><TableCell className="max-w-xs truncate text-xs">{artifact.source_file || '-'}</TableCell><TableCell className="flex items-center gap-1">{(() => {
                           const artifactId = artifact.id || artifact.uid;
-                          const artifactType = artifact.type.toLowerCase();
-                          if (artifactId) {
-                            if (['class', 'package'].includes(artifactType)) {
-                              window.open(`/api/${artifactType}/${encodeURIComponent(artifactId)}`, '_blank');
-                            } else {
-                              window.alert(`View ${artifact.type} "${artifact.name}" in Graph Browser or use the REST API Explorer to query by ID: ${artifactId}`);
-                            }
-                          }
-                        }}><ExternalLink className="h-4 w-4" /></Button></TableCell></TableRow>)}</TableBody></Table></div></TabsContent><TabsContent value="graph" className="mt-0"><div className="border rounded-lg bg-muted/20 overflow-hidden"><SearchResultsGraph results={sortedResults} /></div></TabsContent></Tabs><div className="mt-6 pt-4 border-t-2"><PaginationControls /></div></> : <div className="flex h-32 items-center justify-center text-muted-foreground">{results ? 'No results found' : 'Enter search criteria and click Search'}</div>}</CardContent></Card></div>;
+                          const t = artifact.type;
+                          const viewRoute = (() => {
+                            if (t === 'SimulationDossier') return `/engineer/simulation/dossiers/${encodeURIComponent(artifactId)}`;
+                            if (t === 'SimulationRun') return `/engineer/simulation/runs/${encodeURIComponent(artifactId)}`;
+                            if (t === 'Requirement' || t === 'RequirementSpecification' || t === 'ReqIFFile') return `/engineer/requirements`;
+                            if (t === 'Part' || t === 'AP242Product' || t === 'AP242AssemblyOccurrence' || t === 'AP242ProductDefinition' || t === 'AP242Shape') return `/engineer/ap242/parts`;
+                            return null;
+                          })();
+                          return <>
+                            {viewRoute && <Button variant="ghost" size="sm" title="View details" disabled={!artifactId} onClick={() => navigate(viewRoute)}><Eye className="h-4 w-4" /></Button>}
+                            <Button variant="ghost" size="sm" title="Open in Graph Browser" disabled={!artifactId} onClick={() => navigate(`/engineer/graph?focus=${encodeURIComponent(artifactId)}`)}><ExternalLink className="h-4 w-4" /></Button>
+                          </>;
+                        })()}</TableCell></TableRow>)}</TableBody></Table></div></TabsContent><TabsContent value="graph" className="mt-0"><div className="border rounded-lg bg-muted/20 overflow-hidden"><SearchResultsGraph results={sortedResults} /></div></TabsContent></Tabs><div className="mt-6 pt-4 border-t-2"><PaginationControls /></div></> : <div className="flex h-32 items-center justify-center text-muted-foreground">{results ? 'No results found' : 'Enter search criteria and click Search'}</div>}</CardContent></Card></div>;
 }
 
 // Graph visualization component for search results
@@ -379,6 +396,17 @@ function SearchResultsGraph({ results }) {
     'XSDElement': '#84cc16',
     'DomainConcept': '#f97316',
     'Requirement': '#10b981',
+    'StepFile': '#0ea5e9',
+    'StepEntityType': '#06b6d4',
+    'AP242Product': '#2563eb',
+    'AP242AssemblyOccurrence': '#7c3aed',
+    'AP242ProductDefinition': '#4f46e5',
+    'AP242Shape': '#0891b2',
+    'Part': '#059669',
+    'RequirementSpecification': '#d97706',
+    'ReqIFFile': '#9333ea',
+    'SimulationDossier': '#dc2626',
+    'SimulationRun': '#ea580c',
   };
   
   const graphData = useMemo(() => {

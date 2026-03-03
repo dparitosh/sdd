@@ -1,0 +1,78 @@
+STEP Entity Types (top 40):
+-----------------------------------------------------------------
+  SHAPE_ASPECT                                          46425
+  SHAPE_REPRESENTATION_RELATIONSHIP                     41372
+  TESSELLATED_SHAPE_REPRESENTATION                      21128
+  B_SPLINE_CURVE_WITH_KNOTS                             14583
+  ORIENTED_EDGE                                         12942
+  EDGE_CURVE                                            12942
+  STYLED_ITEM                                            8539
+  PLANE                                                  7837
+  VERTEX_POINT                                           6326
+  PRESENTATION_STYLE_ASSIGNMENT                          6254
+  COORDINATES_LIST                                       4651
+  CARTESIAN_POINT                                        4338
+  PROPERTY_DEFINITION_REPRESENTATION                     3892
+  PROPERTY_DEFINITION                                    3892
+  REPRESENTATION                                         3892
+  FILL_AREA_STYLE                                        3452
+  FILL_AREA_STYLE_COLOUR                                 3452
+  SURFACE_SIDE_STYLE                                     3355
+  COMPLEX_TRIANGULATED_FACE                              3355
+  SURFACE_STYLE_FILL_AREA                                3355
+  TESSELLATED_SHELL                                      3355
+  SURFACE_STYLE_USAGE                                    3355
+  MANIFOLD_SURFACE_SHAPE_REPRESENTATION                  2175
+  GEOMETRIC_ITEM_SPECIFIC_USAGE                          1366
+  CONICAL_SURFACE                                         903
+  REPRESENTATION_MAP                                      852
+  DRAUGHTING_MODEL                                        852
+  MAPPED_ITEM                                             852
+  DRAUGHTING_MODEL_ITEM_ASSOCIATION                       840
+  MECHANICAL_DESIGN_AND_DRAUGHTING_RELATIONSHIP           820
+  PLANAR_BOX                                              820
+  VIEW_VOLUME                                             820
+  CAMERA_MODEL_D3                                         817
+  DIRECTION                                               712
+  TESSELLATED_ANNOTATION_OCCURRENCE                       553
+  ANNOTATION_PLANE                                        553
+  TESSELLATED_CURVE_SET                                   553
+  DRAUGHTING_CALLOUT                                      553
+  DRAUGHTING_PRE_DEFINED_CURVE_FONT                       553
+  CURVE_STYLE                                             553
+
+Key AP242 semantic entities:
+-----------------------------------------------------------------
+  PRODUCT                                                  18
+  PRODUCT_DEFINITION                                       18
+  SHAPE_REPRESENTATION                                     18
+  NEXT_ASSEMBLY_USAGE_OCCURRENCE                          114
+  PRODUCT_DEFINITION_SHAPE                                 18
+  SHAPE_DEFINITION_REPRESENTATION                          18
+  APPLICATION_CONTEXT                                      18
+  PRODUCT_CONTEXT                                          18
+  PRODUCT_DEFINITION_CONTEXT                               18
+  MECHANICAL_DESIGN_GEOMETRIC_PRESENTATION_REPRESENTATION       18
+  PROPERTY_DEFINITION                                    3892
+  PROPERTY_DEFINITION_REPRESENTATION                     3892
+  REPRESENTATION_MAP                                      852
+  MAPPED_ITEM                                             852
+
+Sample PRODUCT_DEFINITION instances:
+  #512 [000700_A;1-Rotor Shaft Key (2023_02_05 08_36_29 UTC)_6e292395.stp]: '','',#514,#513
+  #512 [000700_A;1-Rotor Shaft Key (2022_12_17 01_44_39 UTC)_cea9d64a.stp]: '','',#514,#513
+  #275 [000699_A;1-SKF_6306-2Z7097_Prt3 (2022_12_17 01_44_39 UTC)_78ccb7a9.stp]: '','',#277,#276
+  #275 [000680_A;1-SKF_6306-2Z7097_Prt3 (2022_12_17 03_45_52 UTC)_673e0a08.stp]: '','',#277,#276
+  #445 [000681_A;1-External Circlip (2022_12_17 03_45_52 UTC)_ee7e6a32.stp]: '','',#447,#446
+
+Sample PRODUCT instances:
+  #516 [000700_A;1-Rotor Shaft Key (2023_02_05 08_36_29 UTC)_6e292395.stp]: '000700_A;1-Rotor Shaft Key','000700_A;1-Rotor Shaft Key',
+'000700_A;1-Rotor Shaft Key',(#518)
+  #516 [000700_A;1-Rotor Shaft Key (2022_12_17 01_44_39 UTC)_cea9d64a.stp]: '000700_A;1-Rotor Shaft Key','000700_A;1-Rotor Shaft Key',
+'000700_A;1-Rotor Shaft Key',(#518)
+  #279 [000699_A;1-SKF_6306-2Z7097_Prt3 (2022_12_17 01_44_39 UTC)_78ccb7a9.stp]: '000699_A;1-SKF_6306-2Z7097_Prt3',
+'000699_A;1-SKF_6306-2Z7097_Prt3','000699_A;1-SKF_6306-2Z7097_Prt3',(#281)
+  #279 [000680_A;1-SKF_6306-2Z7097_Prt3 (2022_12_17 03_45_52 UTC)_673e0a08.stp]: '000680_A;1-SKF_6306-2Z7097_Prt3',
+'000680_A;1-SKF_6306-2Z7097_Prt3','000680_A;1-SKF_6306-2Z7097_Prt3',(#281)
+  #449 [000681_A;1-External Circlip (2022_12_17 03_45_52 UTC)_ee7e6a32.stp]: '000681_A;1-External Circlip',
+'000681_A;1-External Circlip','000681_A;1-External Circlip',(#451)

@@ -76,6 +76,11 @@ async def lifespan(app: FastAPI):
                     )
                 else:
                     logger.info(f"✓ Graph database contains {_count:,} nodes")
+                # Ensure performance-critical indexes exist
+                try:
+                    _svc.ensure_indexes()
+                except Exception as _idx_err:
+                    logger.warning(f"Index creation skipped: {_idx_err}")
         except Exception as _e:
             logger.debug(f"Could not check node count at startup: {_e}")
 
@@ -504,6 +509,14 @@ except ImportError as e:
     logger.warning(f"AI Agents routes not available: {e}")
 
 try:
+    from src.web.routes.vector_fastapi import router as vector_router
+
+    app.include_router(vector_router, prefix="/api/vector", tags=["Vector"])
+    logger.info("✓ Registered Vector routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"Vector routes not available: {e}")
+
+try:
     from src.web.routes.upload_fastapi import router as upload_router
 
     app.include_router(upload_router, tags=["File Upload"])
@@ -575,12 +588,28 @@ except ImportError as e:
     logger.warning(f"STEP ingestion routes not available: {e}")
 
 try:
+    from src.web.routes.plmxml_ingest_fastapi import router as plmxml_router
+
+    app.include_router(plmxml_router)
+    logger.info("✓ Registered Teamcenter PLMXML ingestion routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"PLMXML ingestion routes not available: {e}")
+
+try:
     from src.web.routes.admin_fastapi import router as admin_router
 
     app.include_router(admin_router)
     logger.info("✓ Registered Admin maintenance routes (FastAPI)")
 except ImportError as e:
     logger.warning(f"Admin routes not available: {e}")
+
+try:
+    from src.web.routes.insights_fastapi import router as insights_router
+
+    app.include_router(insights_router)
+    logger.info("✓ Registered AI Insights routes (FastAPI)")
+except ImportError as e:
+    logger.warning(f"AI Insights routes not available: {e}")
 
 # Mount the independent Dataloader app as a sub-application
 try:

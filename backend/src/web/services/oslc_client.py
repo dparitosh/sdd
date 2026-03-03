@@ -24,7 +24,7 @@ OSLC_QM = Namespace("http://open-services.net/ns/qm#")
 LDP = Namespace("http://www.w3.org/ns/ldp#")
 
 class OSLCClient:
-    def __init__(self, base_url: str, auth: Optional[tuple] = None, headers: Optional[Dict] = None):
+    def __init__(self, base_url: str, auth: Optional[tuple] = None, headers: Optional[Dict] = None, *, verify_ssl: bool = True):
         """
         Initialize the OSLC Client.
         
@@ -32,11 +32,13 @@ class OSLCClient:
             base_url: The Root Services URI or Entry Point of the OSLC Provider.
             auth: Tuple of (username, password) for Basic Auth, or other supported httpx auth types.
             headers: Default headers to send with requests.
+            verify_ssl: Whether to verify SSL certificates (default True).
         """
         self.base_url = base_url.rstrip("/")
         self.auth = auth
         self.headers = headers or {}
         self.headers.setdefault("Accept", "application/rdf+xml")  # Default to RDF/XML as per older OSLC tools, or text/turtle
+        self.verify_ssl = verify_ssl
         
         # Internal cache of discovered services
         self.catalogs = []
@@ -45,7 +47,7 @@ class OSLCClient:
 
     async def _fetch_graph(self, url: str) -> Graph:
         """Helper to fetch a URL and parse it into an RDFLib Graph."""
-        async with httpx.AsyncClient(verify=False) as client: # Verify=False for dev/self-signed certs
+        async with httpx.AsyncClient(verify=self.verify_ssl) as client:
             logger.debug(f"OSLC Client fetching: {url}")
             response = await client.get(url, auth=self.auth, headers=self.headers)
             response.raise_for_status()

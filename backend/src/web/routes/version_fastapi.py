@@ -10,18 +10,19 @@ Endpoints for version control and change management:
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services import get_neo4j_service
+from src.web.dependencies import get_api_key
 
 # ============================================================================
 # ROUTER CONFIGURATION
 # ============================================================================
 
-router = APIRouter(prefix="/version", tags=["Version Control"])
+router = APIRouter(prefix="/version", tags=["Version Control"], dependencies=[Depends(get_api_key)])
 
 
 # ============================================================================

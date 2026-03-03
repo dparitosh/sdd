@@ -1,0 +1,32 @@
+2026-03-03 11:49:55.263 | INFO     | __main__:main:457 - Connected to neo4j://127.0.0.1:7687, database=mossec
+2026-03-03 11:49:55.263 | INFO     | __main__:extract_products:122 - Step 1: Extracting PRODUCT \u2192 :AP242Product
+2026-03-03 11:50:02.920 | INFO     | __main__:extract_products:166 -   Created 18 AP242Product nodes
+2026-03-03 11:50:02.920 | INFO     | __main__:extract_product_definitions:177 - Step 2: Extracting PRODUCT_DEFINITION \u2192 :AP242ProductDefinition
+2026-03-03 11:50:10.499 | INFO     | __main__:extract_product_definitions:233 -   Created 18 AP242ProductDefinition nodes
+2026-03-03 11:50:10.499 | INFO     | __main__:extract_assembly_structure:244 - Step 3: Extracting assembly structure from NAUO
+2026-03-03 11:50:53.913 | INFO     | __main__:extract_assembly_structure:315 -   Created 114 AP242AssemblyOccurrence nodes
+2026-03-03 11:50:53.913 | INFO     | __main__:extract_shape_representations:325 - Step 4: Extracting SHAPE_REPRESENTATION \u2192 :AP242Shape
+2026-03-03 11:51:02.555 | INFO     | __main__:extract_shape_representations:378 -   Created 18 AP242Shape nodes, 18 PD\u2192Shape links
+2026-03-03 11:51:02.555 | INFO     | __main__:extract_property_definitions:388 - Step 5: Counting PROPERTY_DEFINITION per product
+2026-03-03 11:51:02.664 | INFO     | __main__:extract_property_definitions:400 -   Found 3892 PROPERTY_DEFINITION instances across 18 files
+2026-03-03 11:51:02.664 | INFO     | __main__:extract_property_definitions:402 -     000693_A;1-Fan Cover (2022_12_17 01_44_39 UTC)_0594d0bf.stp: 737 properties
+2026-03-03 11:51:02.664 | INFO     | __main__:extract_property_definitions:402 -     000689_A;1-Motor Cover Machined (2022_12_17 01_44_39 UTC)_f6fd062c.stp: 729 properties
+2026-03-03 11:51:02.664 | INFO     | __main__:extract_property_definitions:402 -     000683_A;1-Centrifugal Fan (2022_12_17 03_45_52 UTC)_3a8b74d1.stp: 693 properties
+2026-03-03 11:51:02.664 | INFO     | __main__:extract_property_definitions:402 -     000684_B;1-Rotor Shaft Machined (2022_12_17 03_45_52 UTC)_9c31c415.stp: 492 properties
+2026-03-03 11:51:02.664 | INFO     | __main__:extract_property_definitions:402 -     000682_A;1-Laminated Stator Core (2022_12_17 03_45_52 UTC)_03e151b3.stp: 380 properties
+2026-03-03 11:51:02.664 | INFO     | __main__:link_products_to_parts:409 - Step 6: Linking AP242Product \u2192 Part/Assembly nodes
+2026-03-03 11:51:03.185 | INFO     | __main__:link_products_to_parts:422 -   Linked 0 AP242Product \u2192 Part nodes
+2026-03-03 11:51:03.443 | INFO     | __main__:link_products_to_parts:435 -   Linked 0 AP242Product \u2192 Assembly nodes
+2026-03-03 11:51:03.443 | INFO     | __main__:print_summary:438 - ============================================================
+2026-03-03 11:51:03.443 | INFO     | __main__:print_summary:439 - AP242 Semantic Decomposition Summary
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:440 - ============================================================
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   ap242_products                          : 18
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   ap242_product_defs                      : 18
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   ap242_assembly_occurrences              : 114
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   ap242_shapes                            : 18
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   pd_shape_links                          : 18
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   property_definitions                    : 3892
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   product_part_links                      : 0
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:442 -   product_assembly_links                  : 0
+2026-03-03 11:51:03.444 | INFO     | __main__:print_summary:443 - ============================================================
+2026-03-03 11:51:03.445 | INFO     | __main__:main:463 - Done.

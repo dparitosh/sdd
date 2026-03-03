@@ -1,0 +1,4 @@
+  File "<string>", line 10
+    print(f'  id={x[\
+                   ^
+SyntaxError: '[' was never closed

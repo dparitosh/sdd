@@ -25,3 +25,13 @@ export const getStatistics = () =>
     total_nodes: number;
     total_relationships: number;
   }>('/stats');
+
+// ── Named graph query registry ────────────────────────────────
+export const listNamedQueries = () =>
+  apiClient.get<{ name: string; description: string; params: string[] }[]>('/graph/query');
+
+export const executeNamedQuery = (name: string, params?: Record<string, any>) =>
+  apiClient.get<{ name: string; rows: any[]; count: number }>(
+    `/graph/query/${encodeURIComponent(name)}`,
+    { params }
+  );

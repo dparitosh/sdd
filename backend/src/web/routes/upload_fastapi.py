@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 import tempfile
 
-from fastapi import APIRouter, File, UploadFile, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, BackgroundTasks, status
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 from loguru import logger
@@ -23,11 +23,12 @@ from src.web.utils.responses import Neo4jJSONResponse
 from src.web.services.upload_job_store import get_job_store
 from src.web.services.step_ingest_service import StepIngestConfig, StepIngestService
 from src.web.services.ontology_ingest_service import OntologyIngestService, OntologyIngestConfig
+from src.web.dependencies import get_api_key
 
 # Import V2 ingesters — scripts dir resolved at import-time inside handlers
 _SCRIPTS_PATH = Path(__file__).resolve().parent.parent.parent.parent / "scripts"
 
-router = APIRouter(prefix="/api/upload", tags=["upload"])
+router = APIRouter(prefix="/api/upload", tags=["upload"], dependencies=[Depends(get_api_key)])
 
 # Storage configuration
 UPLOAD_DIR = Path("data/uploads")
@@ -260,12 +261,12 @@ async def process_exp_file(file_path: Path, job_id: str) -> dict:
         def _process_exp_sync():
             # Parse EXPRESS file
             parser = ExpressParser()
-            result = parser.parse_file(str(file_path))
+            parse_result = parser.parse_file(str(file_path))
             
-            if not result.success or not result.parsed_schema:
-                raise ValueError(f"Failed to parse EXPRESS file: {result.error}")
+            if not parse_result.success or not parse_result.parsed_schema:
+                raise ValueError(f"Failed to parse EXPRESS file: {parse_result.error}")
             
-            schema = result.parsed_schema
+            schema = parse_result.parsed_schema
             
             # Get Neo4j connection and create graph nodes
             neo4j_service = get_neo4j_service()
@@ -307,7 +308,7 @@ async def process_exp_file(file_path: Path, job_id: str) -> dict:
                 "imports": len(schema.imports),
                 "nodes_created": nodes_created,
                 "relationships_created": relationships_created,
-                "parse_time_ms": result.parse_time_ms if hasattr(result, 'parse_time_ms') else 0,
+                "parse_time_ms": parse_result.parse_time_ms if hasattr(parse_result, 'parse_time_ms') else 0,
             }
 
         await job_store.update(
@@ -729,8 +730,24 @@ async def upload_file(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file"
             )
 
-        # Generate unique filename
+        # ------ Duplicate / stuck-job guard ------
+        # If the same filename is already processing, reject the upload
+        # to prevent duplicate work that wastes time on large STEP files.
         file_ext = Path(file.filename).suffix.lower()
+        job_store_check = get_job_store()
+        existing_jobs = await job_store_check.list_all()
+        for ej in existing_jobs:
+            if (
+                ej.get("filename") == file.filename
+                and ej.get("status") in ("pending", "processing")
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"File '{file.filename}' is already being processed (job {ej.get('job_id')}). "
+                    "Wait for it to finish or delete the stuck job first.",
+                )
+
+        # Generate unique filename
         safe_filename = f"{Path(file.filename).stem}_{os.urandom(4).hex()}{file_ext}"
         file_path = UPLOAD_DIR / safe_filename
 
@@ -844,6 +861,60 @@ async def delete_upload_job(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
 
     return {"success": True, "message": "Job deleted"}
+
+
+@router.delete("/jobs/all")
+async def delete_all_jobs():
+    """Delete ALL upload jobs from Redis."""
+    job_store = get_job_store()
+    jobs = await job_store.list_all()
+    deleted = 0
+    for job in jobs:
+        jid = job.get("job_id")
+        if jid and await job_store.delete(jid):
+            deleted += 1
+    return {"success": True, "deleted": deleted, "message": f"Deleted {deleted} jobs"}
+
+
+@router.post("/cleanup-stuck")
+async def cleanup_stuck_jobs(max_minutes: int = 30):
+    """Detect jobs stuck at 'processing' for longer than max_minutes and mark them failed.
+
+    This handles the case where a server restart kills background tasks
+    but leaves the job status as 'processing' forever.
+    """
+    from datetime import datetime, timedelta
+
+    job_store = get_job_store()
+    jobs = await job_store.list_all()
+    cutoff = datetime.utcnow() - timedelta(minutes=max_minutes)
+    cleaned = 0
+
+    for job in jobs:
+        if job.get("status") not in ("processing", "pending"):
+            continue
+        updated_at_str = job.get("updated_at")
+        if not updated_at_str:
+            continue
+        try:
+            updated_at = datetime.fromisoformat(updated_at_str)
+        except (ValueError, TypeError):
+            continue
+        if updated_at < cutoff:
+            jid = job.get("job_id")
+            if jid:
+                await job_store.update(
+                    jid,
+                    {
+                        "status": "failed",
+                        "error": f"Stuck: no progress for >{max_minutes} min (server may have restarted)",
+                        "message": "Job timed out — re-upload the file to retry",
+                    },
+                )
+                cleaned += 1
+                logger.info(f"Marked stuck job {jid} ({job.get('filename')}) as failed")
+
+    return {"success": True, "cleaned": cleaned, "message": f"Cleaned {cleaned} stuck jobs"}
 
 
 @router.get("/health")

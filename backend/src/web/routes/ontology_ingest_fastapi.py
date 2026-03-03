@@ -175,3 +175,54 @@ async def ingest_ontology(
     except Exception as e:
         logger.error(f"Ontology ingestion failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ingest-standard", response_class=Neo4jJSONResponse)
+async def ingest_standard_ontologies(
+    api_key: str = Depends(get_api_key),
+):
+    """Ingest the three standard MoSSEC ontologies (AP243, STEP-Core, PLCS-4439).
+
+    Delegates to OntologyAgent.ingest_standard_ontologies().
+    """
+    from src.agents.ontology_agent import OntologyAgent
+
+    try:
+        agent = OntologyAgent()
+        results = agent.ingest_standard_ontologies()
+        return {"status": "ok", "results": results}
+    except Exception as e:
+        logger.error(f"Standard ontology ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats", response_class=Neo4jJSONResponse)
+async def ontology_classification_stats(
+    api_key: str = Depends(get_api_key),
+):
+    """Return classified / unclassified counts per node label."""
+    from src.web.services import get_neo4j_service
+
+    try:
+        neo4j = get_neo4j_service()
+        labels = ["PLMXMLItem", "PLMXMLRevision", "PLMXMLBOMLine", "PLMXMLDataSet", "StepFile"]
+        stats = []
+        for lbl in labels:
+            q = f"""
+            MATCH (n:{lbl})
+            OPTIONAL MATCH (n)-[:CLASSIFIED_AS]->()
+            WITH n, count(*) > 0 AS has_class
+            RETURN
+              '{lbl}' AS label,
+              count(CASE WHEN has_class THEN 1 END) AS classified,
+              count(CASE WHEN NOT has_class THEN 1 END) AS unclassified
+            """
+            rows = neo4j.execute_query(q)
+            if rows:
+                stats.append(rows[0])
+            else:
+                stats.append({"label": lbl, "classified": 0, "unclassified": 0})
+        return stats
+    except Exception as e:
+        logger.error(f"Classification stats query failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -192,7 +192,7 @@ class StepIngestService:
             f.ap_level = $ap_level,
             f.updated_on = datetime()
         """
-        self.neo4j.execute_query(
+        self.neo4j.execute_write(
             cypher,
             {
                 "uri": file_uri,
@@ -222,16 +222,14 @@ class StepIngestService:
         MATCH (f:StepFile {uri: row.file_uri})
         MERGE (f)-[:CONTAINS]->(i)
         WITH row, t
-        CALL {
-            WITH row
+        CALL (row) {
             OPTIONAL MATCH (c:Class) 
             WHERE toUpper(c.name) = toUpper(replace(row.entity_type, '_', '')) 
                   OR toUpper(c.name) = row.entity_type
             RETURN c AS mbse_class
             LIMIT 1
         }
-        CALL {
-            WITH row
+        CALL (row) {
             OPTIONAL MATCH (x:XSDElement) 
             WHERE toUpper(x.name) = row.entity_type
             RETURN x AS xsd_element
@@ -244,7 +242,7 @@ class StepIngestService:
         # Snapshot the rows before executing, because the Neo4j driver may
         # serialize parameters lazily. Callers commonly reuse/clear lists.
         batch = list(rows)
-        self.neo4j.execute_query(cypher, {"rows": batch})
+        self.neo4j.execute_write(cypher, {"rows": batch})
         return len(batch)
 
     def _upsert_part21_refs_rows(self, rows) -> int:
@@ -263,7 +261,7 @@ class StepIngestService:
 
         # Snapshot for safety; callers typically clear the list after flushing.
         batch = list(rows)
-        self.neo4j.execute_query(cypher, {"rows": batch})
+        self.neo4j.execute_write(cypher, {"rows": batch})
         return len(batch)
 
     def _upsert_stepx_refs(self, file_uri: str, refs) -> int:
@@ -297,6 +295,6 @@ class StepIngestService:
         total = 0
         for i in range(0, len(rows), batch_size):
             chunk = rows[i : i + batch_size]
-            self.neo4j.execute_query(cypher, {"rows": chunk})
+            self.neo4j.execute_write(cypher, {"rows": chunk})
             total += len(chunk)
         return total

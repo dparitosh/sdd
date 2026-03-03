@@ -19,7 +19,7 @@ const EVENT_ICONS = {
 
 const EVENT_COLORS = {
   Creation: 'bg-green-500',
-  Modification: 'bg-blue-500',
+  Modification: 'bg-amber-500',
   Deletion: 'bg-red-500',
 };
 
@@ -31,7 +31,7 @@ export default function TRSFeed() {
   // Auto-refresh every 30s
   useEffect(() => {
     if (autoRefresh) {
-      intervalRef.current = setInterval(refreshTRS, 30_000);
+      intervalRef.current = setInterval(refreshTRS, 10_000);
     } else if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -58,7 +58,7 @@ export default function TRSFeed() {
         </Button>
         <div className="flex items-center gap-2">
           <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} id="auto-refresh" />
-          <Label htmlFor="auto-refresh" className="text-sm">Auto-refresh (30s)</Label>
+          <Label htmlFor="auto-refresh" className="text-sm">Auto-refresh (10s)</Label>
         </div>
       </div>
 

@@ -2,10 +2,28 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 from .contracts import ToolCall, ToolRegistry, ToolResult, ToolSpec
+
+
+def _run_async(coro):
+    """Run an async coroutine from sync code, handling existing event loops."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None and loop.is_running():
+        # We're inside an already-running loop (e.g. FastAPI).
+        # Create a new thread to avoid blocking the current loop.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
 
 
 @dataclass
@@ -93,46 +111,46 @@ class MBSEToolsAdapter(ToolRegistry):
         if name == "search_artifacts":
             return ToolResult(
                 name=name,
-                output=self.tools_api.search_artifacts(
+                output=_run_async(self.tools_api.search_artifacts(
                     args.get("query", ""), limit=int(args.get("limit", 10))
-                ),
+                )),
             )
         if name == "get_artifact_details":
             return ToolResult(
                 name=name,
-                output=self.tools_api.get_artifact_details(
+                output=_run_async(self.tools_api.get_artifact_details(
                     str(args.get("artifact_type", "")), str(args.get("artifact_id", ""))
-                ),
+                )),
             )
         if name == "get_traceability":
             return ToolResult(
                 name=name,
-                output=self.tools_api.get_traceability(
+                output=_run_async(self.tools_api.get_traceability(
                     source_type=args.get("source_type"),
                     target_type=args.get("target_type"),
                     depth=int(args.get("depth", 2)),
-                ),
+                )),
             )
         if name == "get_impact_analysis":
             return ToolResult(
                 name=name,
-                output=self.tools_api.get_impact_analysis(
+                output=_run_async(self.tools_api.get_impact_analysis(
                     str(args.get("node_id", "")), depth=int(args.get("depth", 3))
-                ),
+                )),
             )
         if name == "get_parameters":
             return ToolResult(
                 name=name,
-                output=self.tools_api.get_parameters(
+                output=_run_async(self.tools_api.get_parameters(
                     class_name=args.get("class_name"), limit=int(args.get("limit", 20))
-                ),
+                )),
             )
         if name == "execute_cypher":
             return ToolResult(
                 name=name,
-                output=self.tools_api.execute_cypher(str(args.get("query", ""))),
+                output=_run_async(self.tools_api.execute_cypher(str(args.get("query", "")))),
             )
         if name == "get_statistics":
-            return ToolResult(name=name, output=self.tools_api.get_statistics())
+            return ToolResult(name=name, output=_run_async(self.tools_api.get_statistics()))
 
         raise KeyError(f"Unknown tool: {name}")

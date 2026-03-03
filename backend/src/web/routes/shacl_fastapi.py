@@ -3,20 +3,21 @@ SHACL Validation Routes (FastAPI)
 Validates RDF data against SHACL shape files for AP239/AP242 compliance.
 """
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from loguru import logger
 from rdflib import Graph
 
 from src.web.services.shacl_validator import SHACLValidator
+from src.web.dependencies import get_api_key
 
-router = APIRouter(prefix="/api/validate", tags=["SHACL Validation"])
+router = APIRouter(prefix="/api/validate", tags=["SHACL Validation"], dependencies=[Depends(get_api_key)])
 
 
 @router.post("/shacl")
 async def validate_shacl(
     file: UploadFile = File(...),
-    standard: str = Query("ap239", regex="^(ap239|ap242)$"),
-    format: str = Query("turtle", regex="^(turtle|xml|json-ld)$"),
+    standard: str = Query("ap239", pattern="^(ap239|ap242)$"),
+    format: str = Query("turtle", pattern="^(turtle|xml|json-ld)$"),
 ):
     """
     Validate an uploaded RDF file against SHACL shapes.
@@ -53,7 +54,7 @@ async def validate_shacl(
 @router.post("/shacl/inline")
 async def validate_shacl_inline(
     payload: dict,
-    standard: str = Query("ap239", regex="^(ap239|ap242)$"),
+    standard: str = Query("ap239", pattern="^(ap239|ap242)$"),
 ):
     """
     Validate inline RDF data (as Turtle string) against SHACL shapes.
@@ -77,3 +78,61 @@ async def validate_shacl_inline(
         "standard": standard,
         "triples": len(data_graph),
     }
+
+
+# ---------------------------------------------------------------------------
+# Graph-level SHACL validation (validates Neo4j nodes, not uploaded RDF)
+# ---------------------------------------------------------------------------
+
+from src.web.services.shacl_validation_service import SHACLValidationService
+
+_validation_svc: SHACLValidationService | None = None
+
+
+def _get_validation_svc() -> SHACLValidationService:
+    global _validation_svc
+    if _validation_svc is None:
+        _validation_svc = SHACLValidationService()
+    return _validation_svc
+
+
+@router.get("/shacl/validate/{label}")
+async def validate_label(label: str):
+    """Batch-validate all nodes with the given Neo4j label.
+
+    Returns the number of nodes checked and a list of violations.
+    """
+    svc = _get_validation_svc()
+    result = svc.validate_batch(label)
+    return {
+        "label": result.label,
+        "nodes_checked": result.nodes_checked,
+        "violations_found": result.violations_found,
+        "violations": [
+            {
+                "uid": v.uid,
+                "shape_name": v.shape_name,
+                "target_uid": v.target_uid,
+                "property": v.property,
+                "severity": v.severity,
+                "message": v.message,
+            }
+            for v in result.violations
+        ],
+    }
+
+
+@router.get("/shacl/violations/{uid}")
+async def get_violations(uid: str):
+    """Return existing SHACL violations for a specific node."""
+    svc = _get_validation_svc()
+    violations = svc.get_violations(uid)
+    return {"uid": uid, "violations": violations}
+
+
+@router.get("/shacl/report")
+async def shacl_report():
+    """Summary of all violations grouped by shape name and severity."""
+    svc = _get_validation_svc()
+    rows = svc.get_report()
+    return {"summary": rows}

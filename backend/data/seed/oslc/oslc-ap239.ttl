@@ -5,6 +5,7 @@
 @prefix oslc:  <http://open-services.net/ns/core#> .
 @prefix oslc_rm: <http://open-services.net/ns/rm#> .
 @prefix ap239: <http://standards.iso.org/iso/ts/10303/ap239#> .
+@prefix ap242: <http://standards.iso.org/iso/ts/10303/ap242#> .
 
 # =============================================================================
 # OSLC Ontology for ISO 10303 AP239 – Product Life Cycle Support
@@ -84,6 +85,7 @@ ap239:Document
     a rdfs:Class ;
     rdfs:label "Document" ;
     rdfs:comment "A controlled document associated with the product lifecycle." ;
+    rdfs:subClassOf ap242:Drawing ;
     rdfs:isDefinedBy ap239: .
 
 ap239:DocumentVersion
@@ -116,6 +118,7 @@ ap239:BreakdownElement
     a rdfs:Class ;
     rdfs:label "BreakdownElement" ;
     rdfs:comment "An element in a product or work breakdown structure." ;
+    rdfs:subClassOf ap242:Part ;
     rdfs:isDefinedBy ap239: .
 
 # --- Events & Conditions ---
