@@ -22,16 +22,45 @@ import {
 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
-const STATUS_COLORS = {
-  Running: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  Complete: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  Failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+const normaliseStatus = (s) => {
+  if (!s) return 'Unknown';
+  const lower = s.toLowerCase();
+  if (lower === 'completed' || lower === 'complete') return 'Completed';
+  if (lower === 'running' || lower === 'in_progress' || lower === 'in progress') return 'Running';
+  if (lower === 'failed' || lower === 'error') return 'Failed';
+  if (lower === 'pending' || lower === 'queued') return 'Pending';
+  return s;
 };
 
-const STATUS_ICON = {
-  Running: Activity,
-  Complete: CheckCircle2,
-  Failed: XCircle,
+const inferSimType = (id) => {
+  if (!id) return null;
+  const u = id.toUpperCase();
+  if (u.includes('MAXWELL') || u.includes('EM-') || u.includes('MOTOR')) return 'Electromagnetic';
+  if (u.includes('CFD') || u.includes('FLUENT') || u.includes('PUMP')) return 'CFD';
+  if (u.includes('STRUCT') || u.includes('CRANE') || u.includes('STATIC')) return 'Structural';
+  if (u.includes('THERMAL') || u.includes('HEAT')) return 'Thermal';
+  if (u.includes('NVH') || u.includes('MODAL') || u.includes('VIBR')) return 'NVH';
+  if (u.startsWith('FEA-')) return 'Structural';
+  return null;
+};
+
+const STATUS_CONFIG = {
+  Completed: { badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300', dot: 'bg-emerald-500', Icon: CheckCircle2 },
+  Running:   { badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',     dot: 'bg-blue-500',    Icon: Activity },
+  Failed:    { badge: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',         dot: 'bg-red-500',     Icon: XCircle },
+  Pending:   { badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300', dot: 'bg-amber-500',   Icon: Clock },
+  Unknown:   { badge: 'bg-gray-100 text-gray-600',                                          dot: 'bg-gray-400',    Icon: Activity },
+};
+
+const StatusBadge = ({ status }) => {
+  const canon = normaliseStatus(status);
+  const cfg = STATUS_CONFIG[canon] || STATUS_CONFIG.Unknown;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.badge}`}>
+      <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+      {canon}
+    </span>
+  );
 };
 
 export default function SimulationRunDetail() {
@@ -55,6 +84,11 @@ export default function SimulationRunDetail() {
     const hours = ms / 1000 / 60 / 60;
     if (hours < 1) return `${(ms / 1000 / 60).toFixed(0)}m`;
     return `${hours.toFixed(1)}h`;
+  };
+
+  const formatDate = (ts) => {
+    if (!ts) return '-';
+    try { return new Date(ts).toLocaleString(); } catch { return ts; }
   };
 
   if (isLoading) {
@@ -100,7 +134,7 @@ export default function SimulationRunDetail() {
     );
   }
 
-  const StatusIcon = STATUS_ICON[run.status] || Activity;
+  const simType = run.sim_type || inferSimType(run.id);
 
   return (
     <div className="p-6 space-y-6">
@@ -110,13 +144,10 @@ export default function SimulationRunDetail() {
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{run.id}</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-mono">{run.id}</h1>
           <p className="text-muted-foreground mt-1">Simulation Run Details</p>
         </div>
-        <Badge className={STATUS_COLORS[run.status] || 'bg-gray-100'}>
-          <StatusIcon className="h-3 w-3 mr-1" />
-          {run.status}
-        </Badge>
+        <StatusBadge status={run.status} />
       </div>
 
       {/* Summary Cards */}
@@ -127,7 +158,7 @@ export default function SimulationRunDetail() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold">{run.sim_type || '-'}</div>
+            <div className="text-lg font-bold">{simType || '-'}</div>
           </CardContent>
         </Card>
 
@@ -201,27 +232,19 @@ export default function SimulationRunDetail() {
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Simulation Type</TableCell>
-                <TableCell>{run.sim_type}</TableCell>
+                <TableCell>{simType || '-'}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Status</TableCell>
-                <TableCell>
-                  <Badge className={STATUS_COLORS[run.status] || 'bg-gray-100'}>
-                    {run.status}
-                  </Badge>
-                </TableCell>
+                <TableCell><StatusBadge status={run.status} /></TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Start Time</TableCell>
-                <TableCell>
-                  {run.start_time ? new Date(run.start_time).toLocaleString() : '-'}
-                </TableCell>
+                <TableCell>{formatDate(run.start_time || run.timestamp)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">End Time</TableCell>
-                <TableCell>
-                  {run.end_time ? new Date(run.end_time).toLocaleString() : '-'}
-                </TableCell>
+                <TableCell>{formatDate(run.end_time)}</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Solver Version</TableCell>
@@ -273,7 +296,7 @@ export default function SimulationRunDetail() {
       </Card>
 
       {/* Generated Artifacts */}
-      {run.generated_artifacts && run.generated_artifacts.length > 0 && (
+      {run.generated_artifacts && run.generated_artifacts.filter(a => a?.id || a?.name || (typeof a === 'string')).length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Generated Artifacts ({run.generated_artifacts.length})</CardTitle>
@@ -290,7 +313,7 @@ export default function SimulationRunDetail() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {run.generated_artifacts.map((artifact) => (
+                {run.generated_artifacts.filter(a => a?.id || a?.name || (typeof a === 'string')).map((artifact) => (
                   <TableRow key={artifact.id || artifact}>
                     <TableCell className="font-mono text-sm">
                       {typeof artifact === 'string' ? artifact : artifact.id}
