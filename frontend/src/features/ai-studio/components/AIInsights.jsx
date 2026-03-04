@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
 import { Button } from '@ui/button';
 import {
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { getInsight, getAiNarrative } from '@/services/insights.service';
+import { QUERY_CONFIG } from '@/constants';
 
 // ─── Severity helpers ─────────────────────────────────────────────────────────
 
@@ -441,63 +443,62 @@ const ALL_METRICS = [
   'simulation-parameter-health', 'simulation-dossier-health', 'simulation-digital-thread',
 ];
 
+// ── Shared query options: 5-min stale · 10-min gc · auto-refresh every 60 s ──
+const INSIGHT_QUERY_OPTS = {
+  staleTime: QUERY_CONFIG.STALE_TIME,
+  gcTime:    QUERY_CONFIG.CACHE_TIME,
+  refetchInterval: 60_000,
+  placeholderData: (prev) => prev,        // keep stale data while refetching
+  select: (res) => res?.data ?? res,
+};
+
 export default function AIInsights() {
-  const [data, setData]         = useState({});
-  const [loading, setLoading]   = useState({});
-  const [errors, setErrors]     = useState({});
-  const [narrative, setNarrative]             = useState(null);
-  const [loadingNarrative, setLoadingNarrative] = useState(false);
-  const [narrativeError, setNarrativeError]   = useState(null);
+  const queryClient = useQueryClient();
 
-  const fetchMetric = useCallback(async (metric) => {
-    setLoading((p) => ({ ...p, [metric]: true }));
-    setErrors((p)  => ({ ...p, [metric]: null }));
-    try {
-      const res = await getInsight(metric);
-      setData((p) => ({ ...p, [metric]: res?.data ?? res }));
-    } catch (err) {
-      setErrors((p) => ({ ...p, [metric]: err instanceof Error ? err.message : 'Failed' }));
-    } finally {
-      setLoading((p) => ({ ...p, [metric]: false }));
-    }
-  }, []);
+  // ── Per-metric React Query hooks (cached · stale-while-revalidate) ──────
+  const bomQ        = useQuery({ queryKey: ['insight', 'bom-completeness'],             queryFn: () => getInsight('bom-completeness'),             ...INSIGHT_QUERY_OPTS });
+  const traceQ      = useQuery({ queryKey: ['insight', 'traceability-gaps'],            queryFn: () => getInsight('traceability-gaps'),            ...INSIGHT_QUERY_OPTS });
+  const clsQ        = useQuery({ queryKey: ['insight', 'classification-coverage'],      queryFn: () => getInsight('classification-coverage'),      ...INSIGHT_QUERY_OPTS });
+  const dupQ        = useQuery({ queryKey: ['insight', 'semantic-duplicates'],          queryFn: () => getInsight('semantic-duplicates'),          ...INSIGHT_QUERY_OPTS });
+  const partSimQ    = useQuery({ queryKey: ['insight', 'part-similarity'],              queryFn: () => getInsight('part-similarity'),              ...INSIGHT_QUERY_OPTS });
+  const shaclQ      = useQuery({ queryKey: ['insight', 'shacl-compliance'],             queryFn: () => getInsight('shacl-compliance'),             ...INSIGHT_QUERY_OPTS });
+  const simRunsQ    = useQuery({ queryKey: ['insight', 'simulation-run-status'],        queryFn: () => getInsight('simulation-run-status'),        ...INSIGHT_QUERY_OPTS });
+  const simWfQ      = useQuery({ queryKey: ['insight', 'simulation-workflow-coverage'], queryFn: () => getInsight('simulation-workflow-coverage'), ...INSIGHT_QUERY_OPTS });
+  const simParamQ   = useQuery({ queryKey: ['insight', 'simulation-parameter-health'],  queryFn: () => getInsight('simulation-parameter-health'),  ...INSIGHT_QUERY_OPTS });
+  const simDossierQ = useQuery({ queryKey: ['insight', 'simulation-dossier-health'],    queryFn: () => getInsight('simulation-dossier-health'),    ...INSIGHT_QUERY_OPTS });
+  const simThreadQ  = useQuery({ queryKey: ['insight', 'simulation-digital-thread'],    queryFn: () => getInsight('simulation-digital-thread'),    ...INSIGHT_QUERY_OPTS });
 
-  const fetchAll = useCallback(() => { ALL_METRICS.forEach(fetchMetric); }, [fetchMetric]);
-
-  const fetchNarrative = useCallback(async () => {
-    setLoadingNarrative(true);
-    setNarrativeError(null);
-    try {
-      const res = await getAiNarrative();
-      setNarrative(res?.data ?? res);
-    } catch (err) {
-      setNarrativeError(err instanceof Error ? err.message : 'AI analysis failed');
-    } finally {
-      setLoadingNarrative(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAll();
-    fetchNarrative();
-    const iv = setInterval(fetchAll, 60_000);
-    return () => clearInterval(iv);
-  }, [fetchAll, fetchNarrative]);
+  // Narrative is LLM-expensive — no auto-refetchInterval; stays cached 5 min
+  const narrativeQ  = useQuery({
+    queryKey: ['insight', 'narrative'],
+    queryFn:  getAiNarrative,
+    staleTime: QUERY_CONFIG.STALE_TIME,
+    gcTime:    QUERY_CONFIG.CACHE_TIME,
+    placeholderData: (prev) => prev,
+    select: (res) => res?.data ?? res,
+  });
 
   // ── Destructure metric data ──
-  const bom       = data['bom-completeness']             || {};
-  const trace     = data['traceability-gaps']            || {};
-  const cls       = data['classification-coverage']      || {};
-  const dup       = data['semantic-duplicates']          || {};
-  const partSim   = data['part-similarity']              || {};
-  const shacl     = data['shacl-compliance']             || {};
-  const simRuns   = data['simulation-run-status']        || {};
-  const simWf     = data['simulation-workflow-coverage'] || {};
-  const simParam  = data['simulation-parameter-health']  || {};
-  const simDossier= data['simulation-dossier-health']    || {};
-  const simThread = data['simulation-digital-thread']    || {};
+  const bom        = bomQ.data        || {};
+  const trace      = traceQ.data      || {};
+  const cls        = clsQ.data        || {};
+  const dup        = dupQ.data        || {};
+  const partSim    = partSimQ.data    || {};
+  const shacl      = shaclQ.data      || {};
+  const simRuns    = simRunsQ.data    || {};
+  const simWf      = simWfQ.data      || {};
+  const simParam   = simParamQ.data   || {};
+  const simDossier = simDossierQ.data || {};
+  const simThread  = simThreadQ.data  || {};
 
-  const handleRefreshAll = () => { fetchAll(); fetchNarrative(); };
+  const narrative        = narrativeQ.data;
+  const loadingNarrative = narrativeQ.isFetching && !narrativeQ.data;
+  const narrativeError   = narrativeQ.error?.message ?? null;
+
+  const handleRefreshAll = () => {
+    ALL_METRICS.forEach((m) => queryClient.invalidateQueries({ queryKey: ['insight', m] }));
+    queryClient.invalidateQueries({ queryKey: ['insight', 'narrative'] });
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-7xl">
@@ -523,7 +524,7 @@ export default function AIInsights() {
         narrative={narrative}
         loading={loadingNarrative}
         error={narrativeError}
-        onReanalyze={fetchNarrative}
+        onReanalyze={narrativeQ.refetch}
       />
 
       {/* ── Priority Issues + Recommendations (side-by-side) ──────────────── */}
@@ -548,9 +549,9 @@ export default function AIInsights() {
             metric={bom.completeness_pct != null ? `${bom.completeness_pct}%` : undefined}
             metricLabel={`${bom.total_items ?? '?'} items`}
             description={`${bom.unclassified ?? '?'} unclassified · ${bom.missing_revision ?? '?'} missing revisions`}
-            loading={loading['bom-completeness']}
-            error={errors['bom-completeness']}
-            onRefresh={() => fetchMetric('bom-completeness')}
+            loading={bomQ.isFetching}
+            error={bomQ.error?.message ?? null}
+            onRefresh={bomQ.refetch}
             metricKey="bom-completeness"
             rawData={bom}
           />
@@ -560,9 +561,9 @@ export default function AIInsights() {
             metric={trace.coverage_pct != null ? `${trace.coverage_pct}%` : undefined}
             metricLabel="requirement coverage"
             description={`${trace.orphaned ?? '?'} orphaned of ${trace.total_requirements ?? '?'}`}
-            loading={loading['traceability-gaps']}
-            error={errors['traceability-gaps']}
-            onRefresh={() => fetchMetric('traceability-gaps')}
+            loading={traceQ.isFetching}
+            error={traceQ.error?.message ?? null}
+            onRefresh={traceQ.refetch}
             metricKey="traceability-gaps"
             rawData={trace}
           />
@@ -572,9 +573,9 @@ export default function AIInsights() {
             metric={cls.coverage_pct != null ? `${cls.coverage_pct}%` : undefined}
             metricLabel="items classified"
             description={`${cls.classified ?? '?'} classified · ${cls.unclassified ?? '?'} unclassified`}
-            loading={loading['classification-coverage']}
-            error={errors['classification-coverage']}
-            onRefresh={() => fetchMetric('classification-coverage')}
+            loading={clsQ.isFetching}
+            error={clsQ.error?.message ?? null}
+            onRefresh={clsQ.refetch}
             metricKey="classification-coverage"
             rawData={cls}
           />
@@ -584,9 +585,9 @@ export default function AIInsights() {
             metric={dup.count != null ? String(dup.count) : undefined}
             metricLabel="duplicate pairs"
             description="Near-duplicate nodes via vector similarity"
-            loading={loading['semantic-duplicates']}
-            error={errors['semantic-duplicates']}
-            onRefresh={() => fetchMetric('semantic-duplicates')}
+            loading={dupQ.isFetching}
+            error={dupQ.error?.message ?? null}
+            onRefresh={dupQ.refetch}
             metricKey="semantic-duplicates"
             rawData={dup}
           />
@@ -598,9 +599,9 @@ export default function AIInsights() {
             description={partSim.similar_groups?.length
               ? partSim.similar_groups.map((g) => `${g.group_key} (${g.variant_count})`).join(', ')
               : 'No revision variants detected'}
-            loading={loading['part-similarity']}
-            error={errors['part-similarity']}
-            onRefresh={() => fetchMetric('part-similarity')}
+            loading={partSimQ.isFetching}
+            error={partSimQ.error?.message ?? null}
+            onRefresh={partSimQ.refetch}
             metricKey="part-similarity"
             rawData={partSim}
           />
@@ -612,9 +613,9 @@ export default function AIInsights() {
             description={shacl.by_label?.length
               ? shacl.by_label.map((l) => `${l.label}: ${l.compliance_pct}%`).join(' | ')
               : 'No violation data yet'}
-            loading={loading['shacl-compliance']}
-            error={errors['shacl-compliance']}
-            onRefresh={() => fetchMetric('shacl-compliance')}
+            loading={shaclQ.isFetching}
+            error={shaclQ.error?.message ?? null}
+            onRefresh={shaclQ.refetch}
             metricKey="shacl-compliance"
             rawData={shacl}
           />
@@ -635,9 +636,9 @@ export default function AIInsights() {
             metric={simRuns.success_rate_pct != null ? `${simRuns.success_rate_pct}%` : undefined}
             metricLabel={`success · ${simRuns.total_runs ?? '?'} total`}
             description={simRuns.by_status ? Object.entries(simRuns.by_status).map(([k, v]) => `${k}: ${v}`).join(' | ') : ''}
-            loading={loading['simulation-run-status']}
-            error={errors['simulation-run-status']}
-            onRefresh={() => fetchMetric('simulation-run-status')}
+            loading={simRunsQ.isFetching}
+            error={simRunsQ.error?.message ?? null}
+            onRefresh={simRunsQ.refetch}
             metricKey="simulation-run-status"
             rawData={simRuns}
           />
@@ -647,9 +648,9 @@ export default function AIInsights() {
             metric={simWf.coverage_pct != null ? `${simWf.coverage_pct}%` : undefined}
             metricLabel="runs linked to WorkflowMethod"
             description={`${simWf.linked_runs ?? '?'} linked · ${simWf.orphan_runs ?? '?'} orphan · ${simWf.total_workflow_methods ?? '?'} methods`}
-            loading={loading['simulation-workflow-coverage']}
-            error={errors['simulation-workflow-coverage']}
-            onRefresh={() => fetchMetric('simulation-workflow-coverage')}
+            loading={simWfQ.isFetching}
+            error={simWfQ.error?.message ?? null}
+            onRefresh={simWfQ.refetch}
             metricKey="simulation-workflow-coverage"
             rawData={simWf}
           />
@@ -659,9 +660,9 @@ export default function AIInsights() {
             metric={simParam.constraint_coverage_pct != null ? `${simParam.constraint_coverage_pct}%` : undefined}
             metricLabel={`constraint coverage · ${simParam.total_parameters ?? '?'} params`}
             description={simParam.by_data_type ? Object.entries(simParam.by_data_type).map(([k, v]) => `${k}: ${v}`).join(' | ') : ''}
-            loading={loading['simulation-parameter-health']}
-            error={errors['simulation-parameter-health']}
-            onRefresh={() => fetchMetric('simulation-parameter-health')}
+            loading={simParamQ.isFetching}
+            error={simParamQ.error?.message ?? null}
+            onRefresh={simParamQ.refetch}
             metricKey="simulation-parameter-health"
             rawData={simParam}
           />
@@ -671,9 +672,9 @@ export default function AIInsights() {
             metric={simDossier.completeness_pct != null ? `${simDossier.completeness_pct}%` : undefined}
             metricLabel={`${simDossier.total_dossiers ?? '?'} dossiers`}
             description={`${simDossier.with_report ?? '?'} with report · ${simDossier.with_artifacts ?? '?'} with artifacts`}
-            loading={loading['simulation-dossier-health']}
-            error={errors['simulation-dossier-health']}
-            onRefresh={() => fetchMetric('simulation-dossier-health')}
+            loading={simDossierQ.isFetching}
+            error={simDossierQ.error?.message ?? null}
+            onRefresh={simDossierQ.refetch}
             metricKey="simulation-dossier-health"
             rawData={simDossier}
           />
@@ -683,9 +684,9 @@ export default function AIInsights() {
             metric={simThread.thread_completeness_pct != null ? `${simThread.thread_completeness_pct}%` : undefined}
             metricLabel="AP239 → AP242 → AP243"
             description={`${simThread.linked_ap239 ?? '?'} AP239 · ${simThread.linked_ap242 ?? '?'} AP242 · ${simThread.linked_ap243 ?? '?'} AP243`}
-            loading={loading['simulation-digital-thread']}
-            error={errors['simulation-digital-thread']}
-            onRefresh={() => fetchMetric('simulation-digital-thread')}
+            loading={simThreadQ.isFetching}
+            error={simThreadQ.error?.message ?? null}
+            onRefresh={simThreadQ.refetch}
             metricKey="simulation-digital-thread"
             rawData={simThread}
           />

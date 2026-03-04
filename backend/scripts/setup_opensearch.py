@@ -23,8 +23,13 @@ from typing import Any, Dict
 
 import requests
 
-OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", "http://localhost:9200")
-INDEX_NAME = os.getenv("OPENSEARCH_INDEX", "embeddings")
+OPENSEARCH_HOST = (
+    os.getenv("VECTORSTORE_HOST")
+    or os.getenv("OPENSEARCH_URL")
+    or os.getenv("OPENSEARCH_HOST")
+    or "http://localhost:9200"
+)
+INDEX_NAME = os.getenv("OPENSEARCH_INDEX") or os.getenv("VECTORSTORE_INDEX") or "embeddings"
 EMBEDDING_DIM = int(os.getenv("OPENSEARCH_DIM", "768"))
 
 

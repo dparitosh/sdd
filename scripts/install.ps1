@@ -213,6 +213,21 @@ if ($neo4jMissing.Count -gt 0 -or $neo4jUriPlaceholder -or $neo4jUserPlaceholder
     Write-Host "[OK] Neo4j credentials appear to be set (value check only; connectivity will be verified after Python deps install)" -ForegroundColor Green
 }
 
+# Check for insecure default secrets
+$insecureSecrets = @()
+$jwtKey = [System.Environment]::GetEnvironmentVariable('JWT_SECRET_KEY')
+if ([string]::IsNullOrWhiteSpace($jwtKey) -or $jwtKey -match 'change-this' -or $jwtKey -match 'your-secret') {
+    $insecureSecrets += 'JWT_SECRET_KEY'
+}
+$adminPass = [System.Environment]::GetEnvironmentVariable('ADMIN_PASSWORD')
+if ([string]::IsNullOrWhiteSpace($adminPass) -or $adminPass -eq 'admin123' -or $adminPass -match 'changeme') {
+    $insecureSecrets += 'ADMIN_PASSWORD'
+}
+if ($insecureSecrets.Count -gt 0) {
+    Write-Host "[WARN] Insecure default credentials detected for: $($insecureSecrets -join ', ')" -ForegroundColor Yellow
+    Write-Host "       Update these in $EnvFile before exposing the service on a network." -ForegroundColor Yellow
+}
+
 # Create Virtual Environment if it doesn't exist
 if (-not (Test-Path ".venv")) {
     Write-Host "Creating virtual environment..."

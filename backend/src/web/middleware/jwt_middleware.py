@@ -94,11 +94,18 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
-            # Check token blacklist (Redis)
-            if (
-                self.session_manager
-                and await self.session_manager.is_token_blacklisted(token)
-            ):
+            # Check token blacklist — Redis if available, in-memory fallback otherwise
+            token_revoked = False
+            if self.session_manager:
+                token_revoked = await self.session_manager.is_token_blacklisted(token)
+            else:
+                # Redis is disabled: fall back to the in-memory blacklist in auth_fastapi
+                try:
+                    from src.web.routes.auth_fastapi import TOKEN_BLACKLIST as _mem_bl  # noqa: PLC0415
+                    token_revoked = token in _mem_bl
+                except ImportError:
+                    pass
+            if token_revoked:
                 logger.warning("Blacklisted token attempted access")
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,

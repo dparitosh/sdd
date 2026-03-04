@@ -31,6 +31,26 @@ from .step_agent import StepAgent
 
 
 # ============================================================================
+# MBSE AI SYSTEM PROMPT  — authoritative persona embedded in all agent replies
+# ============================================================================
+
+MBSE_SYSTEM_PROMPT = (
+    "You are an ISO 10303 MBSE Knowledge Graph AI for MoSSEC (Model-Based SSE for "
+    "Space & Complex Systems). Your scope:\n"
+    "  AP239 PLCS  — programme activities, work orders, product instances\n"
+    "  AP242 MMB3D — parts, assemblies, BOM, materials, CAD geometry, product definitions\n"
+    "  AP243 SDD   — simulation dossiers, runs, artifacts, evidence categories, KPIs, "
+    "workflow methods\n"
+    "  Digital Thread — Requirement → Part → SimulationDossier → SimulationRun → "
+    "EvidenceCategory\n"
+    "  Requirement Traceability — SATISFIES/VERIFIED_BY/TRACED_TO/ALLOCATED_TO chains\n"
+    "  OSLC lifecycle links — cross-tool integration\n"
+    "Answer style: identify node labels, show relationship chains, cite UIDs/statuses, "
+    "flag missing links, cross-reference AP standards."
+)
+
+
+# ============================================================================
 # STATE DEFINITION
 # ============================================================================
 
@@ -152,6 +172,59 @@ async def mbse_agent_node(state: EngineeringState) -> dict:
         neo4j = Neo4jTool()
 
         # ------------------------------------------------------------------
+        # 0. Extract page context injected by the frontend chatbot
+        #    Format: "[Context: ...]\n[Page: <PageLabel>]\n<actual query>"
+        # ------------------------------------------------------------------
+        import re as _re
+
+        # Strip [Context: ...] prefix lines and capture [Page: ...]
+        page_label = ""
+        actual_query = user_query
+        _ctx_match = _re.search(r"\[Context:[^\]]*\]", user_query)
+        _page_match = _re.search(r"\[Page:\s*([^\]]+)\]", user_query)
+        if _page_match:
+            page_label = _page_match.group(1).strip()
+        # Remove all [Context:...] and [Page:...] prefix blocks from the actual query
+        actual_query = _re.sub(r"\[Context:[^\]]*\]\s*", "", actual_query)
+        actual_query = _re.sub(r"\[Page:[^\]]*\]\s*", "", actual_query).strip()
+        q_lower_clean = actual_query.lower()
+
+        # Page→keyword boost map: ensures relevant sections always run for page context
+        _PAGE_BOOST: dict[str, list[str]] = {
+            "Requirements":        ["requirement"],
+            "AP239 Requirements":  ["requirement", "oslc", "ap239"],
+            "Traceability Matrix": ["requirement", "traceability", "trace"],
+            "Parts (AP242)":       ["part", "ap242", "bom", "product model", "ap242"],
+            "Graph Explorer":      ["graph overview", "mossec", "knowledge graph"],
+            "MoSSEC Dashboard":    ["mossec", "simulation", "ap243"],
+            "Simulation Models":   ["simulation", "ap243", "analysis model", "model instance"],
+            "Simulation Runs":     ["simulation", "run"],
+            "Simulation Results":  ["simulation", "result"],
+            "Dossier Detail":      ["simulation", "dossier", "evidence"],
+            "PLM Integration":     ["plm", "part"],
+            "Ontology Manager":    ["ontolog", "owl"],
+            "OSLC Browser":        ["oslc"],
+            "SHACL Validator":     ["shacl"],
+            "Data Import":         ["import"],
+            "Product Specs":       ["product", "spec"],
+            "Quality Portal":      ["quality"],
+            # Graph Explorer sub-views surfaced via chatbot hints
+            "Digital Thread":      ["digital thread", "thread", "ap239", "chain", "dossier", "evidence"],
+            "AP242 Product":       ["ap242", "part", "bom", "product model", "assembly"],
+            "AP243 Simulation":    ["ap243", "simulation", "dossier", "mossec"],
+        }
+        # Build an augmented query string that merges page boosts
+        _boost_terms = _PAGE_BOOST.get(page_label, [])
+        q_lower = q_lower_clean
+        # Boost: if none of the boost terms appear in the query, inject them so
+        # the intent routing sections below fire without requiring exact keywords.
+        for _t in _boost_terms:
+            if _t not in q_lower:
+                q_lower = q_lower + " " + _t
+
+        logger.info(f"MBSE Agent: page='{page_label}' | effective_q='{q_lower[:120]}'")
+
+        # ------------------------------------------------------------------
         # 1. Intent-based Cypher routing
         # ------------------------------------------------------------------
         data_sections: list[str] = []      # collects formatted result blocks
@@ -260,22 +333,228 @@ async def mbse_agent_node(state: EngineeringState) -> dict:
                     "Use the OSLC ingestion endpoint to import lifecycle data."
                 )
 
-        # Simulation
-        if any(k in q_lower for k in ("simulation", "dossier", "run", "analysis model")):
-            rows = _run(
-                "MATCH (n) WHERE 'SimulationArtifact' IN labels(n) "
-                "   OR 'SimulationDossier' IN labels(n) OR 'SimulationRun' IN labels(n) "
-                "RETURN labels(n)[0] AS label, n.uid AS uid, n.name AS name, "
-                "       coalesce(n.status,'?') AS status "
-                "ORDER BY n.uid LIMIT $limit",
+        # ── Simulation Dossiers, Runs, Artifacts — full AP243 SDD breakdown ────────
+        if any(k in q_lower for k in ("simulation", "dossier", "run", "analysis model", "ap243", "mossec")):
+            dossier_rows = _run(
+                "MATCH (d:SimulationDossier) "
+                "OPTIONAL MATCH (d)-[:HAS_SIMULATION_RUN]->(r:SimulationRun) "
+                "OPTIONAL MATCH (r)-[:CONTAINS_ARTIFACT]->(a:SimulationArtifact) "
+                "RETURN coalesce(d.uid, d.id,'?') AS uid, coalesce(d.name,'?') AS name, "
+                "       coalesce(d.status,'?') AS status, "
+                "       count(DISTINCT r) AS run_count, count(DISTINCT a) AS artifact_count "
+                "ORDER BY d.uid LIMIT $limit",
+                limit=25,
+            )
+            if dossier_rows:
+                dlines = "\n".join(
+                    f"- **{r.get('name','?')}** `{r.get('uid','?')}` "
+                    f"| status: {r.get('status','?')} "
+                    f"| runs: {r.get('run_count',0)} | artifacts: {r.get('artifact_count',0)}"
+                    for r in dossier_rows
+                )
+                data_sections.append(f"### Simulation Dossiers (AP243 SDD) — {len(dossier_rows)} found\n{dlines}")
+            # AP243 Model & Workflow nodes
+            ap243_model_rows = _run(
+                "MATCH (n) WHERE ANY(l IN labels(n) WHERE "
+                "  l IN ['ModelInstance','ModelType','WorkflowMethod','TaskElement',"
+                "         'ParameterStudy','AnalysisModel','KPI','ValidationRecord']) "
+                "RETURN labels(n)[0] AS label, coalesce(n.uid, n.id,'') AS uid, "
+                "       coalesce(n.name,'?') AS name "
+                "ORDER BY label, uid LIMIT $limit",
                 limit=30,
             )
-            if rows:
-                lines = "\n".join(
-                    f"- [{r.get('label')}] **{r.get('name','?')}** `{r.get('uid','?')}` ({r.get('status')})"
-                    for r in rows
+            if ap243_model_rows:
+                by_lbl: dict[str, list] = {}
+                for r in ap243_model_rows:
+                    by_lbl.setdefault(r.get("label", "?"), []).append(r)
+                model_sections = []
+                for lbl, items in by_lbl.items():
+                    model_sections.append(
+                        f"**:{lbl}** ({len(items)}): "
+                        + ", ".join(f"`{r.get('name','?')}`" for r in items[:5])
+                        + (" …" if len(items) > 5 else "")
+                    )
+                data_sections.append(
+                    f"### AP243 Model & Workflow Nodes ({len(ap243_model_rows)} found)\n"
+                    + "\n".join(model_sections)
                 )
-                data_sections.append(f"### Simulation Artifacts ({len(rows)} found)\n{lines}")
+
+        # ── Digital Thread — end-to-end engineering lifecycle chain ────────────
+        if any(k in q_lower for k in ("digital thread", "thread trace", "end-to-end", "lifecycle chain", "thread chain")):
+            thread_rows = _run(
+                "MATCH (req:Requirement)-[:SATISFIED_BY_PART|ALLOCATED_TO|TRACED_TO]->(p) "
+                "MATCH (d:SimulationDossier)-[:HAS_SIMULATION_RUN]->(run:SimulationRun) "
+                "OPTIONAL MATCH (run)-[:CONTAINS_ARTIFACT]->(art:SimulationArtifact) "
+                "OPTIONAL MATCH (art)-[:EVIDENCE_FOR]->(ev:EvidenceCategory) "
+                "WHERE req.id IS NOT NULL AND NOT req.id STARTS WITH '_' "
+                "RETURN coalesce(req.id, req.uid,'?') AS req_uid, req.name AS req_name, "
+                "       coalesce(p.id, p.name,'?') AS part_uid, p.name AS part_name, "
+                "       coalesce(d.uid,'?') AS dossier_uid, d.name AS dossier_name, "
+                "       coalesce(run.uid,'?') AS run_uid, "
+                "       coalesce(ev.name,'') AS evidence_name "
+                "LIMIT $limit",
+                limit=30,
+            )
+            if thread_rows:
+                t_lines = "\n".join(
+                    f"- REQ `{r.get('req_uid','?')}` ({r.get('req_name','?')}) "
+                    f"→ Part `{r.get('part_uid','?')}` "
+                    f"→ Dossier `{r.get('dossier_uid','?')}` "
+                    f"→ Run `{r.get('run_uid','?')}`"
+                    + (f" → Evidence: {r.get('evidence_name')!r}" if r.get("evidence_name") else "")
+                    for r in thread_rows
+                )
+                data_sections.append(f"### Digital Thread — Req→Part→Dossier→Run ({len(thread_rows)} chains)\n{t_lines}")
+            else:
+                alt_rows = _run(
+                    "MATCH (a)-[r:IMPLEMENTS|VALIDATES_USING|DERIVED_FROM|SATISFIES|ALLOCATED_TO|HAS_SIMULATION_RUN]->(b) "
+                    "RETURN labels(a)[0] AS from_lbl, coalesce(a.name,a.uid,'?') AS from_name, "
+                    "       type(r) AS rel, labels(b)[0] AS to_lbl, coalesce(b.name,b.uid,'?') AS to_name "
+                    "ORDER BY rel LIMIT $limit",
+                    limit=30,
+                )
+                if alt_rows:
+                    t_lines = "\n".join(
+                        f"- [{r.get('from_lbl')}] **{r.get('from_name','?')}** "
+                        f"—[{r.get('rel')}]→ [{r.get('to_lbl')}] **{r.get('to_name','?')}**"
+                        for r in alt_rows
+                    )
+                    data_sections.append(f"### Digital Thread Relationships ({len(alt_rows)} edges)\n{t_lines}")
+                else:
+                    data_sections.append(
+                        "### Digital Thread\n"
+                        "No end-to-end chains found yet. Run `link_ap_hierarchy.py` and "
+                        "`run_migration_v4.py` to build the digital thread.\n\n"
+                        "Expected chain: `Requirement -[:SATISFIED_BY_PART]→ Part "
+                        "-[:VALIDATES_USING]→ SimulationDossier "
+                        "-[:HAS_SIMULATION_RUN]→ SimulationRun "
+                        "-[:CONTAINS_ARTIFACT]→ SimulationArtifact "
+                        "-[:EVIDENCE_FOR]→ EvidenceCategory`"
+                    )
+
+        # ── Traceability with Dossier — req → design element → simulation → evidence ─
+        if any(k in q_lower for k in ("traceability", "traceabl", "trace to dossier", "requirement trace", "verif")):
+            trace_rows = _run(
+                "MATCH (req:Requirement) "
+                "WHERE req.id IS NOT NULL AND NOT req.id STARTS WITH '_' "
+                "OPTIONAL MATCH (req)-[:SATISFIED_BY_PART|ALLOCATED_TO]->(p) "
+                "OPTIONAL MATCH (p)-[:VALIDATES_USING|VERIFIED_BY]->(d:SimulationDossier) "
+                "OPTIONAL MATCH (d)-[:HAS_SIMULATION_RUN]->(run:SimulationRun) "
+                "OPTIONAL MATCH (run)-[:CONTAINS_ARTIFACT]->(art:SimulationArtifact) "
+                "OPTIONAL MATCH (art)-[:EVIDENCE_FOR]->(ev:EvidenceCategory) "
+                "RETURN coalesce(req.id, req.uid,'?') AS req_uid, req.name AS req_name, "
+                "       coalesce(req.status,'?') AS req_status, "
+                "       coalesce(p.name, p.id,'') AS design_element, "
+                "       coalesce(d.uid,'') AS dossier_uid, d.name AS dossier_name, "
+                "       coalesce(run.uid,'') AS run_uid, "
+                "       coalesce(ev.name,'') AS evidence_name, "
+                "       CASE WHEN d IS NOT NULL THEN 'verified' ELSE 'unverified' END AS trace_status "
+                "ORDER BY trace_status, req.id LIMIT $limit",
+                limit=40,
+            )
+            if trace_rows:
+                verified   = [r for r in trace_rows if r.get("trace_status") == "verified"]
+                unverified = [r for r in trace_rows if r.get("trace_status") != "verified"]
+                if verified:
+                    v_lines = "\n".join(
+                        f"- ✅ `{r.get('req_uid','?')}` {r.get('req_name','?')}"
+                        + (f" → {r.get('design_element')}" if r.get("design_element") else "")
+                        + (f" → Dossier `{r.get('dossier_uid')}`" if r.get("dossier_uid") else "")
+                        + (f" → Evidence: {r.get('evidence_name')!r}" if r.get("evidence_name") else "")
+                        for r in verified[:20]
+                    )
+                    data_sections.append(f"### Requirements Traced via Dossier ({len(verified)} verified)\n{v_lines}")
+                if unverified:
+                    u_lines = "\n".join(
+                        f"- ❌ `{r.get('req_uid','?')}` {r.get('req_name','?')} *(no dossier link)*"
+                        for r in unverified[:15]
+                    )
+                    data_sections.append(f"### Untraced Requirements ({len(unverified)} without dossier)\n{u_lines}")
+
+        # ── Evidence Categories — EvidenceCategory nodes linked to simulation chain ─
+        if any(k in q_lower for k in ("evidence", "evidencecategory", "evidence category")):
+            ev_rows = _run(
+                "MATCH (ev:EvidenceCategory) "
+                "OPTIONAL MATCH (a:SimulationArtifact)-[:EVIDENCE_FOR]->(ev) "
+                "OPTIONAL MATCH (a)<-[:CONTAINS_ARTIFACT]-(run:SimulationRun) "
+                "OPTIONAL MATCH (run)<-[:HAS_SIMULATION_RUN]-(d:SimulationDossier) "
+                "RETURN coalesce(ev.uid, ev.id,'?') AS uid, coalesce(ev.name,'?') AS name, "
+                "       coalesce(ev.category_type,'?') AS category_type, "
+                "       count(DISTINCT a) AS artifact_count, "
+                "       collect(DISTINCT coalesce(d.name, d.uid,'?'))[0..3] AS dossiers "
+                "ORDER BY ev.name LIMIT $limit",
+                limit=20,
+            )
+            if ev_rows:
+                e_lines = "\n".join(
+                    f"- **{r.get('name','?')}** `{r.get('uid','?')}` "
+                    f"(type: {r.get('category_type','?')}, artifacts: {r.get('artifact_count',0)})"
+                    + (
+                        " | dossiers: "
+                        + ", ".join(str(d) for d in (r.get("dossiers") or []) if d and d != "?")[:60]
+                        if r.get("dossiers")
+                        else ""
+                    )
+                    for r in ev_rows
+                )
+                data_sections.append(f"### Evidence Categories ({len(ev_rows)} found)\n{e_lines}")
+            else:
+                data_sections.append(
+                    "### Evidence Categories\n"
+                    "No EvidenceCategory nodes found. Run `ingest_sdd_data.py` to create "
+                    "SimulationDossier, SimulationArtifact, and EvidenceCategory nodes."
+                )
+
+        # ── AP242 Product Model — complete product graph (BOM, materials, node counts) ─
+        if any(k in q_lower for k in ("ap242", "product model", "bom hierarchy", "bill of material", "product graph", "assembly tree")):
+            bom_rows = _run(
+                "MATCH (asm:Assembly)-[:ASSEMBLES_WITH]->(p) "
+                "WHERE 'Part' IN labels(p) OR 'AP242Product' IN labels(p) "
+                "RETURN asm.name AS assembly, coalesce(p.name,'?') AS part_name, "
+                "       coalesce(p.part_number, p.id,'') AS pn "
+                "ORDER BY asm.name, p.name LIMIT $limit",
+                limit=40,
+            )
+            if bom_rows:
+                bom_by_asm: dict[str, list] = {}
+                for r in bom_rows:
+                    bom_by_asm.setdefault(r.get("assembly", "?"), []).append(r)
+                bom_lines = []
+                for asm, children in bom_by_asm.items():
+                    child_list = ", ".join(
+                        f"`{r.get('part_name','?')}`" + (f" ({r.get('pn')})" if r.get("pn") else "")
+                        for r in children[:6]
+                    ) + (" …" if len(children) > 6 else "")
+                    bom_lines.append(f"- **{asm}** → {child_list}")
+                data_sections.append(
+                    f"### AP242 BOM Hierarchy ({len(bom_rows)} part-links)\n" + "\n".join(bom_lines)
+                )
+            mat_rows = _run(
+                "MATCH (p)-[:USES_MATERIAL]->(m:Material) "
+                "WHERE 'Part' IN labels(p) OR 'AP242Product' IN labels(p) "
+                "RETURN p.name AS part_name, m.name AS material, "
+                "       coalesce(m.material_type,'?') AS mat_type "
+                "ORDER BY p.name LIMIT $limit",
+                limit=20,
+            )
+            if mat_rows:
+                m_lines = "\n".join(
+                    f"- **{r.get('part_name','?')}** uses {r.get('material','?')} ({r.get('mat_type','?')})"
+                    for r in mat_rows
+                )
+                data_sections.append(f"### AP242 Material Assignments ({len(mat_rows)} links)\n{m_lines}")
+            ap242_stats = _run(
+                "MATCH (n) WHERE 'Part' IN labels(n) OR 'Assembly' IN labels(n) "
+                "   OR 'Material' IN labels(n) OR 'AP242Product' IN labels(n) "
+                "   OR 'PartVersion' IN labels(n) OR 'GeometricModel' IN labels(n) "
+                "RETURN labels(n)[0] AS label, count(n) AS cnt ORDER BY cnt DESC LIMIT 10",
+                limit=10,
+            )
+            if ap242_stats:
+                stat_lines = "  |  ".join(
+                    f"**:{r.get('label','?')}**: {r.get('cnt'):,}" for r in ap242_stats
+                )
+                data_sections.append(f"### AP242 Product Model Node Counts\n{stat_lines}")
 
         # PLM / connectors
         if any(k in q_lower for k in ("plm", "connector", "teamcenter", "windchill", "part")):
@@ -688,13 +967,17 @@ async def mbse_agent_node(state: EngineeringState) -> dict:
         #    synchronous HTTP. The graph data is already markdown-structured.
         # ------------------------------------------------------------------
         if data_sections:
-            intro = f"Here is what I found in the knowledge graph ({stats.get('total_nodes', '?')} nodes total):\n\n"
+            intro = (
+                f"*MoSSEC MBSE Knowledge Graph AI* — AP239 · AP242 · AP243 · Digital Thread\n"
+                f"Graph: **{stats.get('total_nodes', '?')}** nodes · "
+                f"**{stats.get('total_relationships', '?')}** relationships\n\n"
+            )
             reply_text = intro + "\n\n".join(data_sections)
         else:
             reply_text = (
-                f"No matching data found for: **{user_query}**\n\n"
+                f"No matching data found for: **{actual_query}**\n\n"
                 f"The graph contains {stats.get('total_nodes', '?')} nodes. "
-                f"Try asking about: requirements, ontologies, simulations, OSLC, traceability, impact, or export."
+                f"Try asking about: requirements, ontologies, simulations, OSLC, traceability, impact, parts, or export."
             )
 
         logger.info(f"MBSE Agent: built reply ({len(reply_text)} chars) from {len(data_sections)} data section(s)")

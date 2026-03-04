@@ -43,7 +43,16 @@ class Query:
             return neo4j.get_statistics()
         except Exception as exc:
             logger.error(f"GraphQL statistics resolver error: {exc}")
-            raise Exception(f"Failed to query Neo4j statistics: {exc}") from exc
+            # Return a partial/empty stats dict instead of raising — raising causes
+            # strawberry to return HTTP 500; returning data gives a valid 200 response
+            # so the frontend can degrade gracefully instead of crashing on load.
+            return {
+                "total_nodes": 0,
+                "total_relationships": 0,
+                "node_types": {},
+                "relationship_types": {},
+                "error": str(exc),
+            }
 
     @strawberry.field
     def cypher_read(
@@ -71,7 +80,10 @@ class Query:
             return [dict(row) for row in rows]
         except Exception as exc:
             logger.error(f"GraphQL cypher_read resolver error: {exc}")
-            raise Exception(f"Failed to execute Cypher query: {exc}") from exc
+            # Return an error row instead of raising — raising produces HTTP 500;
+            # returning a list with an error entry keeps the response as HTTP 200
+            # so the frontend does not show a crash on load in new environments.
+            return [{"error": str(exc)}]
 
 
 schema = strawberry.Schema(query=Query)

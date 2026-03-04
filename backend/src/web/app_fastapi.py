@@ -627,11 +627,14 @@ logger.info("=" * 60)
 # Entry point for uvicorn
 if __name__ == "__main__":
     import uvicorn
+    import os as _os
 
+    _host = _os.getenv("BACKEND_HOST", "0.0.0.0")
+    _port = int(_os.getenv("BACKEND_PORT", "5000"))
     uvicorn.run(
         "src.web.app_fastapi:app",
-        host="0.0.0.0",
-        port=5000,
+        host=_host,
+        port=_port,
         reload=True,
         log_level="info",
     )

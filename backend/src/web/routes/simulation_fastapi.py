@@ -745,7 +745,9 @@ class UpdateDossierInput(BaseModel):
 
 @router.get(
     "/dossiers",
-    response_model=DossiersListResponse,
+    # response_model intentionally omitted: using Neo4jJSONResponse for custom serialisation
+    # of Neo4j DateTime/Float types. Pydantic model validation would run before the custom
+    # encoder and crash on raw Neo4j objects in a new/empty environment.
     response_class=Neo4jJSONResponse,
     summary="List all simulation dossiers",
 )

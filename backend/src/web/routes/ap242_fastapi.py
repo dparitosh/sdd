@@ -284,7 +284,9 @@ async def get_part_detail(
         neo4j = get_neo4j_service()
 
         query = """
-        MATCH (part:Part {id: $part_id})
+        MATCH (part)
+        WHERE (part:Part OR part:AP242Product)
+          AND (part.id = $part_id OR part.product_id = $part_id)
         OPTIONAL MATCH (part)-[:HAS_VERSION]->(v:PartVersion)
         OPTIONAL MATCH (part)-[:USES_MATERIAL]->(mat:Material)
         OPTIONAL MATCH (part)-[:HAS_GEOMETRY]->(geo:GeometricModel)
@@ -355,7 +357,9 @@ async def get_part_bom(
         neo4j = get_neo4j_service()
 
         query = """
-        MATCH (part:Part {id: $part_id})
+        MATCH (part)
+        WHERE (part:Part OR part:AP242Product)
+          AND (part.id = $part_id OR part.product_id = $part_id)
         OPTIONAL MATCH (asm:Assembly)-[:ASSEMBLES_WITH]->(part)
         OPTIONAL MATCH (asm)-[:ASSEMBLES_WITH]->(subpart:Part)
         WHERE subpart.id <> $part_id

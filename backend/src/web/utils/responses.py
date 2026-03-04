@@ -26,7 +26,7 @@ class Neo4jJSONResponse(JSONResponse):
         return json.dumps(
             content,
             ensure_ascii=False,
-            allow_nan=False,
+            allow_nan=True,   # Neo4j can return NaN/Infinity for numeric props; allow_nan=False crashes on them
             indent=None,
             separators=(",", ":"),
             cls=Neo4jJSONEncoder,

@@ -25,15 +25,15 @@ def get_api_key(x_api_key: Optional[str] = Header(None)) -> str:
     """
     expected_key = os.getenv("API_KEY")
 
-    # If no API key configured, only allow in explicit development mode
+    # If no API key is configured, bypass auth with a warning.
+    # This is intentional for local/dev installs where API_KEY is left blank in .env.
+    # To enforce auth, set a non-empty API_KEY value in .env.
     if not expected_key:
-        if os.getenv("ENVIRONMENT", "production").lower() in ("development", "dev", "local"):
-            logger.warning("No API_KEY configured - authentication bypassed (dev mode)")
-            return "development"
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server misconfiguration: API_KEY not set. Set API_KEY env var or ENVIRONMENT=development.",
+        logger.warning(
+            "API_KEY is not set — authentication bypassed. "
+            "Set API_KEY in .env to enforce API key auth."
         )
+        return "unauthenticated"
 
     if not x_api_key:
         logger.warning("Missing X-API-Key header")

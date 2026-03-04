@@ -52,7 +52,6 @@ uvicorn[standard]>=0.27.0
 python-multipart>=0.0.9
 websockets>=12.0
 strawberry-graphql[fastapi]>=0.270.0
-slowapi>=0.1.9
 
 # Redis (Session Management & Caching)
 redis[hiredis]>=5.0.1
@@ -65,13 +64,3 @@ psutil>=5.9.0
 # Rate Limiting
 slowapi>=0.1.9
 
-# ============================================================================
-# Semantic Web & Ontology ingestion
-# (Used by OSLC, SHACL validation, and OWL/RDF -> Neo4j ingestion)
-# ============================================================================
-pytest>=7.4.0
-pytest-cov>=4.1.0
-black>=23.11.0
-flake8>=6.1.0
-mypy>=1.7.0
-types-requests>=2.31.0

@@ -6,10 +6,34 @@ Provides 5 standard insight queries and a per-node SmartAnalysis pipeline.
 
 from __future__ import annotations
 
+import time as _time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
 from loguru import logger
+
+# Module-level cache for the detected item label (probe is expensive on large DBs)
+_DETECTED_LABEL_CACHE: dict[str, Any] = {"label": None, "ts": 0.0}
+_LABEL_CACHE_TTL = 3600  # 1 hour — label set doesn't change unless DB is reloaded
+
+# Module-level cache for DB schema metadata (labels + relationship types)
+_SCHEMA_CACHE: dict[str, Any] = {"labels": None, "rels": None, "ts": 0.0}
+_SCHEMA_CACHE_TTL = 3600  # 1 hour
+
+
+def _get_db_schema() -> tuple[set[str], set[str]]:
+    """Return (existing_label_set, existing_rel_type_set) via cheap metadata queries.
+
+    Cached for 1 hour.  Far cheaper than probing each label/rel with a full MATCH.
+    """
+    now = _time.time()
+    if _SCHEMA_CACHE["labels"] is not None and now - _SCHEMA_CACHE["ts"] < _SCHEMA_CACHE_TTL:
+        return _SCHEMA_CACHE["labels"], _SCHEMA_CACHE["rels"]
+    labels = {r["label"] for r in _run("CALL db.labels() YIELD label RETURN label")}
+    rels   = {r["relationshipType"] for r in _run("CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType")}
+    _SCHEMA_CACHE.update({"labels": labels, "rels": rels, "ts": now})
+    logger.debug(f"[schema cache] {len(labels)} labels, {len(rels)} rel types loaded")
+    return labels, rels
 
 from src.web.container import Services
 
@@ -49,27 +73,40 @@ _COMPLIANCE_LABELS = [
 
 
 def _detect_item_label() -> str:
-    """Return the best available label for 'item' nodes in the current DB."""
-    for label in _ITEM_LABELS:
-        rows = _run(f"MATCH (n:`{label}`) RETURN count(n) AS cnt LIMIT 1")
-        if rows and rows[0]["cnt"] > 0:
-            return label
-    return "MBSEElement"  # ultimate fallback
+    """Return the best available label for 'item' nodes in the current DB.
+
+    Uses CALL db.labels() metadata (cheap, ~0.3s) instead of probing each label
+    with a MATCH COUNT (up to 14s per missing label on large databases).
+    """
+    now = _time.time()
+    if _DETECTED_LABEL_CACHE["label"] and now - _DETECTED_LABEL_CACHE["ts"] < _LABEL_CACHE_TTL:
+        return _DETECTED_LABEL_CACHE["label"]
+    existing_labels, _ = _get_db_schema()
+    label = next((l for l in _ITEM_LABELS if l in existing_labels), "MBSEElement")
+    _DETECTED_LABEL_CACHE.update({"label": label, "ts": now})
+    logger.debug(f"[label cache] detected item label: {label}")
+    return label
 
 
 def bom_completeness() -> Dict[str, Any]:
     """Count unclassified items and items missing revisions."""
     label = _detect_item_label()
+    _, existing_rels = _get_db_schema()
     total = _run(f"MATCH (n:`{label}`) RETURN count(n) AS cnt")[0]["cnt"]
     unclassified = _run(
         f"MATCH (n:`{label}`) WHERE n.classification_status = 'unclassified' "
         "OR NOT EXISTS { (n)-[:CLASSIFIED_AS]->() } "
         "RETURN count(n) AS cnt"
     )[0]["cnt"]
-    no_revision = _run(
-        f"MATCH (n:`{label}`) WHERE NOT EXISTS {{ (n)-[:HAS_REVISION]->() }} "
-        "RETURN count(n) AS cnt"
-    )[0]["cnt"]
+    # Use whichever revision relationship actually exists in this DB
+    rev_rel = next((r for r in ("HAS_REVISION", "HAS_VERSION") if r in existing_rels), None)
+    if rev_rel:
+        no_revision = _run(
+            f"MATCH (n:`{label}`) WHERE NOT EXISTS {{ (n)-[:{rev_rel}]->() }} "
+            "RETURN count(n) AS cnt"
+        )[0]["cnt"]
+    else:
+        no_revision = 0  # no revision relationships seeded yet
     return {
         "total_items": total,
         "item_label": label,
@@ -80,14 +117,42 @@ def bom_completeness() -> Dict[str, Any]:
 
 
 def traceability_gaps() -> Dict[str, Any]:
-    """Requirements without any TRACES_TO / SATISFIES relationship."""
+    """Requirements without any traceability relationship."""
+    _, existing_rels = _get_db_schema()
     total = _run("MATCH (r:Requirement) RETURN count(r) AS cnt")[0]["cnt"]
-    orphan_rows = _run(
-        "MATCH (r:Requirement) "
-        "WHERE NOT EXISTS { (r)-[:TRACES_TO|SATISFIES|VERIFIES]->() } "
-        "RETURN coalesce(r.uid, r.id) AS uid, "
-        "coalesce(r.title, r.name) AS title LIMIT 200"
-    )
+
+    # Build the relationship list from what actually exists in this DB
+    candidate_rels = [
+        "TRACES_TO", "SATISFIES", "SATISFIES_REQUIREMENT",
+        "VERIFIES", "VERIFIES_REQUIREMENT", "LINKED_TO_REQUIREMENT",
+        "VALIDATES_REQUIREMENT",
+    ]
+    outbound_rels = [r for r in candidate_rels if r in existing_rels]
+    # Also check inbound traceability rels
+    inbound_rels  = [r for r in ("VALIDATES_REQUIREMENT", "VERIFIES_REQUIREMENT") if r in existing_rels]
+
+    if not outbound_rels and not inbound_rels:
+        # No traceability rels seeded yet — all requirements are orphaned, don't scan
+        return {
+            "total_requirements": total,
+            "orphaned": total,
+            "coverage_pct": 0.0,
+            "orphan_list": [],
+        }
+
+    rel_pattern = "|".join(outbound_rels) if outbound_rels else None
+    if rel_pattern:
+        orphan_rows = _run(
+            f"MATCH (r:Requirement) "
+            f"WHERE NOT EXISTS {{ (r)-[:{rel_pattern}]->() }} "
+            "RETURN coalesce(r.uid, r.id) AS uid, "
+            "coalesce(r.title, r.name) AS title LIMIT 200"
+        )
+    else:
+        orphan_rows = _run(
+            "MATCH (r:Requirement) RETURN coalesce(r.uid, r.id) AS uid, "
+            "coalesce(r.title, r.name) AS title LIMIT 200"
+        )
     return {
         "total_requirements": total,
         "orphaned": len(orphan_rows),
@@ -224,6 +289,11 @@ def semantic_duplicates(threshold: float = 0.95, limit: int = 20) -> Dict[str, A
 
 def shacl_compliance() -> Dict[str, Any]:
     """Violations grouped by label vs total nodes."""
+    existing_labels, existing_rels = _get_db_schema()
+    # Short-circuit: if SHACLViolation or VIOLATES don't exist yet, return clean state
+    if "SHACLViolation" not in existing_labels or "VIOLATES" not in existing_rels:
+        return {"by_label": [], "total_violations": 0}
+
     violations = _run(
         "MATCH (v:SHACLViolation)-[:VIOLATES]->(n) "
         "WITH labels(n) AS lbls, count(v) AS vcount "
@@ -231,8 +301,12 @@ def shacl_compliance() -> Dict[str, Any]:
         "RETURN lbl AS label, sum(vcount) AS violations "
         "ORDER BY violations DESC"
     )
-    # Build adaptive WHERE clause from compliance labels
-    where_parts = " OR ".join(f"n:`{lbl}`" for lbl in _COMPLIANCE_LABELS)
+    # Only include compliance labels that actually exist in the DB
+    active_labels = [l for l in _COMPLIANCE_LABELS if l in existing_labels]
+    if not active_labels:
+        return {"by_label": [], "total_violations": sum(v["violations"] for v in violations)}
+
+    where_parts = " OR ".join(f"n:`{lbl}`" for lbl in active_labels)
     totals = _run(
         f"MATCH (n) WHERE {where_parts} "
         "WITH labels(n) AS lbls, count(n) AS cnt "
@@ -333,27 +407,32 @@ def simulation_workflow_coverage() -> Dict[str, Any]:
 
 def simulation_parameter_health() -> Dict[str, Any]:
     """SimulationParameter constraint coverage and data-type distribution."""
+    _, existing_rels = _get_db_schema()
     total_row = _run("MATCH (p:SimulationParameter) RETURN count(p) AS cnt")
     total = total_row[0]["cnt"] if total_row else 0
 
-    with_constraints = _run(
-        "MATCH (p:SimulationParameter) "
-        "WHERE EXISTS { (p)-[:HAS_CONSTRAINT]->() } "
-        "RETURN count(p) AS cnt"
-    )
-    constrained = with_constraints[0]["cnt"] if with_constraints else 0
+    if "HAS_CONSTRAINT" in existing_rels:
+        with_constraints = _run(
+            "MATCH (p:SimulationParameter) "
+            "WHERE EXISTS { (p)-[:HAS_CONSTRAINT]->() } "
+            "RETURN count(p) AS cnt"
+        )
+        constrained = with_constraints[0]["cnt"] if with_constraints else 0
+    else:
+        constrained = 0  # HAS_CONSTRAINT not yet seeded
 
     by_type = _run(
         "MATCH (p:SimulationParameter) "
         "RETURN coalesce(p.data_type, 'unknown') AS data_type, count(*) AS cnt "
         "ORDER BY cnt DESC LIMIT 10"
     )
-    # Violations: parameters with out-of-range default values (if any validation recorded)
-    violation_rows = _run(
-        "MATCH (p:SimulationParameter)-[:VIOLATES_CONSTRAINT]->(c) "
-        "RETURN p.id AS id, p.name AS name, c.message AS msg LIMIT 20"
-    )
-    # Convert list-of-dicts to flat {data_type: count} for frontend Object.entries()
+    if "VIOLATES_CONSTRAINT" in existing_rels:
+        violation_rows = _run(
+            "MATCH (p:SimulationParameter)-[:VIOLATES_CONSTRAINT]->(c) "
+            "RETURN p.id AS id, p.name AS name, c.message AS msg LIMIT 20"
+        )
+    else:
+        violation_rows = []
     type_dict = {r["data_type"]: r["cnt"] for r in by_type}
     return {
         "total_parameters": total,
@@ -367,26 +446,40 @@ def simulation_parameter_health() -> Dict[str, Any]:
 
 def simulation_dossier_health() -> Dict[str, Any]:
     """SimulationDossier completeness — artifacts, KPIs, evidence categories."""
+    _, existing_rels = _get_db_schema()
     total_row = _run("MATCH (sd:SimulationDossier) RETURN count(sd) AS cnt")
     total = total_row[0]["cnt"] if total_row else 0
 
-    dossiers = _run(
-        "MATCH (sd:SimulationDossier) "
-        "OPTIONAL MATCH (sd)-[:CONTAINS]->(a:SimulationArtifact) "
-        "WITH sd, count(a) AS artifact_count "
-        "OPTIONAL MATCH (sd)-[:HAS_KPI]->(k) "
-        "WITH sd, artifact_count, count(k) AS kpi_count "
-        "OPTIONAL MATCH (sd)-[:HAS_EVIDENCE_CATEGORY]->(ec) "
-        "RETURN sd.name AS name, coalesce(sd.status,'?') AS status, "
-        "       artifact_count, kpi_count, count(ec) AS evidence_categories "
-        "ORDER BY sd.name"
-    )
+    # Build OPTIONAL MATCH chain using only rels that exist
+    has_kpi = "HAS_KPI" in existing_rels
+    has_evidence = "HAS_EVIDENCE_CATEGORY" in existing_rels
+
+    if has_kpi and has_evidence:
+        dossiers = _run(
+            "MATCH (sd:SimulationDossier) "
+            "OPTIONAL MATCH (sd)-[:CONTAINS]->(a:SimulationArtifact) "
+            "WITH sd, count(a) AS artifact_count "
+            "OPTIONAL MATCH (sd)-[:HAS_KPI]->(k) "
+            "WITH sd, artifact_count, count(k) AS kpi_count "
+            "OPTIONAL MATCH (sd)-[:HAS_EVIDENCE_CATEGORY]->(ec) "
+            "RETURN sd.name AS name, coalesce(sd.status,'?') AS status, "
+            "       artifact_count, kpi_count, count(ec) AS evidence_categories "
+            "ORDER BY sd.name"
+        )
+    else:
+        dossiers = _run(
+            "MATCH (sd:SimulationDossier) "
+            "OPTIONAL MATCH (sd)-[:CONTAINS]->(a:SimulationArtifact) "
+            "RETURN sd.name AS name, coalesce(sd.status,'?') AS status, "
+            "       count(a) AS artifact_count, 0 AS kpi_count, 0 AS evidence_categories "
+            "ORDER BY sd.name"
+        )
     complete = sum(
         1 for d in dossiers
         if d.get("artifact_count", 0) > 0 and d.get("kpi_count", 0) > 0
     )
     artifact_total = sum(d.get("artifact_count", 0) for d in dossiers)
-    with_report = sum(1 for d in dossiers if d.get("kpi_count", 0) > 0)
+    with_report    = sum(1 for d in dossiers if d.get("kpi_count", 0) > 0)
     with_artifacts = sum(1 for d in dossiers if d.get("artifact_count", 0) > 0)
     return {
         "total_dossiers": total,
@@ -394,8 +487,8 @@ def simulation_dossier_health() -> Dict[str, Any]:
         "incomplete_dossiers": total - complete,
         "completeness_pct": round(complete / max(total, 1) * 100, 1),
         "total_artifacts": artifact_total,
-        "with_report": with_report,              # alias for frontend
-        "with_artifacts": with_artifacts,          # alias for frontend
+        "with_report":    with_report,
+        "with_artifacts": with_artifacts,
         "dossiers": dossiers,
     }
 
@@ -515,24 +608,31 @@ def ai_narrative(snapshot: Dict[str, Any]) -> Dict[str, Any]:
             digest[k] = {kk: vv for kk, vv in v.items() if not isinstance(vv, list)}
 
     prompt = (
-        "You are an AI engineering analyst for an MBSE / Simulation Data Dossier (SDD) "
-        "knowledge graph system. Analyze these live metrics and produce a structured JSON "
-        "assessment for engineers.\n\n"
-        f"METRICS SNAPSHOT:\n{_json.dumps(digest, indent=2)}\n\n"
-        "Respond ONLY with valid JSON (no markdown code fences, no extra text) "
-        "using exactly this schema:\n"
+        "Analyze the following engineering knowledge graph metrics "
+        "and respond with a JSON assessment.\n\n"
+        f"METRICS:\n{_json.dumps(digest, indent=1)}\n\n"
+        "Respond with ONLY valid JSON using this exact schema "
+        "(no markdown fences, no explanation):\n"
         "{\n"
-        '  "headline": "<one verdict sentence, max 12 words>",\n'
-        '  "summary": "<2-3 sentence engineering narrative>",\n'
+        '  "headline": "one verdict sentence, max 12 words",\n'
+        '  "summary": "2-3 sentence engineering narrative",\n'
         '  "priority_issues": [\n'
-        '    {"severity": "critical|warning|healthy", "title": "...", '
-        '"detail": "...", "metric_key": "..."}\n'
+        '    {"severity": "critical or warning or healthy", '
+        '"title": "short title", "detail": "explanation", '
+        '"metric_key": "metric-name"}\n'
         "  ],\n"
         '  "recommendations": [\n'
-        '    {"action": "...", "impact": "high|medium|low", "effort": "high|medium|low"}\n'
+        '    {"action": "what to do", '
+        '"impact": "high or medium or low", '
+        '"effort": "high or medium or low"}\n'
         "  ],\n"
-        '  "confidence": "high|medium|low"\n'
+        '  "confidence": "high or medium or low"\n'
         "}"
+    )
+
+    _system_msg = (
+        "You are an engineering analyst for an MBSE knowledge graph. "
+        "You MUST respond with valid JSON only, no other text."
     )
 
     _fallback = {
@@ -552,25 +652,35 @@ def ai_narrative(snapshot: Dict[str, Any]) -> Dict[str, Any]:
             f"{ollama_url.rstrip('/')}/api/chat",
             json={
                 "model": chat_model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [
+                    {"role": "system", "content": _system_msg},
+                    {"role": "user", "content": prompt},
+                ],
                 "stream": False,
                 "keep_alive": "10m",
+                "options": {"num_predict": 512, "temperature": 0.3},
             },
-            timeout=120,
+            timeout=300,
         )
         resp.raise_for_status()
         content = resp.json().get("message", {}).get("content", "").strip()
+        logger.debug(
+            "AI narrative: Ollama raw (%d chars): %.300s", len(content), content
+        )
         # Strip markdown fences if the model wraps in ```json ... ```
         if content.startswith("```"):
             lines = content.split("\n")
             content = "\n".join(lines[1:]).rstrip("`").strip()
+        if not content:
+            raise ValueError("Ollama returned empty content")
         parsed: Dict[str, Any] = _json.loads(content)
     except _json.JSONDecodeError as exc:
-        logger.warning(f"AI narrative: Ollama returned non-JSON — {exc}")
+        logger.warning("AI narrative: Ollama returned non-JSON — %s", exc)
+        logger.debug("AI narrative: raw content was: %.500s", content)
         parsed = {**_fallback, "confidence": "low",
                   "headline": "AI returned unexpected format — check Ollama logs"}
     except Exception as exc:
-        logger.warning(f"AI narrative: Ollama unavailable — {exc}")
+        logger.warning("AI narrative: Ollama unavailable — %s", exc)
         parsed = _fallback.copy()
 
     parsed["overall_score"] = overall_score

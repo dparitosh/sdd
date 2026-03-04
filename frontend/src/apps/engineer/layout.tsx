@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@ui/badge';
 import { Separator } from '@ui/separator';
 import RoleSelector from '@/features/auth/components/RoleSelector';
-import Chatbot from '@/features/ai-studio/components/Chatbot';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -229,7 +228,6 @@ export default function EngineerLayout() {
           </div>
         </footer>
       </main>
-      <Chatbot />
     </div>
   );
 }

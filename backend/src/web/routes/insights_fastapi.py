@@ -7,11 +7,29 @@ AI Insights & SmartAnalysis API Routes (FastAPI)
 
 from __future__ import annotations
 
+import time as _time
 from dataclasses import asdict
 from typing import Any, Callable, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from loguru import logger
+
+# ── Simple TTL cache for insight results (avoids repeated Neo4j full-scans) ──
+_INSIGHT_RESULT_CACHE: dict[str, tuple[Any, float]] = {}
+_INSIGHT_CACHE_TTL = 300  # 5 minutes
+
+
+def _cached_metric(key: str, fn: Callable[[], Any]) -> Any:
+    """Return a cached result if fresh, otherwise call fn() and cache it."""
+    now = _time.time()
+    if key in _INSIGHT_RESULT_CACHE:
+        result, ts = _INSIGHT_RESULT_CACHE[key]
+        if now - ts < _INSIGHT_CACHE_TTL:
+            logger.debug(f"[insight cache hit] {key}")
+            return result
+    result = fn()
+    _INSIGHT_RESULT_CACHE[key] = (result, now)
+    return result
 
 from src.web.dependencies import get_api_key
 from src.web.services.insights_service import (
@@ -57,7 +75,7 @@ _INSIGHT_MAP: Dict[str, Callable[[], dict]] = {
 
 
 @router.get("/{metric}")
-async def get_insight(metric: str = Path(..., description="Insight metric name")):
+def get_insight(metric: str = Path(..., description="Insight metric name")):
     """Return a pre-computed insight metric.
 
     Valid metrics: ``bom-completeness``, ``traceability-gaps``,
@@ -73,14 +91,14 @@ async def get_insight(metric: str = Path(..., description="Insight metric name")
 
     logger.info(f"AI Insights: computing '{metric}'")
     try:
-        return fn()
+        return _cached_metric(metric, fn)
     except Exception as exc:
         logger.exception(f"Insight '{metric}' failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.post("/ai-narrative")
-async def get_ai_narrative():
+def get_ai_narrative():
     """
     Collect all insight metrics and ask the local LLM (Ollama) to produce
     a natural-language health assessment with priority issues and recommendations.
@@ -89,7 +107,7 @@ async def get_ai_narrative():
     snapshot: Dict[str, Any] = {}
     for key, fn in _INSIGHT_MAP.items():
         try:
-            snapshot[key] = fn()
+            snapshot[key] = _cached_metric(key, fn)
         except Exception as exc:
             logger.warning(f"AI Narrative: skipping '{key}' — {exc}")
     return ai_narrative(snapshot)
@@ -98,7 +116,7 @@ async def get_ai_narrative():
 # ── SmartAnalysis per-node endpoint ──────────────────────────────────────────
 
 @router.post("/smart-analysis/{uid}")
-async def run_smart_analysis(uid: str = Path(..., description="Node UID to analyse")):
+def run_smart_analysis(uid: str = Path(..., description="Node UID to analyse")):
     """
     Execute the 5-step SmartAnalysis pipeline for a single node.
 

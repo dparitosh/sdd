@@ -3,9 +3,11 @@ Graph Visualization API Routes (FastAPI)
 Provides endpoints for fetching graph data in format suitable for visualization
 """
 
+import asyncio
+import json as _json
 from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, Query, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from loguru import logger
 
@@ -203,6 +205,9 @@ class ShortestPathResponse(BaseModel):
 class RAGQueryRequest(BaseModel):
     question: str
     top_k: int = 5
+    focus_area: Optional[str] = None          # e.g. 'AP239', 'ONTOLOGY', 'ENTERPRISE'
+    node_types: Optional[List[str]] = None    # active node-type filter from the current view
+    max_nodes: int = 500                       # current limit slider value
 
 
 class RAGQueryResponse(BaseModel):
@@ -392,6 +397,10 @@ async def get_graph_data(
     include_metadata: bool = Query(
         False, description="Include metadata nodes (Documentation, DomainConcept, ExternalModel)"
     ),
+    include_neighbors: bool = Query(
+        False, description="Also fetch immediate 1-hop neighbours of primary nodes"
+    ),
+    skip: int = Query(0, ge=0, description="Number of primary nodes to skip (for progressive batch loading)"),
     neo4j=Depends(Services.neo4j),
     _api_key: str = Depends(get_api_key),
 ):
@@ -425,7 +434,7 @@ async def get_graph_data(
 
         # Build query
         where_clauses = []
-        params: dict[str, Union[int, str]] = {"limit": limit}
+        params: dict[str, Union[int, str]] = {"limit": limit, "skip": skip}
 
         # OWL property nodes (OWLObjectProperty, OWLDatatypeProperty) are
         # intermediate satellites that only make sense when connected to their
@@ -477,6 +486,7 @@ async def get_graph_data(
                n.ap_level AS ap_level,
                n.ap_schema AS ap_schema,
                properties(n) AS props
+        SKIP $skip
         LIMIT $limit
         """
 
@@ -578,6 +588,55 @@ async def get_graph_data(
                 if r and r.get("id") and r["id"] not in node_ids:
                     node_ids.add(r["id"])
                     nodes.append(_make_node(r))
+
+        # ------------------------------------------------------------------
+        # Fetch immediate 1-hop neighbours of primary nodes (optional)
+        # ------------------------------------------------------------------
+        if include_neighbors and node_ids:
+            primary_prop_ids = [
+                nid for nid in node_ids if not nid.startswith("4:") and ":" not in nid
+            ]
+            if primary_prop_ids:
+                # Build an exclusion clause for metadata types when not explicitly requested
+                excluded_labels = list(METADATA_NODE_TYPES) if not include_metadata else []
+                meta_filter = (
+                    "AND NOT any(lbl IN labels(m) WHERE lbl IN $exclude_meta)"
+                    if excluded_labels
+                    else ""
+                )
+                neighbor_query = f"""
+                MATCH (n)-[r]-(m)
+                WHERE n.id IN $primary_ids
+                  AND NOT coalesce(m.id, elementId(m)) IN $existing_ids
+                  {meta_filter}
+                WITH DISTINCT
+                     coalesce(m.id, elementId(m)) AS id,
+                     labels(m) AS labels,
+                     coalesce(m.name, m.label) AS name,
+                     m.description AS description,
+                     m.status AS status,
+                     m.priority AS priority,
+                     m.ap_level AS ap_level,
+                     m.ap_schema AS ap_schema,
+                     properties(m) AS props
+                RETURN id, labels, name, description, status, priority, ap_level, ap_schema, props
+                LIMIT 500
+                """
+                neighbor_params = {
+                    "primary_ids": primary_prop_ids,
+                    "existing_ids": list(node_ids),
+                }
+                if excluded_labels:
+                    neighbor_params["exclude_meta"] = excluded_labels
+                neighbor_results = neo4j.execute_query(
+                    neighbor_query,
+                    neighbor_params,
+                    use_cache=False,
+                )
+                for r in neighbor_results:
+                    if r and r.get("id") and r["id"] not in node_ids:
+                        node_ids.add(r["id"])
+                        nodes.append(_make_node(r))
 
         # Fetch relationships
         # Split node_ids into property-based IDs and elementId-based fallbacks
@@ -841,10 +900,17 @@ async def rag_query(
     try:
         from src.agents.semantic_agent import SemanticAgent
         agent = SemanticAgent()
-        result = agent.semantic_insight(body.question, top_k=body.top_k)
+        result = agent.semantic_insight(
+            body.question,
+            top_k=body.top_k,
+            focus_area=body.focus_area,
+            node_types=body.node_types or [],
+            max_nodes=body.max_nodes,
+        )
 
         raw_answer = result.get("answer", "")
         is_fallback = result.get("fallback", False)
+        is_structural = result.get("structural", False)
 
         # Build subgraph from the source hits + their 2-hop expanded neighbours
         raw_hits = result.get("hits", [])
@@ -889,11 +955,15 @@ async def rag_query(
         elif not raw_answer:
             raw_answer = "No results found for this query in the knowledge graph."
 
-        if is_fallback:
+        # Only append the fallback notice for keyword-search results, not schema/structural answers
+        if is_fallback and not is_structural:
             raw_answer = raw_answer.rstrip() + "\n\n---\n*Semantic search index offline — using Neo4j keyword fallback.*"
 
         for hit in raw_hits:
             uid = hit.get("uid")
+            # Skip schema pseudo-hits — they have no real Neo4j node
+            if uid and str(uid).startswith("__structural_"):
+                continue
             if uid and uid not in seen_ids:
                 seen_ids.add(uid)
                 resolved_name = _resolve_name(uid, hit.get("name", uid))
@@ -947,7 +1017,126 @@ async def rag_query(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-# ── Node expansion endpoint (E1 context-menu expand) ────────────────────────
+# -- GraphRAG streaming endpoint (E3 -- SSE) ---------------------------------
+
+@router.post("/rag-query/stream")
+async def rag_query_stream(
+    body: RAGQueryRequest,
+    _api_key: str = Depends(get_api_key),
+    neo4j=Depends(Services.neo4j),
+):
+    """Streaming version of /rag-query.  Yields SSE events while Ollama generates:
+      {"type":"nodes", "sources":[...], "nodes":[...], "links":[...]}  (sent first)
+      {"type":"chunk", "text":"..."}  (one per token)
+      {"type":"done"}
+    """
+    async def event_stream():
+        try:
+            from src.agents.semantic_agent import SemanticAgent
+            agent = SemanticAgent()
+
+            # Phase 1 -- semantic search (runs in thread pool so event loop stays free)
+            search_result = await asyncio.to_thread(
+                agent.semantic_search,
+                body.question,
+                top_k=body.top_k,
+                expand=True,
+                focus_area=body.focus_area,
+                node_types=body.node_types or [],
+            )
+
+            # Phase 2 -- build context + prompt (synchronous, <5 ms)
+            built = agent._build_context_and_prompt(
+                body.question, search_result,
+                body.focus_area, body.node_types or [], body.max_nodes,
+            )
+            hits     = built["hits"]
+            expanded = built["expanded"]
+
+            # Enrich hit names from Neo4j (same as non-streaming endpoint)
+            uid_to_name: dict = {}
+            hit_uids = [h.get("uid") for h in hits if h.get("uid")]
+            if hit_uids:
+                try:
+                    rows = neo4j.execute_query(
+                        "UNWIND $uids AS uid MATCH (n {uid: uid}) "
+                        "RETURN uid, COALESCE(n.name, n.product_id, n.label, uid) AS name, "
+                        "labels(n) AS labels",
+                        {"uids": hit_uids},
+                    )
+                    uid_to_name = {r["uid"]: {"name": r["name"], "labels": list(r["labels"])} for r in rows}
+                except Exception as exc:
+                    logger.warning(f"GraphRAG stream: name enrichment failed -- {exc}")
+
+            def _rname(uid, fallback):
+                n = uid_to_name.get(uid, {}).get("name")
+                return n if (n and n != uid) else (fallback if (fallback and fallback != uid) else uid)
+
+            # Build graph nodes + links from search hits
+            graph_nodes, graph_links, seen_ids = [], [], set()
+            for hit in hits:
+                uid = hit.get("uid")
+                if uid and str(uid).startswith("__structural_"):
+                    continue
+                if uid and uid not in seen_ids:
+                    seen_ids.add(uid)
+                    resolved_labels = uid_to_name.get(uid, {}).get("labels", [])
+                    graph_nodes.append({
+                        "id": uid, "name": _rname(uid, hit.get("name", uid)),
+                        "type": resolved_labels[0] if resolved_labels else "RAGHit",
+                        "labels": resolved_labels, "score": hit.get("score", 0),
+                    })
+                for nb in expanded.get(uid or "", []):
+                    nb_id = nb.get("neighbor_uid")
+                    if nb_id and nb_id not in seen_ids:
+                        seen_ids.add(nb_id)
+                        graph_nodes.append({
+                            "id": nb_id, "name": nb.get("neighbor_name", nb_id),
+                            "type": (nb.get("neighbor_labels") or ["Unknown"])[0],
+                            "labels": nb.get("neighbor_labels", []),
+                        })
+                    if uid and nb_id:
+                        graph_links.append({
+                            "source": uid, "target": nb_id,
+                            "type": " -> ".join(nb.get("rel_types", []) or ["RELATED"]),
+                        })
+
+            sources = [
+                {"uid": h.get("uid"), "name": _rname(h.get("uid", ""), h.get("name", "")), "score": h.get("score")}
+                for h in hits if not str(h.get("uid", "")).startswith("__structural_")
+            ]
+
+            # Phase 3 -- yield graph metadata immediately (UI can update before LLM starts)
+            yield f'data: {_json.dumps({"type": "nodes", "sources": sources, "nodes": graph_nodes, "links": graph_links})}\n\n'
+
+            # Phase 4 -- stream answer
+            # If the result is from a direct Cypher intent query the answer is already
+            # formatted markdown — stream it in chunks without calling the LLM.
+            pre_answer = built.get("pre_formatted_answer")
+            if pre_answer:
+                # Stream in ~80-char chunks so the UI renders progressively
+                chunk_size = 80
+                for i in range(0, len(pre_answer), chunk_size):
+                    yield f'data: {_json.dumps({"type": "chunk", "text": pre_answer[i:i+chunk_size]})}\n\n'
+            else:
+                for token in agent._chat_stream(built["prompt"]):
+                    yield f'data: {_json.dumps({"type": "chunk", "text": token})}\n\n'
+                    await asyncio.sleep(0)  # yield event loop between LLM tokens (non-blocking)
+
+            yield f'data: {_json.dumps({"type": "done"})}\n\n'
+
+        except Exception as exc:
+            logger.error(f"GraphRAG stream error: {exc}")
+            yield f'data: {_json.dumps({"type": "error", "text": str(exc)})}\n\n'
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
+    )
+
+
+# -- Node expansion endpoint (E1 context-menu expand) ------------------------
 
 @router.get("/expand/{node_id}", response_model=ExpandResponse, response_class=Neo4jJSONResponse)
 async def expand_node(

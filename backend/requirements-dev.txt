@@ -1,0 +1,16 @@
+# Development / testing dependencies
+# Install with: pip install -r backend/requirements-dev.txt
+# (On top of the base requirements.txt)
+
+-r requirements.txt
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.23.0
+
+# Code Quality
+black>=23.11.0
+flake8>=6.1.0
+mypy>=1.7.0
+types-requests>=2.31.0

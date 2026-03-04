@@ -12,7 +12,14 @@ class ElasticsearchVectorStore:
     """
 
     def __init__(self, host: Optional[str] = None, timeout: int = 120, max_retries: int = 3):
-        self.host = host or os.getenv("VECTORSTORE_HOST", "http://localhost:9200").rstrip("/")
+        # Accept all naming conventions — canonical is VECTORSTORE_HOST
+        self.host = (
+            host
+            or os.getenv("VECTORSTORE_HOST")
+            or os.getenv("OPENSEARCH_URL")
+            or os.getenv("OPENSEARCH_HOST")
+            or "http://localhost:9200"
+        ).rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
 

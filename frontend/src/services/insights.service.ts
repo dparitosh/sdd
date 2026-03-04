@@ -17,7 +17,7 @@ export type InsightMetric =
   | 'simulation-digital-thread';
 
 export const getInsight = (metric: InsightMetric) =>
-  apiClient.get<Record<string, any>>(`/insights/${metric}`);
+  apiClient.get<Record<string, any>>(`/insights/${metric}`, { timeout: 120_000 });
 
 export const getAllInsights = () =>
   Promise.all([
@@ -70,7 +70,7 @@ export interface AiNarrativeResult {
 }
 
 export const getAiNarrative = () =>
-  apiClient.post<AiNarrativeResult>('/insights/ai-narrative', {});
+  apiClient.post<AiNarrativeResult>('/insights/ai-narrative', {}, { timeout: 300000 });
 
 // ── SmartAnalysis per-node pipeline ───────────────────────────
 export interface SmartAnalysisResult {

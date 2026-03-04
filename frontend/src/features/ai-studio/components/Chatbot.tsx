@@ -30,26 +30,279 @@ interface ChatMessage {
   timestamp: number;
 }
 
-/** Extract page context from the current URL to inject into the AI prompt */
-function buildPageContext(pathname: string): string {
+// ---------------------------------------------------------------------------
+// Page context + quick-prompt suggestions
+// ---------------------------------------------------------------------------
+
+interface PageInfo {
+  label: string;
+  context: string;       // injected into AI prompt
+  suggestions: string[]; // quick-prompt chips shown in chat
+}
+
+function buildPageInfo(pathname: string): PageInfo {
   const parts = pathname.split('/').filter(Boolean);
 
-  // Detect dossier detail pages: /engineer/simulation/dossiers/:id
+  // Dossier detail: /engineer/simulation/dossiers/:id
   const dossierIdx = parts.indexOf('dossiers');
   if (dossierIdx !== -1 && parts[dossierIdx + 1]) {
-    return `User is viewing Simulation Dossier ID "${parts[dossierIdx + 1]}".`;
+    const id = parts[dossierIdx + 1];
+    return {
+      label: 'Dossier Detail',
+      context: `User is viewing Simulation Dossier ID "${id}". Answer questions about this dossier's simulation runs, artifacts, evidence categories, KPIs, verification status, and linked requirements via the digital thread.`,
+      suggestions: [
+        `What simulation runs are linked to dossier ${id}?`,
+        `Show evidence categories for dossier ${id}`,
+        `Which requirements does dossier ${id} verify?`,
+        `Summarise the results and KPIs of dossier ${id}`,
+      ],
+    };
   }
 
-  // Detect requirements page
-  if (parts.includes('requirements')) return 'User is viewing the Requirements page.';
-  if (parts.includes('traceability')) return 'User is viewing the Traceability Matrix.';
-  if (parts.includes('graph')) return 'User is viewing the Graph Browser.';
-  if (parts.includes('parts')) return 'User is viewing the Parts Explorer.';
-  if (parts.includes('semantic')) return 'User is in the Semantic Web tools section.';
-  if (parts.includes('quality')) return 'User is in the Quality Head portal.';
-  if (parts.includes('admin')) return 'User is in the Admin portal.';
+  if (parts.includes('mossec-dashboard'))
+    return {
+      label: 'MoSSEC Dashboard',
+      context: 'User is viewing the MoSSEC AP243 Dashboard. Answer queries about the MoSSEC knowledge graph: AP243 node counts, simulation dossiers, runs, artifacts, evidence categories, KPIs, workflow methods, and the digital thread chain.',
+      suggestions: [
+        'Give me an overview of the MoSSEC knowledge graph',
+        'List all simulation dossiers and their evidence categories',
+        'Show AP243 model instances and workflow methods',
+        'How many AP243 simulation nodes are in the graph?',
+      ],
+    };
 
-  return '';
+  if (parts.includes('requirements') && parts.includes('ap239'))
+    return {
+      label: 'AP239 Requirements',
+      context: 'User is viewing the AP239 Requirements Dashboard. Answer queries about AP239 PLCS requirements, traceability chains, and OSLC links.',
+      suggestions: [
+        'List all AP239 requirements',
+        'Show traceability from AP239 requirements to design elements',
+        'Which AP239 requirements are linked via OSLC?',
+        'Find requirements without traceability links',
+      ],
+    };
+
+  if (parts.includes('requirements'))
+    return {
+      label: 'Requirements',
+      context: 'User is viewing the Requirements Manager. Answer queries about requirements in the graph — search, detail, status, priority, traceability, and satisfaction links.',
+      suggestions: [
+        'List all requirements in the graph',
+        'Find requirements with status "open"',
+        'Which components satisfy requirements?',
+        'Show requirements missing traceability links',
+      ],
+    };
+
+  if (parts.includes('traceability'))
+    return {
+      label: 'Traceability Matrix',
+      context: 'User is viewing the Traceability Matrix. Answer queries about full AP239→AP242→AP243 traceability chains: requirements → design elements (Parts) → simulation dossiers → runs → evidence categories. Relationships: SATISFIES, VERIFIED_BY, ALLOCATED_TO, EVIDENCE_FOR.',
+      suggestions: [
+        'Show traceability from requirements to simulation dossiers',
+        'Which requirements are verified by simulation evidence?',
+        'List requirements with no linked dossier (unverified)',
+        'Show all evidence categories in the graph',
+      ],
+    };
+
+  if (parts.includes('graph'))
+    return {
+      label: 'Graph Explorer',
+      context: 'User is in the Graph Browser / Knowledge Graph Explorer. The graph has five views: Enterprise, AP239 PLCS, AP242 Product Model, AP243 MoSSEC Simulation, and Digital Thread. Answer queries about node types, relationships, BOM hierarchies, digital thread chains (Req→Part→Dossier→Run→Evidence), and cross-domain AP239/AP242/AP243 linkages.',
+      suggestions: [
+        'Trace the full digital thread from requirements to evidence',
+        'Show the complete AP242 product model graph',
+        'List AP243 simulation dossiers and evidence categories',
+        'How many nodes are in the graph by type?',
+      ],
+    };
+
+  if (parts.includes('parts') || parts.includes('ap242'))
+    return {
+      label: 'Parts (AP242)',
+      context: 'User is viewing the AP242 Parts Explorer. Answer queries about the complete AP242 product model: parts, assemblies, BOM hierarchy, materials, CAD geometry, product definitions, and cross-links to requirements and simulation dossiers.',
+      suggestions: [
+        'Show the complete AP242 product model graph',
+        'Show BOM hierarchy — assemblies and their child parts',
+        'Which parts have material assignments?',
+        'Find parts without a linked requirement',
+      ],
+    };
+
+  if (parts.includes('product-specs'))
+    return {
+      label: 'Product Specs',
+      context: 'User is on the Product Specifications page. Answer queries about product specifications, parameters, constraints, and their links to requirements and design.',
+      suggestions: [
+        'List all product specifications',
+        'Show parameters for a product spec',
+        'Which specs are linked to requirements?',
+        'Find overridden or conflicting specs',
+      ],
+    };
+
+  if (parts.includes('simulation') && parts.includes('models'))
+    return {
+      label: 'Simulation Models',
+      context: 'User is on the AP243 Simulation Models page. Answer queries about simulation model definitions, ModelInstance and ModelType nodes, analysis models, parameter studies, workflow methods, KPIs, and links to AP243 simulation dossiers and evidence chains.',
+      suggestions: [
+        'List all AP243 simulation model instances',
+        'Show ModelType and ModelInstance nodes in the graph',
+        'What AP243 workflow methods and task elements are defined?',
+        'Show simulation models linked to dossiers and evidence',
+      ],
+    };
+
+  if (parts.includes('simulation') && parts.includes('runs'))
+    return {
+      label: 'Simulation Runs',
+      context: 'User is on the Simulation Runs page. Answer queries about simulation run status, results, parameters, and linked dossiers.',
+      suggestions: [
+        'List all simulation runs',
+        'Show failed simulation runs',
+        'What were the results of the latest run?',
+        'Which requirements were verified by simulation?',
+      ],
+    };
+
+  if (parts.includes('simulation') && parts.includes('results'))
+    return {
+      label: 'Simulation Results',
+      context: 'User is on the Simulation Results page. Answer queries about simulation results, outputs, convergence, and validation outcomes.',
+      suggestions: [
+        'Summarise latest simulation results',
+        'Which simulations passed validation?',
+        'Show results for a specific dossier',
+        'What were the key output parameters?',
+      ],
+    };
+
+  if (parts.includes('ontology'))
+    return {
+      label: 'Ontology Manager',
+      context: 'User is in the Ontology Manager. Answer queries about OWL ontologies, classes, properties, namespaces, and loaded ontology files.',
+      suggestions: [
+        'List all loaded ontologies',
+        'What OWL classes exist in the graph?',
+        'Show ontology property counts',
+        'Which ontologies support AP243?',
+      ],
+    };
+
+  if (parts.includes('oslc'))
+    return {
+      label: 'OSLC Browser',
+      context: 'User is browsing OSLC resources. Answer queries about OSLC lifecycle links, requirements management resources, and cross-tool traceability via OSLC.',
+      suggestions: [
+        'Show all OSLC requirement resources',
+        'Which OSLC domains are registered?',
+        'Find OSLC links to requirements',
+        'What is the TRS feed status?',
+      ],
+    };
+
+  if (parts.includes('shacl'))
+    return {
+      label: 'SHACL Validator',
+      context: 'User is on the SHACL Validator page. Answer queries about SHACL shapes, validation results, constraint violations, and graph conformance.',
+      suggestions: [
+        'What SHACL shapes are loaded?',
+        'Are there any validation violations?',
+        'Which nodes fail SHACL constraints?',
+        'Summarise the latest validation report',
+      ],
+    };
+
+  if (parts.includes('plm'))
+    return {
+      label: 'PLM Integration',
+      context: 'User is on the PLM Integration page. Answer queries about PLM connectors, Teamcenter/Windchill integration, BOM data, and part synchronisation.',
+      suggestions: [
+        'Show configured PLM connectors',
+        'List parts synced from Teamcenter',
+        'What BOM data is available in the graph?',
+        'Show change impact for a part',
+      ],
+    };
+
+  if (parts.includes('import'))
+    return {
+      label: 'Data Import',
+      context: 'User is on the Data Import page. Answer queries about ingested files, import status, supported formats (XMI, STEP, PLMXML, ontology), and data loading.',
+      suggestions: [
+        'What data has been imported?',
+        'How do I import a STEP file?',
+        'Show recent import history',
+        'What file formats are supported?',
+      ],
+    };
+
+  if (parts.includes('insights'))
+    return {
+      label: 'AI Insights',
+      context: 'User is on the AI Insights page. Provide intelligent summaries, anomaly detection, cluster analysis, and recommendations from the knowledge graph.',
+      suggestions: [
+        'Give me AI insights about the graph',
+        'What anomalies exist in the model?',
+        'Identify highly connected node clusters',
+        'Recommend areas for improvement',
+      ],
+    };
+
+  if (parts.includes('search'))
+    return {
+      label: 'Search & Discovery',
+      context: 'User is on the Search & Discovery page. Answer queries about any artifact, node, or concept in the knowledge graph.',
+      suggestions: [
+        'Search for nodes named "Control"',
+        'Find all classes related to materials',
+        'Search for simulation-related entities',
+        'Find nodes with missing properties',
+      ],
+    };
+
+  if (parts.includes('quality'))
+    return {
+      label: 'Quality Portal',
+      context: 'User is in the Quality Head portal. Answer queries about quality metrics, compliance status, validation findings, and engineering standards.',
+      suggestions: [
+        'Show current quality metrics',
+        'Are there open compliance violations?',
+        'Summarise validation findings',
+        'What standards are being tracked?',
+      ],
+    };
+
+  if (parts.includes('admin'))
+    return {
+      label: 'Admin Portal',
+      context: 'User is in the Admin portal. Answer queries about system health, database statistics, index status, and configuration.',
+      suggestions: [
+        'What are the current graph statistics?',
+        'Show database index status',
+        'Are there any system errors?',
+        'How many nodes were added this week?',
+      ],
+    };
+
+  // Default / engineer dashboard
+  return {
+    label: 'Dashboard',
+    context: 'User is on the Engineer Dashboard. Answer queries about the overall knowledge graph, recent activity, and any engineering domain.',
+    suggestions: [
+      'Give me an overview of the knowledge graph',
+      'How many requirements are in the system?',
+      'What simulations have been run recently?',
+      'Show the most connected nodes in the graph',
+    ],
+  };
+}
+
+/** Legacy helper kept for backward compatibility */
+function buildPageContext(pathname: string): string {
+  return buildPageInfo(pathname).context;
 }
 
 export default function Chatbot() {
@@ -92,9 +345,9 @@ export default function Chatbot() {
       setInput('');
       setSending(true);
 
-      // Build prompt with page context
       const ctx = buildPageContext(location.pathname);
-      const prompt = ctx ? `[Context: ${ctx}]\n${userMsg}` : userMsg;
+      const pageInfo = buildPageInfo(location.pathname);
+      const prompt = ctx ? `[Context: ${ctx}]\n[Page: ${pageInfo.label}]\n${userMsg}` : userMsg;
 
       try {
         const result = await runOrchestrator(prompt, 'knowledge_query');
@@ -155,6 +408,8 @@ export default function Chatbot() {
   }
 
   // ----- Full chat drawer -----
+  const pageInfo = buildPageInfo(location.pathname);
+  const showSuggestions = messages.length <= 1 && !sending;
   return (
     <Card className="fixed bottom-6 right-6 z-50 w-96 shadow-2xl flex flex-col max-h-150 rounded-2xl border border-border/60 overflow-hidden">
       {/* Header */}
@@ -163,7 +418,7 @@ export default function Chatbot() {
           <Sparkles className="h-4 w-4" />
           <CardTitle className="text-sm font-semibold">KnowledgeGraph AI</CardTitle>
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-            Beta
+            {pageInfo.label}
           </Badge>
         </div>
         <div className="flex items-center gap-1">
@@ -237,6 +492,22 @@ export default function Chatbot() {
                 <div className="bg-muted px-3 py-2 rounded-xl rounded-bl-sm">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
+              </div>
+            )}
+
+            {/* Page-specific quick prompt suggestions */}
+            {showSuggestions && (
+              <div className="pt-1 space-y-1.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">Suggested for this page</p>
+                {pageInfo.suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(s)}
+                    className="w-full text-left text-xs px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 hover:bg-muted hover:border-primary/40 transition-colors leading-snug"
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceManyBody, forceX, forceY, forceCollide } from 'd3';
-import { Check, ChevronsUpDown, Loader2, AlertCircle, ZoomIn, ZoomOut, Maximize2, Pause, Play, Search, X, Network, Share2, Layers, GitMerge, Route, Brain, Expand, Download, Palette, Hash, Copy, ExternalLink, MousePointerClick, Keyboard, Terminal as TerminalIcon, Boxes } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, AlertCircle, ZoomIn, ZoomOut, Maximize2, Pause, Play, Search, X, Network, Share2, Layers, GitMerge, Route, Brain, Expand, Download, Palette, Hash, Copy, ExternalLink, MousePointerClick, Keyboard, Terminal as TerminalIcon, Boxes, Send, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,8 +18,78 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { QUERY_CONFIG } from '@/constants';
-import { getNodeTypes, getGraphData, findShortestPath, graphRAGQuery, expandNode, getCommunities, searchNodes, graphDiff } from '@/services/graph.service';
+import { getNodeTypes, getGraphData, findShortestPath, graphRAGQuery, graphRAGQueryStream, expandNode, getCommunities, searchNodes, graphDiff } from '@/services/graph.service';
 import { getTRSChangelog } from '@/services/oslc.service';
+
+// ---------------------------------------------------------------------------
+// Lightweight inline Markdown renderer (no external dependency)
+// Handles: ## headings, **bold**, *italic*, - bullets, 1. numbered lists, --- rules
+// ---------------------------------------------------------------------------
+function renderInlineMarkdown(text) {
+  // **bold** and *italic* within a line
+  const parts = [];
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
+    else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
+    else if (m[4]) parts.push(<code key={m.index} className="bg-muted px-0.5 rounded text-[10px] font-mono">{m[4]}</code>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts.length ? parts : text;
+}
+
+function SimpleMarkdown({ text }) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let inList = false;
+  let listItems = [];
+  let listType = null;
+
+  const flushList = (key) => {
+    if (!listItems.length) return;
+    const Tag = listType === 'ol' ? 'ol' : 'ul';
+    elements.push(
+      <Tag key={key} className={`ml-3 space-y-0.5 ${listType === 'ol' ? 'list-decimal' : 'list-disc'} list-outside pl-3`}>
+        {listItems.map((li, i) => <li key={i} className="text-xs">{renderInlineMarkdown(li)}</li>)}
+      </Tag>
+    );
+    listItems = [];
+    listType = null;
+    inList = false;
+  };
+
+  lines.forEach((line, i) => {
+    if (/^#{1}\s/.test(line)) {
+      flushList(i + '-fl');
+      elements.push(<h2 key={i} className="text-xs font-bold mt-2 mb-0.5">{renderInlineMarkdown(line.replace(/^#+\s/, ''))}</h2>);
+    } else if (/^#{2,3}\s/.test(line)) {
+      flushList(i + '-fl');
+      elements.push(<h3 key={i} className="text-[11px] font-semibold mt-1.5 mb-0.5 text-foreground/80">{renderInlineMarkdown(line.replace(/^#+\s/, ''))}</h3>);
+    } else if (/^[-*]\s/.test(line)) {
+      if (!inList || listType !== 'ul') { flushList(i + '-fl'); inList = true; listType = 'ul'; }
+      listItems.push(line.replace(/^[-*]\s/, ''));
+    } else if (/^\d+\.\s/.test(line)) {
+      if (!inList || listType !== 'ol') { flushList(i + '-fl'); inList = true; listType = 'ol'; }
+      listItems.push(line.replace(/^\d+\.\s/, ''));
+    } else if (/^---+$/.test(line.trim())) {
+      flushList(i + '-fl');
+      elements.push(<hr key={i} className="my-1 border-border" />);
+    } else if (!line.trim()) {
+      flushList(i + '-fl');
+      elements.push(<div key={i} className="h-1" />);
+    } else {
+      flushList(i + '-fl');
+      elements.push(<p key={i} className="text-xs leading-relaxed">{renderInlineMarkdown(line)}</p>);
+    }
+  });
+  flushList('end-fl');
+  return <div className="space-y-0.5">{elements}</div>;
+}
 
 const GRAPH_VIEWS = {
   ENTERPRISE: {
@@ -40,32 +110,42 @@ const GRAPH_VIEWS = {
     // AP239 PLCS core entity types
     fixedNodeTypes: ['Class', 'Slot', 'Requirement', 'Verification', 'WorkOrder', 'Part', 'Document', 'Organization', 'Person', 'Activity'],
     defaultLimit: 500,
-    icon: Layers
+    icon: Route
   },
   AP242: {
     id: 'AP242',
     label: 'AP242 (Design)',
-    description: 'Managed Model Based 3D Engineering — CAD parts, assemblies, shapes',
+    description: 'Complete AP242 Product Model — Parts, Assemblies, BOM hierarchy, Materials, Geometry, Product Definitions and cross-links to requirements',
     apLevel: 'AP242',
-    // AP242 Design entity types
-    fixedNodeTypes: ['Part', 'Assembly', 'Component', 'PartVersion', 'Shape', 'Position', 'Property', 'Document', 'Material'],
+    // AP242 Design entity types — full product model graph
+    fixedNodeTypes: [
+      'Part', 'AP242Product', 'Assembly', 'Component', 'PartVersion',
+      'Shape', 'GeometricModel', 'Position', 'Property',
+      'Material', 'Document', 'BOMLink', 'ConfigurationItem', 'ProductDefinition',
+    ],
     defaultLimit: 500,
     icon: Layers
   },
   AP243: {
     id: 'AP243',
     label: 'AP243 (MoSSEC)',
-    description: 'Simulation & Analysis Context — simulation dossiers, runs, evidence, model instances',
+    description: 'AP243 Simulation Model — dossiers, runs, artifacts, evidence categories, KPIs, workflow methods, parameter studies, model instances',
     // Use fixedNodeTypes for MoSSEC simulation entities (not ap_level filter which returns raw schema classes)
     apLevel: null,
     fixedNodeTypes: [
-      'ModelInstance', 'Study', 'Context', 'ModelType', 'AssociativeModelNetwork',
-      'ActualActivity', 'MethodActivity', 'Method', 'Result', 'ContextEnvironment',
+      // Core AP243 SDD chain
       'SimulationDossier', 'SimulationRun', 'SimulationArtifact', 'EvidenceCategory',
-      'MBSEElement', 'Requirement', 'Part'
+      // AP243 domain model
+      'ModelInstance', 'ModelType', 'Study', 'Context', 'AssociativeModelNetwork',
+      'ActualActivity', 'MethodActivity', 'Method', 'Result', 'ContextEnvironment',
+      // Extended AP243: workflow, KPI, validation
+      'WorkflowMethod', 'TaskElement', 'ParameterStudy', 'AnalysisModel',
+      'KPI', 'ValidationRecord',
+      // Cross-domain anchors
+      'MBSEElement', 'Requirement', 'Part',
     ],
     defaultLimit: 500,
-    icon: Layers
+    icon: GitMerge
   },
   ONTOLOGY: {
     id: 'ONTOLOGY',
@@ -113,15 +193,74 @@ const GRAPH_VIEWS = {
   DIGITAL_THREAD: {
     id: 'DIGITAL_THREAD',
     label: 'Digital Thread',
-    description: 'Linear flow: Dossier → Run → Artifact → Part → Requirement',
+    description: 'End-to-end lifecycle: AP239 Activity → AP242 Part/Assembly → AP243 Dossier → SimulationRun → EvidenceCategory → Requirement verification',
     apLevel: null,
-    fixedNodeTypes: ['SimulationDossier', 'SimulationRun', 'SimulationArtifact', 'EvidenceCategory', 'Part', 'Requirement'],
-    defaultLimit: 300,
+    fixedNodeTypes: [
+      // AP239 traceability anchors
+      'Requirement', 'Activity',
+      // AP242 product nodes
+      'Part', 'Assembly', 'AP242Product',
+      // AP243 simulation evidence chain
+      'SimulationDossier', 'SimulationRun', 'SimulationArtifact',
+      'EvidenceCategory', 'KPI', 'ValidationRecord',
+    ],
+    defaultLimit: 400,
     icon: GitMerge
   }
 };
 
 /** Color coding for STEP Ontology relationship types */
+/** Universal relationship → color map covering all views.
+ * Checked as a fallback when view-specific maps have no entry. */
+const ALL_REL_COLORS = {
+  // hierarchy / composition
+  HAS_CHILD:                  '#3b82f6',
+  HAS_PARENT:                 '#60a5fa',
+  CONTAINS:                   '#6366f1',
+  PART_OF:                    '#818cf8',
+  // requirements / verification
+  LINKED_TO_REQUIREMENT:      '#f97316',
+  SATISFIED_BY_PART:          '#22c55e',
+  VERIFIED_BY:                '#10b981',
+  PROVES_COMPLIANCE_TO:       '#ef4444',
+  // simulation / dossier
+  HAS_SIMULATION_RUN:         '#3b82f6',
+  CONTAINS_ARTIFACT:          '#a855f7',
+  GENERATED:                  '#0ea5e9',
+  HAS_APPROVAL:               '#eab308',
+  // ontology / schema
+  SUBCLASS_OF:                '#f97316',
+  HAS_OBJECT_PROPERTY:        '#8b5cf6',
+  HAS_DATATYPE_PROPERTY:      '#10b981',
+  RANGE_CLASS:                '#3b82f6',
+  DOMAIN_CLASS:               '#14b8a6',
+  CLASSIFIED_BY:              '#f59e0b',
+  DEFINES:                    '#8b5cf6',
+  MAPS_TO_SCHEMA:             '#3b82f6',
+  MAPS_TO_OSLC:               '#ec4899',
+  EXTENDS:                    '#f97316',
+  TYPED_BY:                   '#94a3b8',
+  // cross-domain / OSLC
+  IMPLEMENTS:                 '#06b6d4',
+  REFERENCES:                 '#84cc16',
+  RELATED_TO:                 '#a3a3a3',
+  ALLOCATED_TO:               '#f43f5e',
+  REALIZED_BY:                '#14b8a6',
+  TRACED_TO:                  '#fbbf24',
+};
+
+/** Safely convert a hex color string to rgba(...). Falls back to dark-slate if not a valid hex. */
+const hexToRgba = (hex, a) => {
+  if (!hex || !hex.startsWith('#')) return `rgba(15,23,42,${a})`;
+  const h = hex.replace('#', '');
+  if (h.length < 6) return `rgba(15,23,42,${a})`;
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return `rgba(15,23,42,${a})`;
+  return `rgba(${r},${g},${b},${a})`;
+};
+
 const ONTOLOGY_REL_COLORS = {
   SUBCLASS_OF:           '#f97316', // orange  — class inheritance
   HAS_OBJECT_PROPERTY:   '#8b5cf6', // purple  — connects class to object property
@@ -179,6 +318,9 @@ const AP_COLORS = {
   oslc:  '#ec4899', // pink
 };
 
+/** Nodes rendered immediately on first load; the remainder streams in as a background batch. */
+const INITIAL_BATCH = 200;
+
 export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const fgRef = useRef(null);
   const containerRef = useRef(null);
@@ -201,10 +343,13 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   
   // ── E3: GraphRAG state ──
   const [ragQuestion, setRagQuestion] = useState('');
-  const [ragAnswer, setRagAnswer] = useState(null);
+  const [ragMessages, setRagMessages] = useState([]); // [{ id, role:'user'|'assistant', content, sources, nodes }]
   const [ragLoading, setRagLoading] = useState(false);
   const [ragHighlight, setRagHighlight] = useState(null); // Set<string> of node IDs matched from RAG sources
   const [ragOverlayNodes, setRagOverlayNodes] = useState([]); // RAG result nodes injected into graph
+  const [ragOverlayLinks, setRagOverlayLinks] = useState([]); // edges for overlay / search-expansion links
+  const chatEndRef = useRef(null); // auto-scroll anchor for chat panel
+  const ragStreamRef = useRef(null); // AbortController for active SSE stream
   
   // ── E7: Multi-select state ──
   const [multiSelected, setMultiSelected] = useState(new Set());
@@ -216,6 +361,9 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   
   // ── E8: Heatmap mode ──
   const [heatmapMode, setHeatmapMode] = useState('off'); // off | degree | community
+
+  // ── Label display mode ──
+  const [labelMode, setLabelMode] = useState('name'); // name | type | id
   
   // ── E11: Export ──
   const [showExport, setShowExport] = useState(false);
@@ -245,9 +393,62 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   // ── E13: TRS time-travel ──
   const [trsEvents, setTrsEvents] = useState([]);
   const [trsLoading, setTrsLoading] = useState(false);
-  
+
+  // ── AI Panel ──
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiPanelPos, setAiPanelPos] = useState(null); // null = CSS default (bottom-right)
+  const [aiPanelSize, setAiPanelSize] = useState({ w: 360, h: 520 });
+  const aiPanelRef = useRef(null);
+  const aiDragRef = useRef(null);   // { mx, my, ox, oy }
+  const aiResizeRef = useRef(null); // { mx, my, ow, oh }
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (aiDragRef.current) {
+        const d = aiDragRef.current;
+        setAiPanelPos({
+          x: Math.max(0, d.ox + e.clientX - d.mx),
+          y: Math.max(0, d.oy + e.clientY - d.my),
+        });
+      }
+      if (aiResizeRef.current) {
+        const d = aiResizeRef.current;
+        setAiPanelSize({
+          w: Math.max(280, d.ow + e.clientX - d.mx),
+          h: Math.max(300, d.oh + e.clientY - d.my),
+        });
+      }
+    };
+    const onUp = () => { aiDragRef.current = null; aiResizeRef.current = null; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, []);
+
+  const startAiDrag = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const el = aiPanelRef.current;
+    const container = containerRef.current;
+    if (!el || !container) return;
+    const elRect = el.getBoundingClientRect();
+    const parentRect = container.getBoundingClientRect();
+    const ox = elRect.left - parentRect.left;
+    const oy = elRect.top - parentRect.top;
+    setAiPanelPos({ x: ox, y: oy });
+    aiDragRef.current = { mx: e.clientX, my: e.clientY, ox, oy };
+  };
+
+  const startAiResize = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    aiResizeRef.current = { mx: e.clientX, my: e.clientY, ow: aiPanelSize.w, oh: aiPanelSize.h };
+  };
+
   // ── Sidebar tool tab ──
   const [sidebarTab, setSidebarTab] = useState('filters');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const [currentViewId, setCurrentViewId] = useState(initialView);
   const currentView = GRAPH_VIEWS[currentViewId] || GRAPH_VIEWS.ENTERPRISE;
@@ -262,7 +463,9 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   useEffect(() => {
     setSelectedNodeTypes(currentView.fixedNodeTypes);
     // Reset to per-view default limit so Enterprise/ONTOLOGY loads more nodes
-    setLimit([currentView.defaultLimit ?? 200]);
+    const viewDefault = [currentView.defaultLimit ?? 200];
+    setLimit(viewDefault);
+    setDebouncedLimit(viewDefault); // sync immediately — no need to wait 600ms on a view switch
     setSearchQuery("");
     setSelectedNode(null);
     setPathHighlight(null);
@@ -277,6 +480,14 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   const [nodeTypeSearch, setNodeTypeSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search query by 250 ms so we don’t fire API on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(searchQuery.trim()), 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   const [layoutDone, setLayoutDone] = useState(false);
   const [layoutActive, setLayoutActive] = useState(true); // Start active so graph lays out
   const graphIdRef = useRef(null); // Track which graph we've laid out
@@ -300,6 +511,13 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   }, [layoutActive]);
 
   const [limit, setLimit] = useState(() => [GRAPH_VIEWS[initialView]?.defaultLimit ?? 200]);
+  // Debounce the limit used in query keys — slider drags fire setLimit on every step,
+  // so without this each 50-node increment would launch a separate Neo4j query.
+  const [debouncedLimit, setDebouncedLimit] = useState(() => [GRAPH_VIEWS[initialView]?.defaultLimit ?? 200]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedLimit(limit), 600);
+    return () => clearTimeout(t);
+  }, [limit]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [breadcrumbs, setBreadcrumbs] = useState([]);
   const navigate = useNavigate();
@@ -378,28 +596,104 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     staleTime: 30_000,
   });
 
+  // ── Main graph search (API-backed, searches ALL nodes in DB) ──
+  const { data: searchResults, isFetching: searchFetching } = useQuery({
+    queryKey: ['graph-search', debouncedSearchQuery],
+    queryFn: () => searchNodes({ q: debouncedSearchQuery, limit: 20 }),
+    // Backend returns { results: [...], total: N } — normalise to plain array
+    select: (data) => (Array.isArray(data) ? data : (data?.results ?? [])),
+    enabled: debouncedSearchQuery.length >= 2,
+    staleTime: 30_000,
+  });
+
+  // ── Phase-1: first INITIAL_BATCH nodes — renders immediately ──────────────
+  // Use debouncedLimit in query keys so slider drag doesn't fire a request per step.
+  const batch1Limit = Math.min(debouncedLimit[0], INITIAL_BATCH);
+  // Only request 1-hop neighbours when the user has manually filtered to a
+  // small custom type set (≤4 types). For view-default selections (e.g. AP239
+  // with 10 types) neighbours add thousands of extra nodes and slow the load.
+  const viewDefaultTypes = currentView.fixedNodeTypes;
+  const isUserFilteredTypes =
+    selectedNodeTypes.length > 0 &&
+    selectedNodeTypes.length <= 4 &&
+    !(selectedNodeTypes.length === viewDefaultTypes.length &&
+      selectedNodeTypes.every(t => viewDefaultTypes.includes(t)));
   const {
-    data: graphData,
+    data: graphDataBatch1,
     isLoading,
-    error
+    isFetching: isFetchingBatch1,
+    error,
   } = useQuery({
-    queryKey: ['graph-data', selectedNodeTypes, limit, apLevel],
+    queryKey: ['graph-data', 'b1', selectedNodeTypes, batch1Limit, apLevel],
     queryFn: () => {
-      const params = {};
+      const params = { limit: batch1Limit, skip: 0 };
       if (selectedNodeTypes.length > 0) {
         params.node_types = selectedNodeTypes.join(',');
+        if (isUserFilteredTypes) params.include_neighbors = true;
       }
-      params.limit = limit[0];
-      if (apLevel) {
-        params.ap_level = apLevel;
-      }
+      if (apLevel) params.ap_level = apLevel;
       return getGraphData(params);
     },
     refetchOnWindowFocus: false,
-    staleTime: QUERY_CONFIG.STALE_TIME,          // 5 min
-    gcTime: QUERY_CONFIG.CACHE_TIME,             // 10 min
-    placeholderData: (previousData) => previousData, // keep showing old data while re-fetching
+    staleTime: QUERY_CONFIG.STALE_TIME,
+    gcTime: QUERY_CONFIG.CACHE_TIME,
+    placeholderData: (previousData) => previousData,
   });
+  // True when we have stale/placeholder data and a fresh fetch is in-flight.
+  // Used to show refreshing indicator during view switches.
+  const isGraphRefetching = isFetchingBatch1 && !!graphDataBatch1;
+
+  // ── Phase-2: remaining nodes — loads silently once phase 1 resolves ────────
+  const needsSecondBatch = debouncedLimit[0] > INITIAL_BATCH;
+  const batch2Limit = debouncedLimit[0] - INITIAL_BATCH;
+  const {
+    data: graphDataBatch2,
+    isFetching: isFetchingMore,
+  } = useQuery({
+    queryKey: ['graph-data', 'b2', selectedNodeTypes, debouncedLimit, apLevel],
+    queryFn: () => {
+      const params = { limit: batch2Limit, skip: INITIAL_BATCH };
+      if (selectedNodeTypes.length > 0) params.node_types = selectedNodeTypes.join(',');
+      // neighbours already loaded in batch 1 — skip for batch 2
+      if (apLevel) params.ap_level = apLevel;
+      return getGraphData(params);
+    },
+    enabled: !!graphDataBatch1 && needsSecondBatch,
+    refetchOnWindowFocus: false,
+    staleTime: QUERY_CONFIG.STALE_TIME,
+    gcTime: QUERY_CONFIG.CACHE_TIME,
+  });
+
+  // ── Merge batches ─────────────────────────────────────────────────────────
+  const graphData = useMemo(() => {
+    if (!graphDataBatch1) return null;
+    if (!graphDataBatch2) return graphDataBatch1;
+    const b1NodeIds = new Set((graphDataBatch1.nodes || []).map(n => String(n.id)));
+    const b1LinkIds = new Set(
+      (graphDataBatch1.links || []).map(l => String(l.id ?? `${l.source}__${l.target}`))
+    );
+    const extraNodes = (graphDataBatch2.nodes || []).filter(n => !b1NodeIds.has(String(n.id)));
+    const extraLinks = (graphDataBatch2.links || []).filter(l => {
+      const lid = String(l.id ?? `${l.source}__${l.target}`);
+      return !b1LinkIds.has(lid);
+    });
+    const allNodeTypes = [
+      ...new Set([
+        ...(graphDataBatch1.metadata?.node_types || []),
+        ...(graphDataBatch2.metadata?.node_types || []),
+      ]),
+    ];
+    return {
+      nodes: [...(graphDataBatch1.nodes || []), ...extraNodes],
+      links: [...(graphDataBatch1.links || []), ...extraLinks],
+      metadata: {
+        ...graphDataBatch1.metadata,
+        node_count: (graphDataBatch1.nodes || []).length + extraNodes.length,
+        link_count: (graphDataBatch1.links || []).length + extraLinks.length,
+        node_types: allNodeTypes,
+      },
+    };
+  }, [graphDataBatch1, graphDataBatch2]);
   const normalizedGraph = useMemo(() => {
     if (!graphData) return null;
     // Merge base graph nodes with any RAG overlay nodes
@@ -438,7 +732,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       };
     });
     const nodeById = new Map(nodes.map(n => [n.id, n]));
-    const links = (graphData.links || []).map((l, idx) => {
+    const links = [...(graphData.links || []), ...ragOverlayLinks].map((l, idx) => {
       const sourceId = typeof l.source === 'string' ? String(l.source) : String(l.source?.id);
       const targetId = typeof l.target === 'string' ? String(l.target) : String(l.target?.id);
       return {
@@ -466,7 +760,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       neighbors,
       metadata: graphData.metadata
     };
-  }, [graphData, ragOverlayNodes]);
+  }, [graphData, ragOverlayNodes, ragOverlayLinks]);
 
   // ── E6: Client-side property filter ──
   const displayGraph = useMemo(() => {
@@ -577,8 +871,9 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     }
     fgRef.current.d3Force('x', fx);
     fgRef.current.d3Force('y', fy);
-    // Add collision force to prevent overlap
-    fgRef.current.d3Force('collide', forceCollide().radius(8).strength(0.5));
+    // Collision force — radius controls minimum node separation.
+    // Use a generous radius so nodes spread out and labels have breathing room.
+    fgRef.current.d3Force('collide', forceCollide().radius(16).strength(0.7));
     
     // Cooldown improvements:
     // Reheat simulation with specific alpha to smooth out initial burst
@@ -593,7 +888,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         }
       } catch {}
     }, 1200); // 1.2s delay for initial settle
-  }, [normalizedGraph, selectedNodeTypes, limit, currentViewId]);
+  }, [normalizedGraph, selectedNodeTypes, currentViewId]);
   const highlighted = useMemo(() => {
     // E2: If path is highlighted, use path highlight
     if (pathHighlight && pathHighlight.nodeIds.size > 0) {
@@ -690,10 +985,8 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     // General type colors (only for types not matched above)
     const colors = {
       // AP242 (CAD) - Red/Orange Scheme
-      Part: '#ef4444', 
-      Assembly: '#b91c1c', 
+      Assembly: '#b91c1c',
       Component: '#f87171',
-      Shape: '#f97316',
       GeometricModel: '#c2410c',
 
       // AP239 (PLCS) - Green/Teal Scheme
@@ -702,11 +995,9 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       Breakdown: '#6ee7b7',
 
       // AP243 (MoSSEC) - Blue/Purple Scheme
-      Study: '#3b82f6', 
       Model: '#2563eb',
       Analysis: '#1d4ed8',
       Scenario: '#60a5fa',
-      Result: '#93c5fd',
 
       // Ontology & Metadata
       Class: '#8b5cf6',
@@ -816,8 +1107,32 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       case 'expand': {
         try {
           const res = await expandNode(String(node.id), 2);
-          // Merge expanded subgraph into current view — trigger refetch
-          // For now, select the node to highlight its neighbourhood
+          const data = res?.data ?? res;
+          const expNodes = (data.nodes || []).map(nn => ({
+            ...nn,
+            id: String(nn.id),
+            name: nn.name || nn.properties?.label || nn.id,
+            labels: Array.isArray(nn.labels) ? nn.labels : [nn.type].filter(Boolean),
+            searchLabel: (nn.name || nn.id)?.toLowerCase() || '',
+          }));
+          const expLinks = (data.links || []).map((l, idx) => ({
+            ...l,
+            id: l.id ?? `${l.source}__${l.target}__exp${idx}`,
+            source: String(l.source?.id ?? l.source),
+            target: String(l.target?.id ?? l.target),
+          }));
+          if (expNodes.length > 0) {
+            setRagOverlayNodes(prev => {
+              const existing = new Set(prev.map(n => n.id));
+              return [...prev, ...expNodes.filter(n => !existing.has(n.id))];
+            });
+          }
+          if (expLinks.length > 0) {
+            setRagOverlayLinks(prev => {
+              const existing = new Set(prev.map(l => l.id));
+              return [...prev, ...expLinks.filter(l => !existing.has(l.id))];
+            });
+          }
           handleNodeClick(node);
         } catch (err) { console.error('Expand failed', err); }
         break;
@@ -880,48 +1195,115 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
   }, [pathSource, pathTarget, normalizedGraph]);
 
   // ── E3: GraphRAG handler ──
-  const handleRAGQuery = useCallback(async () => {
-    if (!ragQuestion.trim()) return;
-    setRagLoading(true);
-    setRagAnswer(null);
-    setRagHighlight(null);
-    try {
-      const res = await graphRAGQuery(ragQuestion);
-      setRagAnswer(res);
+  // Auto-scroll chat to bottom on new message or while loading
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [ragMessages, ragLoading]);
 
-      // ── Auto-highlight + inject RAG result nodes into graph ──
-      const ragNodes = res.nodes || [];
-      const sourceUids = new Set(
-        (res.sources || []).map(s => s.uid).filter(Boolean)
-      );
+  const handleRAGQuery = useCallback(() => {
+    const q = ragQuestion.trim();
+    if (!q) return;
 
-      // Inject RAG result nodes that are NOT in the current graph view
-      // so they appear in the visualization and can be highlighted
-      if (ragNodes.length > 0) {
-        setRagOverlayNodes(ragNodes.map(rn => ({
-          id: rn.id,
-          name: rn.name || rn.id,
-          type: rn.type || 'RAGHit',
-          labels: rn.labels || [rn.type || 'RAGHit'],
-          properties: { uid: rn.id, score: rn.score },
-          _ragOverlay: true, // marker for styling
-        })));
-      }
-
-      // Set highlight IDs from sources — these will now be in the graph
-      // (either already present or just injected as overlay nodes)
-      if (sourceUids.size > 0) {
-        setRagHighlight(sourceUids);
-      } else if (ragNodes.length > 0) {
-        // Fallback: highlight all RAG result nodes
-        setRagHighlight(new Set(ragNodes.map(rn => String(rn.id))));
-      }
-    } catch (err) {
-      setRagAnswer({ answer: `Error: ${err.message}`, sources: [], nodes: [], links: [] });
-    } finally {
-      setRagLoading(false);
+    // Cancel any in-flight stream
+    if (ragStreamRef.current) {
+      ragStreamRef.current.abort();
+      ragStreamRef.current = null;
     }
-  }, [ragQuestion]);
+
+    const userMsg = { id: Date.now(), role: 'user', content: q };
+    const assistantId = Date.now() + 1;
+    const assistantMsg = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      streaming: true,
+      sources: [],
+      nodes: [],
+    };
+    setRagMessages(prev => [...prev, userMsg, assistantMsg]);
+    setRagQuestion('');
+    setRagLoading(true);
+    setRagHighlight(null);
+    setRagOverlayLinks([]);
+
+    ragStreamRef.current = graphRAGQueryStream(
+      q,
+      5,
+      currentViewId,
+      selectedNodeTypes,
+      debouncedLimit[0],
+      {
+        onNodes(data) {
+          // Immediately inject graph data before LLM finishes
+          const ragNodes = data.nodes || [];
+          const ragLinks = data.links || [];
+          const sourceUids = new Set((data.sources || []).map(s => s.uid).filter(Boolean));
+          if (ragLinks.length > 0) {
+            setRagOverlayLinks(ragLinks.map(l => ({ ...l, _ragOverlay: true })));
+          }
+          if (ragNodes.length > 0) {
+            setRagOverlayNodes(ragNodes.map(rn => ({
+              id: rn.id,
+              name: rn.name || rn.id,
+              type: rn.type || 'RAGHit',
+              labels: rn.labels || [rn.type || 'RAGHit'],
+              properties: { uid: rn.id, score: rn.score },
+              _ragOverlay: true,
+            })));
+          }
+          if (sourceUids.size > 0) {
+            setRagHighlight(sourceUids);
+          } else if (ragNodes.length > 0) {
+            setRagHighlight(new Set(ragNodes.map(rn => String(rn.id))));
+          }
+          setRagMessages(prev => prev.map(m =>
+            m.id === assistantId
+              ? { ...m, sources: data.sources || [], nodes: ragNodes }
+              : m
+          ));
+        },
+        onChunk(text) {
+          setRagMessages(prev => prev.map(m =>
+            m.id === assistantId
+              ? { ...m, content: m.content + text }
+              : m
+          ));
+        },
+        onDone() {
+          setRagMessages(prev => prev.map(m =>
+            m.id === assistantId ? { ...m, streaming: false } : m
+          ));
+          setRagLoading(false);
+          ragStreamRef.current = null;
+        },
+        onError(msg) {
+          setRagMessages(prev => prev.map(m =>
+            m.id === assistantId
+              ? { ...m, content: m.content || `⚠ ${msg}`, streaming: false }
+              : m
+          ));
+          setRagLoading(false);
+          ragStreamRef.current = null;
+        },
+      },
+    );
+  }, [ragQuestion, currentViewId, selectedNodeTypes, debouncedLimit]);
+
+  // ── E3: Auto-zoom graph to RAG-highlighted nodes when result arrives ──
+  useEffect(() => {
+    if (!ragHighlight || ragHighlight.size === 0) return;
+    // Brief delay so overlay nodes have time to be injected into the ForceGraph
+    const t = setTimeout(() => {
+      if (!fgRef.current) return;
+      try {
+        // Zoom to fit only the matched nodes; fall back to full fit if none visible
+        fgRef.current.zoomToFit(700, 80, node => ragHighlight.has(String(node.id)));
+      } catch (_) {
+        try { fgRef.current.zoomToFit(700, 80); } catch (__) {}
+      }
+    }, 450);
+    return () => clearTimeout(t);
+  }, [ragHighlight]);
 
   // ── E11: Export handlers ──
   const handleExportPNG = useCallback(() => {
@@ -943,8 +1325,10 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
     const link = document.createElement('a');
     link.download = `graph-nodes-${currentViewId}-${Date.now()}.csv`;
-    link.href = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    link.href = url;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }, [normalizedGraph, currentViewId]);
 
   const handleExportLinksCSV = useCallback(() => {
@@ -958,8 +1342,10 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
     const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
     const link = document.createElement('a');
     link.download = `graph-links-${currentViewId}-${Date.now()}.csv`;
-    link.href = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    link.href = url;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }, [normalizedGraph, currentViewId]);
 
   // ── E14: Community detection handler ──
@@ -1212,8 +1598,11 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
       style={{ height: 'calc(100vh - 124px)', width: 'calc(100% + 4rem)' }}
     >
       {/* ── Sidebar ── */}
-      <div className="w-80 h-full border-r bg-background overflow-y-auto shrink-0">
-        <div className="p-4 space-y-3">
+      <div
+        className="h-full border-r bg-background overflow-y-auto shrink-0 transition-all duration-300 ease-in-out"
+        style={{ width: sidebarCollapsed ? 0 : 320, minWidth: 0, overflow: sidebarCollapsed ? 'hidden' : 'auto' }}
+      >
+        <div className="p-4 space-y-3" style={{ width: 320 }}>
           {/* View Selector (Replaces Title) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -1252,10 +1641,9 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
 
           {/* Sidebar Tab Switcher */}
           <Tabs value={sidebarTab} onValueChange={setSidebarTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-8">
+            <TabsList className="grid w-full grid-cols-3 h-8">
               <TabsTrigger value="filters" className="text-xs px-1">Filters</TabsTrigger>
               <TabsTrigger value="tools" className="text-xs px-1">Tools</TabsTrigger>
-              <TabsTrigger value="rag" className="text-xs px-1">RAG</TabsTrigger>
               <TabsTrigger value="info" className="text-xs px-1">Info</TabsTrigger>
             </TabsList>
 
@@ -1289,23 +1677,28 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
-                        if (!searchOpen && e.target.value) setSearchOpen(true);
+                        setSearchOpen(true);
                     }}
                     onFocus={() => setSearchOpen(true)}
+                    onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
                     className="pl-8"
                 />
             </div>
             
-            {/* Search Results Dropdown (Inline) */}
-            {searchOpen && searchQuery && (
-                <div className="border rounded-md shadow-sm bg-background max-h-60 overflow-y-auto z-50">
-                    {(normalizedGraph?.nodes || [])
-                        .filter(node => (node.searchLabel || "").includes(searchQuery.toLowerCase()))
-                        .slice(0, 20)
-                        .map(node => {
-                            // Build a human-readable display label:
-                            // prefer node.name, then properties.label, then a
-                            // sanitised id (strip Neo4j internal element IDs like '4:uuid:12345')
+            {/* Search Results Dropdown — API-backed */}
+            {searchOpen && searchQuery.length >= 2 && (
+                <div className="border rounded-md shadow-sm bg-background max-h-64 overflow-y-auto z-50">
+                    {searchFetching && (
+                        <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Searching…
+                        </div>
+                    )}
+                    {!searchFetching && (!searchResults || searchResults.length === 0) && debouncedSearchQuery.length >= 2 && (
+                        <div className="px-3 py-4 text-sm text-center text-muted-foreground">
+                            No nodes found.
+                        </div>
+                    )}
+                    {(searchResults || []).map(node => {
                             const rawId = String(node.id || '');
                             const isElementId = /^\d+:[0-9a-f\-]{36}:\d+$/i.test(rawId);
                             const localId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
@@ -1315,38 +1708,100 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                                 || (isElementId ? null : rawId)
                                 || `${node.type || 'Node'} #${localId}`;
                             const displayId = isElementId ? null : rawId;
+                            // Check if this node is already in the current graph view
+                            const inGraph = normalizedGraph?.nodes?.some(n => String(n.id) === String(node.id));
                             return (
-                            <div 
+                            <div
                                 key={node.id}
                                 className={cn(
                                     "flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                                    selectedNode?.id === node.id && "bg-accent"
+                                    selectedNode?.id === String(node.id) && "bg-accent"
                                 )}
-                                onClick={() => {
-                                    handleNodeClick(node);
+                                onClick={async () => {
+                                    const nodeId = String(node.id);
+                                    // If the node is already in the graph, select & pan to it immediately
+                                    const graphNode = normalizedGraph?.nodes?.find(n => n.id === nodeId);
+                                    if (graphNode) {
+                                        handleNodeClick(graphNode);
+                                    }
+                                    // Always expand to inject the node + its immediate neighbours
+                                    try {
+                                        const res = await expandNode(nodeId, 1);
+                                        const data = res?.data ?? res;
+                                        const expNodes = (data.nodes || []).map(nn => ({
+                                            ...nn,
+                                            id: String(nn.id),
+                                            name: nn.name || nn.id,
+                                            labels: Array.isArray(nn.labels) ? nn.labels : [nn.type].filter(Boolean),
+                                            searchLabel: (nn.name || nn.id)?.toLowerCase() || '',
+                                        }));
+                                        const expLinks = data.links || [];
+                                        setRagOverlayNodes(prev => {
+                                            const existing = new Set(prev.map(n => n.id));
+                                            const toAdd = expNodes.filter(n => !existing.has(n.id));
+                                            return toAdd.length ? [...prev, ...toAdd] : prev;
+                                        });
+                                        setRagOverlayLinks(prev => {
+                                            // Deduplicate by rel_id / link id to avoid double-edges
+                                            // when adjacent nodes are expanded (A→B added again as B→A)
+                                            const existingIds = new Set(
+                                                prev.map(l => l.id || l.rel_id).filter(Boolean)
+                                            );
+                                            const toAdd = expLinks.filter(
+                                                l => !(l.id || l.rel_id) || !existingIds.has(l.id || l.rel_id)
+                                            );
+                                            return toAdd.length ? [...prev, ...toAdd] : prev;
+                                        });
+                                        // If node wasn't in the original graph, select it directly
+                                        // (avoids stale-closure issues with a setTimeout lookup)
+                                        if (!graphNode) {
+                                            const targetNode = expNodes.find(n => n.id === nodeId)
+                                                ?? { id: nodeId, name: displayName, type: node.type };
+                                            setSelectedNode(targetNode);
+                                        }
+                                    } catch {
+                                        // Fallback: inject single node if expansion fails
+                                        if (!graphNode) {
+                                            const normalized = {
+                                                ...node,
+                                                id: nodeId,
+                                                name: displayName,
+                                                labels: Array.isArray(node.labels) ? node.labels : [node.type].filter(Boolean),
+                                                searchLabel: displayName?.toLowerCase() || '',
+                                                x: 0, y: 0,
+                                            };
+                                            setRagOverlayNodes(prev => {
+                                                if (prev.some(n => n.id === nodeId)) return prev;
+                                                return [...prev, normalized];
+                                            });
+                                            setTimeout(() => {
+                                                const injected = normalizedGraph?.nodes?.find(n => n.id === nodeId);
+                                                if (injected) handleNodeClick(injected);
+                                                else setSelectedNode(normalized);
+                                            }, 80);
+                                        }
+                                    }
                                     setSearchOpen(false);
                                     setSearchQuery("");
                                 }}
                             >
-                                <div className="flex flex-col overflow-hidden">
-                                     <span className="font-medium truncate">{displayName}</span>
-                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="flex flex-col overflow-hidden flex-1">
+                                    <span className="font-medium truncate">{displayName}</span>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <span className="bg-secondary px-1.5 py-0.5 rounded-sm text-[10px] uppercase tracking-wider">
                                             {node.type}
                                         </span>
                                         {displayId && <span className="truncate opacity-70">{displayId}</span>}
-                                     </div>
+                                        {!inGraph && (
+                                            <span className="text-[10px] text-amber-500 ml-auto shrink-0">not in view</span>
+                                        )}
+                                    </div>
                                 </div>
-                                {selectedNode?.id === node.id && <Check className="ml-auto h-4 w-4 opacity-50" />}
+                                {selectedNode?.id === String(node.id) && <Check className="ml-2 h-4 w-4 opacity-50 shrink-0" />}
                             </div>
                             );
                         })
                     }
-                    {normalizedGraph?.nodes && normalizedGraph.nodes.filter(n => (n.searchLabel||"").includes(searchQuery.toLowerCase())).length === 0 && (
-                        <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                            No nodes found.
-                        </div>
-                    )}
                 </div>
             )}
             
@@ -1749,6 +2204,27 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                       <SelectItem value="community">Community Clusters</SelectItem>
                     </SelectContent>
                   </Select>
+
+                  {/* Label display mode */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Node Labels</p>
+                    <div className="flex gap-1">
+                      {(['name', 'type', 'id']).map(mode => (
+                        <button
+                          key={mode}
+                          onClick={() => setLabelMode(mode)}
+                          className={cn(
+                            'flex-1 h-7 rounded text-[10px] font-medium capitalize transition-colors border',
+                            labelMode === mode
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-muted text-muted-foreground border-transparent hover:bg-accent'
+                          )}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {heatmapMode === 'degree' && (
                     <p className="text-[10px] text-muted-foreground">Node size + color scaled by connection count. Blue→Yellow→Red.</p>
                   )}
@@ -1903,114 +2379,265 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 </CardContent>
               </Card>
 
-            </TabsContent>
-
-            {/* ─── RAG TAB ─── */}
-            <TabsContent value="rag" className="space-y-4 mt-3">
-
-              {/* E3: GraphRAG Query */}
+              {/* E17: Cypher Editor */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Brain className="h-4 w-4" /> GraphRAG Query
+                    <TerminalIcon className="h-4 w-4" /> Cypher Query
                   </CardTitle>
-                  <CardDescription className="text-xs">
-                    Ask questions about the knowledge graph using natural language
-                  </CardDescription>
+                  <CardDescription className="text-xs">Execute raw Cypher queries against the graph</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <Textarea
-                    placeholder="e.g. What are the main simulation dossiers and their related requirements?"
-                    value={ragQuestion}
-                    onChange={e => setRagQuestion(e.target.value)}
-                    className="min-h-16 text-xs resize-none"
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRAGQuery(); } }}
+                    placeholder="MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 20"
+                    value={cypherQuery}
+                    onChange={e => setCypherQuery(e.target.value)}
+                    className="min-h-16 text-xs font-mono resize-none"
                   />
-                  <Button
-                    size="sm"
-                    className="w-full h-7 text-xs"
-                    disabled={ragLoading || !ragQuestion.trim()}
-                    onClick={handleRAGQuery}
-                  >
-                    {ragLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Brain className="h-3 w-3 mr-1" />}
-                    {ragLoading ? 'Thinking...' : 'Ask Graph'}
+                  <Button size="sm" className="w-full h-7 text-xs" disabled={cypherLoading || !cypherQuery.trim()}
+                    onClick={async () => {
+                      setCypherLoading(true); setCypherResult(null);
+                      try {
+                        const res = await searchNodes({ q: cypherQuery, limit: 50 });
+                        setCypherResult({ results: res.results || res, error: null });
+                      } catch (err) { setCypherResult({ results: [], error: err.message }); }
+                      finally { setCypherLoading(false); }
+                    }}>
+                    {cypherLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <TerminalIcon className="h-3 w-3 mr-1" />} Execute
                   </Button>
+                  {cypherResult?.error && <p className="text-xs text-destructive">{cypherResult.error}</p>}
+                  {cypherResult?.results?.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto space-y-1 border rounded p-2">
+                      {cypherResult.results.slice(0, 20).map((r, i) => (
+                        <div key={i} className="text-xs flex items-center gap-1">
+                          <Badge variant="outline" className="text-[9px]">{r.type}</Badge>
+                          <span className="truncate">{r.name || r.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* RAG Answer */}
-              {ragAnswer && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Answer</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="text-xs whitespace-pre-wrap max-h-64 overflow-y-auto leading-relaxed">
-                      {ragAnswer.answer}
-                    </div>
-                    {ragAnswer.sources?.length > 0 && (
-                      <div className="border-t pt-2 space-y-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground uppercase">Sources</p>
-                          <div className="flex items-center gap-1">
-                            {ragHighlight && ragHighlight.size > 0 && (
-                              <Badge variant="outline" className="text-[9px] border-violet-400 text-violet-600">
-                                {ragHighlight.size} highlighted
-                              </Badge>
-                            )}
-                            {ragHighlight && (
-                              <button
-                                className="text-[9px] text-muted-foreground hover:text-destructive"
-                                onClick={() => { setRagHighlight(null); setRagOverlayNodes([]); }}
-                                title="Clear highlight"
-                              >✕</button>
-                            )}
+              {/* E13: TRS Change Log */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" /> TRS Change Log
+                  </CardTitle>
+                  <CardDescription className="text-xs">OSLC Tracked Resource Set — recent changes</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button size="sm" className="w-full h-7 text-xs" disabled={trsLoading} onClick={handleFetchTRS}>
+                    {trsLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ExternalLink className="h-3 w-3 mr-1" />} Fetch Changelog
+                  </Button>
+                  {trsEvents.length > 0 && (
+                    <div className="max-h-48 overflow-y-auto space-y-1 border rounded p-2">
+                      {trsEvents.map((evt, i) => {
+                        const typeLabel = String(evt.type).includes('Creation') ? 'Created' : String(evt.type).includes('Modification') ? 'Modified' : String(evt.type).includes('Deletion') ? 'Deleted' : evt.type;
+                        const typeColor = typeLabel === 'Created' ? 'text-green-600' : typeLabel === 'Deleted' ? 'text-red-500' : typeLabel === 'Modified' ? 'text-blue-500' : 'text-muted-foreground';
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span className={cn("font-medium shrink-0 w-14", typeColor)}>{typeLabel}</span>
+                            <span className="truncate text-muted-foreground">{evt.resource}</span>
                           </div>
-                        </div>
-                        {ragAnswer.sources.slice(0, 8).map((s, i) => {
-                          const isInGraph = ragHighlight?.has(String(s.uid));
-                          const focusNode = () => {
-                            if (!normalizedGraph || !fgRef.current) return;
-                            const node = normalizedGraph.nodes.find(
-                              n => String(n.id) === String(s.uid) ||
-                                   String(n.properties?.uid) === String(s.uid)
-                            );
-                            if (node && node.x != null) {
-                              fgRef.current.centerAt(node.x, node.y, 600);
-                              fgRef.current.zoom(4, 600);
-                            }
-                          };
-                          return (
-                            <div
-                              key={i}
-                              className={`flex items-center gap-1 text-xs rounded px-1 -mx-1 cursor-pointer hover:bg-muted/60 transition-colors ${isInGraph ? 'text-violet-700 dark:text-violet-400' : ''}`}
-                              onClick={focusNode}
-                              title={isInGraph ? 'Click to focus node in graph' : 'Node not in current graph view'}
-                            >
-                              <Hash className={`h-3 w-3 shrink-0 ${isInGraph ? 'text-violet-500' : 'text-muted-foreground'}`} />
-                              <span className="truncate">{s.name || s.uid}</span>
-                              {s.score && (
-                                <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{(s.score * 100).toFixed(0)}%</Badge>
-                              )}
-                              {isInGraph && <span className="text-[8px] text-violet-500 shrink-0">●</span>}
-                            </div>
-                          );
-                        })}
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+            </TabsContent>
+
+            {/* RAG tab removed — AI assistant lives on the floating Brain panel on the canvas */}
+            {false && <TabsContent value="rag-removed">
+
+              {/* ── Chat panel ────────────────────────────────────────── */}
+              <div className="flex flex-col flex-1 rounded-xl border border-border bg-background overflow-hidden shadow-sm">
+
+                {/* Header */}
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 shrink-0">
+                  <Brain className="h-4 w-4 text-violet-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold leading-none">KnowledgeGraph AI</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">Digital engineering &amp; product ontology assistant</p>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] shrink-0">Beta</Badge>
+                  {ragMessages.length > 0 && (
+                    <button
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      title="Clear conversation"
+                      onClick={() => { setRagMessages([]); setRagHighlight(null); setRagOverlayNodes([]); setRagOverlayLinks([]); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Message area */}
+                <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+
+                  {/* Welcome state */}
+                  {ragMessages.length === 0 && !ragLoading && (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-center pb-4">
+                      <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
+                        <Brain className="h-5 w-5 text-violet-500" />
                       </div>
-                    )}
-                    {ragAnswer.nodes?.length > 0 && (
-                      <div className="border-t pt-2">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Related Nodes ({ragAnswer.nodes.length})</p>
-                        <div className="flex flex-wrap gap-1">
-                          {ragAnswer.nodes.slice(0, 8).map(n => (
-                            <Badge key={n.id} variant="secondary" className="text-[9px]">{n.name || n.id}</Badge>
-                          ))}
-                        </div>
+                      <div>
+                        <p className="text-xs font-semibold">Digital Engineering Assistant</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed max-w-[200px]">
+                          Ask about ISO 10303 AP239/AP242/AP243 traceability, product ontology, simulation dossiers, or requirements.
+                        </p>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                      {/* Suggested chips */}
+                      <div className="flex flex-wrap gap-1 justify-center max-w-[240px]">
+                        {({
+                          ONTOLOGY: ['Ontology structure overview', 'How are OWL classes connected?', 'AP239 vs AP242 vs AP243'],
+                          AP239: ['Traceability overview', 'How are Requirements linked?', 'Part → WorkOrder path'],
+                          AP242: ['How are assemblies structured?', 'Part → Assembly connections', 'Material relationships'],
+                          AP243: ['How are simulation dossiers linked?', 'Dossier → Evidence traceability', 'Study → Context relationships'],
+                          ENTERPRISE: ['Cross-domain traceability', 'Show all node types', 'Network overview'],
+                        }[currentViewId] || ['How are nodes connected?', 'Traceability overview', 'List simulation dossiers']
+                        ).map(q => (
+                          <button
+                            key={q}
+                            className="text-[9px] px-2 py-1 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900 transition-colors"
+                            onClick={() => { setRagQuestion(q); }}
+                          >{q}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Message bubbles */}
+                  {ragMessages.map(msg => (
+                    <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                      {/* Avatar */}
+                      <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5 ${
+                        msg.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-violet-100 dark:bg-violet-950'
+                      }`}>
+                        {msg.role === 'user' ? 'U' : <Brain className="h-3 w-3 text-violet-500" />}
+                      </div>
+                      {/* Bubble */}
+                      <div className={`flex flex-col gap-1 max-w-[85%] ${
+                        msg.role === 'user' ? 'items-end' : 'items-start'
+                      }`}>
+                        <div className={`rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                            : 'bg-muted text-foreground rounded-tl-sm'
+                        }`}>
+                          {msg.role === 'user'
+                            ? msg.content
+                            : msg.streaming && !msg.content
+                              ? <span className="inline-block w-2 h-3 bg-violet-400 animate-pulse rounded-sm" />
+                              : <><SimpleMarkdown text={msg.content} />{msg.streaming && <span className="inline-block w-1.5 h-3 bg-violet-400 animate-pulse rounded-sm ml-0.5 align-middle" />}</>}
+                        </div>
+                        {/* Sources inline under assistant bubble */}
+                        {msg.role === 'assistant' && msg.sources?.length > 0 && (
+                          <div className="w-full space-y-0.5 px-1">
+                            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Sources</p>
+                            {msg.sources.slice(0, 5).map((s, i) => {
+                              const isInGraph = ragHighlight?.has(String(s.uid));
+                              const focusNode = () => {
+                                if (!normalizedGraph || !fgRef.current) return;
+                                const node = normalizedGraph.nodes.find(
+                                  n => String(n.id) === String(s.uid) || String(n.properties?.uid) === String(s.uid)
+                                );
+                                if (node && node.x != null) {
+                                  fgRef.current.centerAt(node.x, node.y, 600);
+                                  fgRef.current.zoom(6, 600);
+                                  setSelectedNode(node); // open node detail panel
+                                }
+                              };
+                              return (
+                                <div
+                                  key={i}
+                                  className={`flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer hover:bg-muted/80 transition-colors ${
+                                    isInGraph ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'
+                                  }`}
+                                  onClick={focusNode}
+                                  title={isInGraph ? 'Click to focus in graph' : 'Node not in current view'}
+                                >
+                                  <Hash className="h-2.5 w-2.5 shrink-0" />
+                                  <span className="truncate">{s.name || s.uid}</span>
+                                  {s.score && <span className="ml-auto shrink-0 opacity-60">{(s.score * 100).toFixed(0)}%</span>}
+                                  {isInGraph && <span className="text-violet-500 shrink-0">●</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Thinking indicator */}
+                  {ragLoading && (
+                    <div className="flex gap-2 flex-row">
+                      <div className="w-5 h-5 rounded-full shrink-0 bg-violet-100 dark:bg-violet-950 flex items-center justify-center mt-0.5">
+                        <Brain className="h-3 w-3 text-violet-500" />
+                      </div>
+                      <div className="bg-muted rounded-xl rounded-tl-sm px-3 py-2 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Auto-scroll anchor */}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Suggested chips — shown above input when chat is active */}
+                {ragMessages.length > 0 && (
+                  <div className="px-3 pb-1 shrink-0">
+                    <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+                      {({
+                        ONTOLOGY: ['OWL class hierarchy', 'AP239 vs AP242', 'Property relationships'],
+                        AP239: ['Requirements traceability', 'Part → WorkOrder', 'Verification links'],
+                        AP242: ['Assembly structure', 'Part connections', 'Shape links'],
+                        AP243: ['Dossier links', 'Evidence traceability', 'SimulationRun path'],
+                        ENTERPRISE: ['Cross-domain', 'All node types', 'Network overview'],
+                      }[currentViewId] || ['Traceability', 'Node types', 'Connections']
+                      ).map(q => (
+                        <button
+                          key={q}
+                          className="text-[9px] px-2 py-0.5 rounded-full border border-border bg-muted/50 hover:bg-muted whitespace-nowrap text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          onClick={() => setRagQuestion(q)}
+                        >{q}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Input bar */}
+                <div className="px-3 pb-3 pt-1 border-t border-border shrink-0">
+                  <div className="flex gap-2 items-end">
+                    <Textarea
+                      placeholder="Ask about traceability, ontology, simulations…"
+                      value={ragQuestion}
+                      onChange={e => setRagQuestion(e.target.value)}
+                      className="flex-1 min-h-9 max-h-24 text-xs resize-none rounded-xl"
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRAGQuery(); } }}
+                      rows={1}
+                    />
+                    <Button
+                      size="icon"
+                      className="h-9 w-9 rounded-xl shrink-0"
+                      disabled={ragLoading || !ragQuestion.trim()}
+                      onClick={handleRAGQuery}
+                    >
+                      {ragLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1">Enter to send · Shift+Enter for newline · View: {currentViewId}</p>
+                </div>
+              </div>
 
               {/* E17: Cypher Editor */}
               <Card>
@@ -2110,7 +2737,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 </CardContent>
               </Card>
 
-            </TabsContent>
+            </TabsContent>}
 
             {/* ─── INFO TAB ─── */}
             <TabsContent value="info" className="space-y-4 mt-3">
@@ -2240,6 +2867,12 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                         {graphData.metadata?.node_types?.length ?? 0}
                       </span>
                     </div>
+                    {isFetchingMore && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5">
+                        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                        <span>Loading more nodes…</span>
+                      </div>
+                    )}
                     {heatmapMode === 'degree' && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Max Degree:</span>
@@ -2386,12 +3019,30 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
       >
-        {/* Loading overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20">
-            <div className="text-center space-y-4">
+        {/* Sidebar collapse toggle — sits on the left edge of the canvas */}
+        <button
+          onClick={() => setSidebarCollapsed(v => !v)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-4 h-12 rounded-r-lg bg-background border border-l-0 border-border shadow-sm hover:bg-muted transition-colors group"
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg viewBox="0 0 6 10" className={`w-2.5 h-2.5 text-muted-foreground group-hover:text-foreground transition-transform duration-300 ${sidebarCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="5,1 1,5 5,9" />
+          </svg>
+        </button>
+        {/* Loading overlay — full block on first load, translucent badge on refetch */}
+        {(isLoading || isGraphRefetching) && (
+          <div className={`absolute inset-0 flex items-center justify-center z-20 ${
+            isLoading ? 'bg-background/80 backdrop-blur-sm' : 'bg-transparent pointer-events-none'
+          }`}>
+            <div className={`text-center space-y-4 ${
+              isGraphRefetching && !isLoading
+                ? 'bg-background/90 backdrop-blur-sm rounded-xl px-5 py-4 shadow-lg border border-border'
+                : ''
+            }`}>
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-              <p className="text-sm text-muted-foreground">Loading graph data...</p>
+              <p className="text-sm text-muted-foreground">
+                {isLoading ? 'Loading graph data...' : 'Refreshing view…'}
+              </p>
             </div>
           </div>
         )}
@@ -2414,7 +3065,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
         )}
 
         {/* Empty-data overlay */}
-        {normalizedGraph && !isLoading && !error && normalizedGraph.nodes.length === 0 && (
+        {normalizedGraph && !isLoading && !isGraphRefetching && !error && normalizedGraph.nodes.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center z-20">
             <Card className="max-w-md">
               <CardHeader>
@@ -2425,6 +3076,23 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 <CardDescription>{emptyMessage}</CardDescription>
               </CardHeader>
             </Card>
+          </div>
+        )}
+
+        {/* RAG active status badge — shown on graph canvas when RAG highlight is set */}
+        {ragHighlight && ragHighlight.size > 0 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/90 backdrop-blur-sm border border-violet-300 dark:border-violet-700 shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse shrink-0" />
+            <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300 whitespace-nowrap">
+              {ragHighlight.size} node{ragHighlight.size !== 1 ? 's' : ''} matched
+            </span>
+            <button
+              className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+              title="Clear graph highlight"
+              onClick={() => { setRagHighlight(null); setRagOverlayNodes([]); setRagOverlayLinks([]); }}
+            >
+              <X className="h-3 w-3" />
+            </button>
           </div>
         )}
 
@@ -2487,7 +3155,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               if (currentViewId === 'ONTOLOGY' && (node.type === 'OWLObjectProperty' || node.type === 'OWLDatatypeProperty')) {
                 const s = node.type === 'OWLObjectProperty' ? 5 : 4;
                 ctx.save();
-                ctx.globalAlpha = dim ? 0.18 : 1;
+                ctx.globalAlpha = dim ? (highlighted.isRag ? 0.45 : 0.18) : 1;
                 ctx.fillStyle = baseColor;
                 ctx.translate(node.x, node.y);
                 if (node.type === 'OWLObjectProperty') ctx.rotate(Math.PI / 4); // 45° → diamond
@@ -2496,7 +3164,7 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.fill();
                 ctx.restore();
               } else {
-                ctx.globalAlpha = dim ? 0.18 : 1;
+                ctx.globalAlpha = dim ? (highlighted.isRag ? 0.45 : 0.18) : 1;
                 ctx.fillStyle = baseColor;
                 ctx.beginPath();
                 ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
@@ -2587,42 +3255,73 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
                 ctx.fillText(String(commId), node.x + radius, node.y - radius);
               }
 
-              // Show labels: always for highlighted nodes; for others at zoom threshold
+              // ── Label rendering ──────────────────────────────────────────
+              // Show labels: always for highlighted/focused nodes;
+              // for others only at a zoom threshold to avoid clutter
               const isHighlightedNode = highlighted.nodeIds ? highlighted.nodeIds.has(id) : false;
-              const labelZoomThreshold = currentViewId === 'ONTOLOGY' ? 0.5 : 1.2;
+              const labelZoomThreshold = currentViewId === 'ONTOLOGY' ? 0.8 : 1.6;
               const showLabel = !dim && (isHighlightedNode || globalScale >= labelZoomThreshold);
               if (showLabel) {
                 // Prefer human-readable name; fall back to properties.label then local part of id.
                 const rawId = String(node.id || '');
                 const isElementId = /^\d+:[0-9a-f\-]{36}:\d+$/i.test(rawId);
                 const localId = rawId.includes(':') ? rawId.split(':').pop() : rawId;
-                const fullLabel = node.name
-                  || node.properties?.label
-                  || node.properties?.local_name
-                  || (isElementId ? null : localId)
-                  || node.type;
-                // Truncate long labels so they don't overflow into neighbors.
+                // Build label text based on user-selected label mode
+                let fullLabel;
+                if (labelMode === 'type') {
+                  fullLabel = node.type || 'Unknown';
+                } else if (labelMode === 'id') {
+                  fullLabel = isElementId ? `${node.type}#${localId}` : localId;
+                } else {
+                  fullLabel = node.name
+                    || node.properties?.label
+                    || node.properties?.local_name
+                    || (isElementId ? null : localId)
+                    || node.type;
+                }
+
+                // Truncate: allow slightly more chars for readability
                 const MAX_CHARS = 18;
                 const label = fullLabel && fullLabel.length > MAX_CHARS
                   ? fullLabel.slice(0, MAX_CHARS - 1) + '…'
-                  : fullLabel;
+                  : (fullLabel || '');
 
-                const screenFontSize = isHighlightedNode ? 12 : 11;
-                const fontSize = Math.max(9, Math.min(14, screenFontSize)) / globalScale;
-                ctx.font = `${isHighlightedNode ? '600' : '500'} ${fontSize}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial`;
+                // Uniform font: same size, weight, and family across all views and states
+                const screenPx = 11;
+                const fontSize = Math.max(7, screenPx) / globalScale;
+                ctx.font = `700 ${fontSize}px 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'top';
 
-                const boxY = node.y + radius + 3;
+                const boxY = node.y + radius + 3 / globalScale;
+                const textWidth = ctx.measureText(label).width;
+                const padX = 4 / globalScale;
+                const padY = 2 / globalScale;
 
-                // Text shadow only — no background pill
-                ctx.globalAlpha = isHighlightedNode ? 1 : 0.85;
-                ctx.shadowColor = 'rgba(255,255,255,0.95)';
-                ctx.shadowBlur = isHighlightedNode ? 6 : 3;
-                ctx.fillStyle = isHighlightedNode ? '#0f172a' : '#334155';
+                // Uniform dark pill background (same in every focus area / view)
+                ctx.globalAlpha = isHighlightedNode ? 0.97 : 0.85;
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.88)'; // slate-900 at 88% — consistent across all views
+                const pillW = textWidth + padX * 2;
+                const pillH = fontSize + padY * 2;
+                const pillX = node.x - pillW / 2;
+                const pillR = Math.max(0, Math.min(pillH / 2, 3 / globalScale));
+                ctx.beginPath();
+                ctx.moveTo(pillX + pillR, boxY - padY);
+                ctx.lineTo(pillX + pillW - pillR, boxY - padY);
+                ctx.arcTo(pillX + pillW, boxY - padY, pillX + pillW, boxY - padY + pillR, pillR);
+                ctx.lineTo(pillX + pillW, boxY - padY + pillH - pillR);
+                ctx.arcTo(pillX + pillW, boxY - padY + pillH, pillX + pillW - pillR, boxY - padY + pillH, pillR);
+                ctx.lineTo(pillX + pillR, boxY - padY + pillH);
+                ctx.arcTo(pillX, boxY - padY + pillH, pillX, boxY - padY + pillH - pillR, pillR);
+                ctx.lineTo(pillX, boxY - padY + pillR);
+                ctx.arcTo(pillX, boxY - padY, pillX + pillR, boxY - padY, pillR);
+                ctx.closePath();
+                ctx.fill();
+
+                // Uniform white label text — maximum contrast on dark pill
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#ffffff';
                 ctx.fillText(label, node.x, boxY);
-                ctx.shadowBlur = 0;
-                ctx.shadowColor = 'transparent';
               }
 
               ctx.globalAlpha = 1;
@@ -2679,14 +3378,51 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               const label = relType.length > 20 ? relType.slice(0, 18) + '…' : relType;
-              // No background — text shadow only
-              ctx.shadowColor = 'rgba(255,255,255,0.95)';
-              ctx.shadowBlur = isHighlightedLink ? 5 : 3;
-              ctx.globalAlpha = isHighlightedLink ? 1 : 0.85;
-              ctx.fillStyle = isHighlightedLink ? '#0f172a' : '#475569';
+
+              // Resolve relationship type color from view-specific or universal map
+              const relColor = (currentViewId === 'DIGITAL_THREAD' && DT_REL_COLORS[relType])
+                ? DT_REL_COLORS[relType]
+                : (currentViewId === 'ONTOLOGY' && ONTOLOGY_REL_COLORS[relType])
+                  ? ONTOLOGY_REL_COLORS[relType]
+                  : (currentViewId === 'OSLC' && OSLC_REL_COLORS[relType])
+                    ? OSLC_REL_COLORS[relType]
+                    : (ALL_REL_COLORS[relType] || '#64748b');
+
+              // Background pill colored by relationship type
+              const lTextW = ctx.measureText(label).width;
+              const lPadX = 3 / globalScale;
+              const lPadY = 1.5 / globalScale;
+              const lPillW = lTextW + lPadX * 2;
+              const lPillH = fontSize + lPadY * 2;
+              const lPillX = midX - lPillW / 2;
+              const lPillY = midY - lPillH / 2;
+              const lR = Math.max(0, Math.min(lPillH / 2, 2 / globalScale));
+
+              // Parse relColor hex → rgba
+              const hx = relColor.startsWith('#') ? relColor.replace('#', '') : '64748b';
+              const lr = parseInt(hx.substring(0, 2), 16) || 100;
+              const lg = parseInt(hx.substring(2, 4), 16) || 116;
+              const lb = parseInt(hx.substring(4, 6), 16) || 139;
+
+              ctx.globalAlpha = isHighlightedLink ? 0.90 : 0.72;
+              ctx.fillStyle = `rgba(${lr},${lg},${lb},${isHighlightedLink ? 0.88 : 0.65})`;
+              ctx.beginPath();
+              ctx.moveTo(lPillX + lR, lPillY);
+              ctx.lineTo(lPillX + lPillW - lR, lPillY);
+              ctx.arcTo(lPillX + lPillW, lPillY, lPillX + lPillW, lPillY + lR, lR);
+              ctx.lineTo(lPillX + lPillW, lPillY + lPillH - lR);
+              ctx.arcTo(lPillX + lPillW, lPillY + lPillH, lPillX + lPillW - lR, lPillY + lPillH, lR);
+              ctx.lineTo(lPillX + lR, lPillY + lPillH);
+              ctx.arcTo(lPillX, lPillY + lPillH, lPillX, lPillY + lPillH - lR, lR);
+              ctx.lineTo(lPillX, lPillY + lR);
+              ctx.arcTo(lPillX, lPillY, lPillX + lR, lPillY, lR);
+              ctx.closePath();
+              ctx.fill();
+
+              // Label text — white on colored pill
+              ctx.globalAlpha = isHighlightedLink ? 1 : 0.9;
+              ctx.fillStyle = '#ffffff';
               ctx.fillText(label, midX, midY);
-              ctx.shadowBlur = 0;
-              ctx.shadowColor = 'transparent';
               ctx.globalAlpha = 1;
             }}
             linkLabel={l => l.type || ''}
@@ -2694,25 +3430,24 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
               const id = String(l.id ?? '');
               // E2: Path links are cyan
               if (pathHighlight?.linkKeys?.has(id)) return '#06b6d4';
+              // E3: RAG overlay edges — violet
+              if (l._ragOverlay) return 'rgba(168, 85, 247, 0.75)';
               const dim = highlighted.linkKeys
                 ? !highlighted.linkKeys.has(id)
                 : false;
               if (dim) return 'rgba(148, 163, 184, 0.20)';
               const relType = l.type || l.relationship || '';
-              if (currentViewId === 'DIGITAL_THREAD') {
-                if (DT_REL_COLORS[relType]) return DT_REL_COLORS[relType];
-              }
-              if (currentViewId === 'ONTOLOGY') {
-                if (ONTOLOGY_REL_COLORS[relType]) return ONTOLOGY_REL_COLORS[relType];
-              }
-              if (currentViewId === 'OSLC') {
-                if (OSLC_REL_COLORS[relType]) return OSLC_REL_COLORS[relType];
-              }
+              if (currentViewId === 'DIGITAL_THREAD' && DT_REL_COLORS[relType]) return DT_REL_COLORS[relType];
+              if (currentViewId === 'ONTOLOGY' && ONTOLOGY_REL_COLORS[relType]) return ONTOLOGY_REL_COLORS[relType];
+              if (currentViewId === 'OSLC' && OSLC_REL_COLORS[relType]) return OSLC_REL_COLORS[relType];
+              // Universal fallback — color all known rel types consistently across views
+              if (ALL_REL_COLORS[relType]) return ALL_REL_COLORS[relType];
               return 'rgba(100, 116, 139, 0.85)';
             }}
             linkWidth={l => {
               const id = String(l.id ?? '');
               if (pathHighlight?.linkKeys?.has(id)) return 3.5;
+              if (l._ragOverlay) return 2.0;
               return highlighted.linkKeys && highlighted.linkKeys.has(id)
                 ? 2.6
                 : 1.2;
@@ -2789,6 +3524,191 @@ export default memo(function GraphBrowser({ initialView = 'ENTERPRISE' }) {
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
+            <div className="h-px bg-border my-1" />
+            <Button
+              variant={aiPanelOpen ? 'default' : 'secondary'}
+              size="icon"
+              className="w-10 h-10 bg-background/80 backdrop-blur-sm border shadow-sm"
+              onClick={() => setAiPanelOpen(v => !v)}
+              title="KnowledgeGraph AI"
+            >
+              <Brain className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* ── KnowledgeGraph AI floating panel ── */}
+        {aiPanelOpen && (
+          <div
+            ref={aiPanelRef}
+            className="absolute z-30 flex flex-col rounded-xl border border-border bg-background shadow-2xl"
+            style={aiPanelPos
+              ? { left: aiPanelPos.x, top: aiPanelPos.y, width: aiPanelSize.w, height: aiPanelSize.h }
+              : { bottom: 16, right: 64, width: aiPanelSize.w, height: aiPanelSize.h }
+            }
+          >
+            {/* Header — drag handle */}
+            <div
+              className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/40 shrink-0 cursor-move select-none rounded-t-xl"
+              onMouseDown={startAiDrag}
+            >
+              <Brain className="h-4 w-4 text-violet-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold leading-none">KnowledgeGraph AI</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Digital engineering &amp; product ontology assistant</p>
+              </div>
+              <Badge variant="outline" className="text-[9px] shrink-0">Beta</Badge>
+              {ragMessages.length > 0 && (
+                <button className="text-muted-foreground hover:text-destructive transition-colors ml-1" title="Clear conversation"
+                  onClick={() => { setRagMessages([]); setRagHighlight(null); setRagOverlayNodes([]); setRagOverlayLinks([]); }}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <button className="text-muted-foreground hover:text-foreground transition-colors ml-1" title="Close"
+                onClick={() => setAiPanelOpen(false)}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+              {ragMessages.length === 0 && !ragLoading && (
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-center pb-4">
+                  <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
+                    <Brain className="h-5 w-5 text-violet-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold">Digital Engineering Assistant</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed max-w-[220px]">
+                      Ask about ISO 10303 AP239/AP242/AP243 traceability, product ontology, simulation dossiers, or requirements.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-center max-w-[260px]">
+                    {({
+                      ONTOLOGY: ['Ontology structure overview','How are OWL classes connected?','AP239 vs AP242 vs AP243'],
+                      AP239: ['Traceability overview','How are Requirements linked?','Part → WorkOrder path'],
+                      AP242: ['How are assemblies structured?','Part → Assembly connections','Material relationships'],
+                      AP243: ['How are simulation dossiers linked?','Dossier → Evidence traceability','Study → Context relationships'],
+                      ENTERPRISE: ['Cross-domain traceability','Show all node types','Network overview'],
+                    }[currentViewId] || ['How are nodes connected?','Traceability overview','List simulation dossiers']
+                    ).map(q => (
+                      <button key={q}
+                        className="text-[9px] px-2 py-1 rounded-full border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900 transition-colors"
+                        onClick={() => setRagQuestion(q)}>{q}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {ragMessages.map(msg => (
+                <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5 ${
+                    msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-violet-100 dark:bg-violet-950'
+                  }`}>
+                    {msg.role === 'user' ? 'U' : <Brain className="h-3 w-3 text-violet-500" />}
+                  </div>
+                  <div className={`flex flex-col gap-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`rounded-xl px-3 py-2 text-xs leading-relaxed ${
+                      msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted text-foreground rounded-tl-sm'
+                    }`}>
+                      {msg.role === 'user'
+                        ? msg.content
+                        : msg.streaming && !msg.content
+                          ? <span className="inline-block w-2 h-3 bg-violet-400 animate-pulse rounded-sm" />
+                          : <><SimpleMarkdown text={msg.content} />{msg.streaming && <span className="inline-block w-1.5 h-3 bg-violet-400 animate-pulse rounded-sm ml-0.5 align-middle" />}</>}
+                    </div>
+                    {msg.role === 'assistant' && msg.sources?.length > 0 && (
+                      <div className="w-full space-y-0.5 px-1">
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Sources</p>
+                        {msg.sources.slice(0, 5).map((s, i) => {
+                          const isInGraph = ragHighlight?.has(String(s.uid));
+                          const focusNode = () => {
+                            if (!normalizedGraph || !fgRef.current) return;
+                            const node = normalizedGraph.nodes.find(n => String(n.id) === String(s.uid) || String(n.properties?.uid) === String(s.uid));
+                            if (node && node.x != null) { fgRef.current.centerAt(node.x, node.y, 600); fgRef.current.zoom(6, 600); setSelectedNode(node); }
+                          };
+                          return (
+                            <div key={i} onClick={focusNode} title={isInGraph ? 'Click to focus in graph' : 'Node not in current view'}
+                              className={`flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer hover:bg-muted/80 transition-colors ${
+                                isInGraph ? 'text-violet-600 dark:text-violet-400' : 'text-muted-foreground'
+                              }`}>
+                              <Hash className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate">{s.name || s.uid}</span>
+                              {s.score && <span className="ml-auto shrink-0 opacity-60">{(s.score * 100).toFixed(0)}%</span>}
+                              {isInGraph && <span className="text-violet-500 shrink-0">●</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {ragLoading && (
+                <div className="flex gap-2">
+                  <div className="w-5 h-5 rounded-full shrink-0 bg-violet-100 dark:bg-violet-950 flex items-center justify-center mt-0.5">
+                    <Brain className="h-3 w-3 text-violet-500" />
+                  </div>
+                  <div className="bg-muted rounded-xl rounded-tl-sm px-3 py-2 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Chips */}
+            {ragMessages.length > 0 && (
+              <div className="px-3 pb-1 shrink-0">
+                <div className="flex gap-1 overflow-x-auto pb-1">
+                  {({
+                    ONTOLOGY: ['OWL class hierarchy','AP239 vs AP242','Property relationships'],
+                    AP239: ['Requirements traceability','Part → WorkOrder','Verification links'],
+                    AP242: ['Assembly structure','Part connections','Shape links'],
+                    AP243: ['Dossier links','Evidence traceability','SimulationRun path'],
+                    ENTERPRISE: ['Cross-domain','All node types','Network overview'],
+                  }[currentViewId] || ['Traceability','Node types','Connections']
+                  ).map(q => (
+                    <button key={q}
+                      className="text-[9px] px-2 py-0.5 rounded-full border border-border bg-muted/50 hover:bg-muted whitespace-nowrap text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      onClick={() => setRagQuestion(q)}>{q}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="px-3 pb-3 pt-1 border-t border-border shrink-0">
+              <div className="flex gap-2 items-end">
+                <Textarea
+                  placeholder="Ask about traceability, ontology, simulations…"
+                  value={ragQuestion}
+                  onChange={e => setRagQuestion(e.target.value)}
+                  className="flex-1 min-h-9 max-h-24 text-xs resize-none rounded-xl"
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleRAGQuery(); } }}
+                  rows={1}
+                />
+                <Button size="icon" className="h-9 w-9 rounded-xl shrink-0" disabled={ragLoading || !ragQuestion.trim()} onClick={handleRAGQuery}>
+                  {ragLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-[9px] text-muted-foreground mt-1">Enter to send · Shift+Enter newline · View: {currentViewId}</p>
+            </div>
+
+            {/* Resize handle — bottom-right corner */}
+            <div
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-10"
+              onMouseDown={startAiResize}
+              title="Drag to resize"
+            >
+              <svg viewBox="0 0 10 10" className="w-full h-full text-muted-foreground/40">
+                <line x1="3" y1="10" x2="10" y2="3" stroke="currentColor" strokeWidth="1.2" />
+                <line x1="6" y1="10" x2="10" y2="6" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            </div>
           </div>
         )}
 

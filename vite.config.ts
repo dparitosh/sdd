@@ -71,6 +71,8 @@ export default defineConfig({
         target: API_BASE_URL,
         changeOrigin: true,
         secure: false,
+        proxyTimeout: 180_000,  // 3 min — allows LLM responses (Ollama/OpenAI can take ~120 s)
+        timeout: 180_000,
       },
     },
   },

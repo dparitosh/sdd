@@ -53,8 +53,20 @@ class VectorStoreTool:
     """
 
     def __init__(self, host: Optional[str] = None, index: Optional[str] = None):
-        self.host = host or os.getenv("VECTORSTORE_HOST", "http://localhost:9200")
-        self.index = index or os.getenv("VECTORSTORE_INDEX", "embeddings")
+        # Accept all naming conventions — canonical is VECTORSTORE_HOST / VECTORSTORE_INDEX
+        self.host = (
+            host
+            or os.getenv("VECTORSTORE_HOST")
+            or os.getenv("OPENSEARCH_URL")
+            or os.getenv("OPENSEARCH_HOST")
+            or "http://localhost:9200"
+        )
+        self.index = (
+            index
+            or os.getenv("VECTORSTORE_INDEX")
+            or os.getenv("OPENSEARCH_INDEX")
+            or "embeddings"
+        )
         self.embedder = OllamaEmbeddings()
         self.store = ElasticsearchVectorStore(self.host)
         self.mirror_to_neo4j = os.getenv("NEO4J_EMBEDDING_ENABLED", "false").lower() == "true"
