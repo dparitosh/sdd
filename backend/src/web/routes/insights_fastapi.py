@@ -21,6 +21,11 @@ from src.web.services.insights_service import (
     part_similarity,
     semantic_duplicates,
     shacl_compliance,
+    simulation_run_status,
+    simulation_workflow_coverage,
+    simulation_parameter_health,
+    simulation_dossier_health,
+    simulation_digital_thread,
     smart_analysis,
     traceability_gaps,
 )
@@ -35,12 +40,18 @@ router = APIRouter(
 # ── Insight endpoints ────────────────────────────────────────────────────────
 
 _INSIGHT_MAP = {
-    "bom-completeness": bom_completeness,
-    "traceability-gaps": traceability_gaps,
-    "classification-coverage": classification_coverage,
-    "semantic-duplicates": semantic_duplicates,
-    "part-similarity": part_similarity,
-    "shacl-compliance": shacl_compliance,
+    "bom-completeness":              bom_completeness,
+    "traceability-gaps":             traceability_gaps,
+    "classification-coverage":       classification_coverage,
+    "semantic-duplicates":           semantic_duplicates,
+    "part-similarity":               part_similarity,
+    "shacl-compliance":              shacl_compliance,
+    # Simulation insights
+    "simulation-run-status":         simulation_run_status,
+    "simulation-workflow-coverage":  simulation_workflow_coverage,
+    "simulation-parameter-health":   simulation_parameter_health,
+    "simulation-dossier-health":     simulation_dossier_health,
+    "simulation-digital-thread":     simulation_digital_thread,
 }
 
 

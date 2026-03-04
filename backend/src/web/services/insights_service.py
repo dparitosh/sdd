@@ -254,6 +254,196 @@ def shacl_compliance() -> Dict[str, Any]:
     return {"by_label": rows, "total_violations": sum(v["violations"] for v in violations)}
 
 
+# ─── Simulation Insights ────────────────────────────────────────────────────
+
+
+def simulation_run_status() -> Dict[str, Any]:
+    """Breakdown of SimulationRun nodes by status and sim_type."""
+    total_row = _run("MATCH (sr:SimulationRun) RETURN count(sr) AS cnt")
+    total = total_row[0]["cnt"] if total_row else 0
+
+    by_status = _run(
+        "MATCH (sr:SimulationRun) "
+        "RETURN coalesce(sr.status, 'Unknown') AS status, count(*) AS cnt "
+        "ORDER BY cnt DESC"
+    )
+    by_type = _run(
+        "MATCH (sr:SimulationRun) "
+        "RETURN coalesce(sr.sim_type, 'Unclassified') AS sim_type, count(*) AS cnt "
+        "ORDER BY cnt DESC"
+    )
+    recent = _run(
+        "MATCH (sr:SimulationRun) "
+        "RETURN sr.id AS id, coalesce(sr.status,'?') AS status, "
+        "       coalesce(sr.sim_type,'?') AS sim_type, "
+        "       coalesce(sr.timestamp, sr.start_time, '') AS ts "
+        "ORDER BY ts DESC LIMIT 5"
+    )
+    completed = next((r["cnt"] for r in by_status if r["status"] == "Completed"), 0)
+    failed = next((r["cnt"] for r in by_status if r["status"] in ("Failed", "Error")), 0)
+    running = next((r["cnt"] for r in by_status if r["status"] == "Running"), 0)
+    return {
+        "total_runs": total,
+        "completed": completed,
+        "failed": failed,
+        "running": running,
+        "success_rate_pct": round(completed / max(total, 1) * 100, 1),
+        "by_status": by_status,
+        "by_sim_type": by_type,
+        "recent_runs": recent,
+    }
+
+
+def simulation_workflow_coverage() -> Dict[str, Any]:
+    """WorkflowMethod coverage — steps, linked runs, orphan runs."""
+    wf_rows = _run(
+        "MATCH (wm:WorkflowMethod) "
+        "OPTIONAL MATCH (wm)-[:HAS_STEP]->(te:TaskElement) "
+        "WITH wm, count(te) AS steps "
+        "OPTIONAL MATCH (sr:SimulationRun)-[:CHOSEN_METHOD]->(wm) "
+        "RETURN wm.id AS id, wm.name AS name, wm.sim_type AS sim_type, "
+        "       wm.status AS status, steps, count(sr) AS linked_runs "
+        "ORDER BY wm.id"
+    )
+    orphan_row = _run(
+        "MATCH (sr:SimulationRun) "
+        "WHERE NOT EXISTS { (sr)-[:CHOSEN_METHOD]->(:WorkflowMethod) } "
+        "RETURN count(sr) AS cnt"
+    )
+    orphan_runs = orphan_row[0]["cnt"] if orphan_row else 0
+    total_runs_row = _run("MATCH (sr:SimulationRun) RETURN count(sr) AS cnt")
+    total_runs = total_runs_row[0]["cnt"] if total_runs_row else 0
+    total_steps = sum(r.get("steps", 0) for r in wf_rows)
+    return {
+        "workflow_count": len(wf_rows),
+        "total_task_elements": total_steps,
+        "total_runs": total_runs,
+        "runs_linked_to_workflow": total_runs - orphan_runs,
+        "orphan_runs": orphan_runs,
+        "coverage_pct": round((total_runs - orphan_runs) / max(total_runs, 1) * 100, 1),
+        "workflows": wf_rows,
+    }
+
+
+def simulation_parameter_health() -> Dict[str, Any]:
+    """SimulationParameter constraint coverage and data-type distribution."""
+    total_row = _run("MATCH (p:SimulationParameter) RETURN count(p) AS cnt")
+    total = total_row[0]["cnt"] if total_row else 0
+
+    with_constraints = _run(
+        "MATCH (p:SimulationParameter) "
+        "WHERE EXISTS { (p)-[:HAS_CONSTRAINT]->() } "
+        "RETURN count(p) AS cnt"
+    )
+    constrained = with_constraints[0]["cnt"] if with_constraints else 0
+
+    by_type = _run(
+        "MATCH (p:SimulationParameter) "
+        "RETURN coalesce(p.data_type, 'unknown') AS data_type, count(*) AS cnt "
+        "ORDER BY cnt DESC LIMIT 10"
+    )
+    # Violations: parameters with out-of-range default values (if any validation recorded)
+    violation_rows = _run(
+        "MATCH (p:SimulationParameter)-[:VIOLATES_CONSTRAINT]->(c) "
+        "RETURN p.id AS id, p.name AS name, c.message AS msg LIMIT 20"
+    )
+    return {
+        "total_parameters": total,
+        "with_constraints": constrained,
+        "without_constraints": total - constrained,
+        "constraint_coverage_pct": round(constrained / max(total, 1) * 100, 1),
+        "by_data_type": by_type,
+        "constraint_violations": violation_rows,
+    }
+
+
+def simulation_dossier_health() -> Dict[str, Any]:
+    """SimulationDossier completeness — artifacts, KPIs, evidence categories."""
+    total_row = _run("MATCH (sd:SimulationDossier) RETURN count(sd) AS cnt")
+    total = total_row[0]["cnt"] if total_row else 0
+
+    dossiers = _run(
+        "MATCH (sd:SimulationDossier) "
+        "OPTIONAL MATCH (sd)-[:CONTAINS]->(a:SimulationArtifact) "
+        "WITH sd, count(a) AS artifact_count "
+        "OPTIONAL MATCH (sd)-[:HAS_KPI]->(k) "
+        "WITH sd, artifact_count, count(k) AS kpi_count "
+        "OPTIONAL MATCH (sd)-[:HAS_EVIDENCE_CATEGORY]->(ec) "
+        "RETURN sd.name AS name, coalesce(sd.status,'?') AS status, "
+        "       artifact_count, kpi_count, count(ec) AS evidence_categories "
+        "ORDER BY sd.name"
+    )
+    complete = sum(
+        1 for d in dossiers
+        if d.get("artifact_count", 0) > 0 and d.get("kpi_count", 0) > 0
+    )
+    artifact_total = sum(d.get("artifact_count", 0) for d in dossiers)
+    return {
+        "total_dossiers": total,
+        "complete_dossiers": complete,
+        "incomplete_dossiers": total - complete,
+        "completeness_pct": round(complete / max(total, 1) * 100, 1),
+        "total_artifacts": artifact_total,
+        "dossiers": dossiers,
+    }
+
+
+def simulation_digital_thread() -> Dict[str, Any]:
+    """Digital thread traceability: SimulationRun → WorkflowMethod → Requirement."""
+    runs_row = _run("MATCH (sr:SimulationRun) RETURN count(sr) AS cnt")
+    total_runs = runs_row[0]["cnt"] if runs_row else 0
+
+    with_method_row = _run(
+        "MATCH (sr:SimulationRun)-[:CHOSEN_METHOD]->(:WorkflowMethod) "
+        "RETURN count(DISTINCT sr) AS cnt"
+    )
+    with_method = with_method_row[0]["cnt"] if with_method_row else 0
+
+    with_req_row = _run(
+        "MATCH (sr:SimulationRun)-[:VALIDATES|VERIFIES|SATISFIES]->(r:Requirement) "
+        "RETURN count(DISTINCT sr) AS cnt"
+    )
+    with_req = with_req_row[0]["cnt"] if with_req_row else 0
+
+    with_dossier_row = _run(
+        "MATCH (sd:SimulationDossier)-[:CONTAINS]->(sr:SimulationRun) "
+        "RETURN count(DISTINCT sr) AS cnt"
+    )
+    with_dossier = with_dossier_row[0]["cnt"] if with_dossier_row else 0
+
+    ap_cross_row = _run(
+        "MATCH (a)-[r]->(b) "
+        "WHERE (a.ap_level IS NOT NULL OR b.ap_level IS NOT NULL) "
+        "  AND ANY(l IN labels(a) WHERE l IN ['SimulationRun','SimulationDossier','WorkflowMethod']) "
+        "RETURN count(r) AS cnt"
+    )
+    ap_cross = ap_cross_row[0]["cnt"] if ap_cross_row else 0
+
+    oslc_row = _run(
+        "MATCH (n) WHERE n.source = 'oslc' OR ANY(l IN labels(n) WHERE l STARTS WITH 'Oslc') "
+        "RETURN count(n) AS cnt"
+    )
+    oslc_nodes = oslc_row[0]["cnt"] if oslc_row else 0
+
+    thread_score = round(
+        (
+            (with_method / max(total_runs, 1)) * 0.4
+            + (with_dossier / max(total_runs, 1)) * 0.3
+            + (with_req / max(total_runs, 1)) * 0.3
+        ) * 100,
+        1,
+    )
+    return {
+        "total_runs": total_runs,
+        "with_workflow_method": with_method,
+        "with_requirement_link": with_req,
+        "within_dossier": with_dossier,
+        "ap_cross_standard_edges": ap_cross,
+        "oslc_nodes": oslc_nodes,
+        "thread_completeness_pct": thread_score,
+    }
+
+
 # ─── SmartAnalysis per-node pipeline ─────────────────────────────────────────
 
 @dataclass

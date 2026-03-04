@@ -7,7 +7,14 @@ export type InsightMetric =
   | 'traceability-gaps'
   | 'classification-coverage'
   | 'semantic-duplicates'
-  | 'shacl-compliance';
+  | 'part-similarity'
+  | 'shacl-compliance'
+  // Simulation
+  | 'simulation-run-status'
+  | 'simulation-workflow-coverage'
+  | 'simulation-parameter-health'
+  | 'simulation-dossier-health'
+  | 'simulation-digital-thread';
 
 export const getInsight = (metric: InsightMetric) =>
   apiClient.get<Record<string, any>>(`/insights/${metric}`);
@@ -25,6 +32,21 @@ export const getAllInsights = () =>
     classificationCoverage: cls,
     semanticDuplicates: dup,
     shaclCompliance: shacl,
+  }));
+
+export const getSimulationInsights = () =>
+  Promise.all([
+    getInsight('simulation-run-status'),
+    getInsight('simulation-workflow-coverage'),
+    getInsight('simulation-parameter-health'),
+    getInsight('simulation-dossier-health'),
+    getInsight('simulation-digital-thread'),
+  ]).then(([runs, workflows, params, dossiers, thread]) => ({
+    runStatus: runs,
+    workflowCoverage: workflows,
+    parameterHealth: params,
+    dossierHealth: dossiers,
+    digitalThread: thread,
   }));
 
 // ── SmartAnalysis per-node pipeline ───────────────────────────

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
 import { Button } from '@ui/button';
-import { Lightbulb, TrendingUp, AlertCircle, Sparkles, Shield, Search, RefreshCw, Loader2, Copy } from 'lucide-react';
+import { Lightbulb, TrendingUp, AlertCircle, Sparkles, Shield, Search, RefreshCw, Loader2, Copy, Activity, GitBranch, Cpu, Layers, BarChart2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { getInsight } from '@/services/insights.service';
 
@@ -51,6 +51,12 @@ export default function AIInsights() {
     'semantic-duplicates',
     'part-similarity',
     'shacl-compliance',
+    // Simulation
+    'simulation-run-status',
+    'simulation-workflow-coverage',
+    'simulation-parameter-health',
+    'simulation-dossier-health',
+    'simulation-digital-thread',
   ];
 
   const fetchMetric = useCallback(async (metric) => {
@@ -86,11 +92,18 @@ export default function AIInsights() {
   const partSim = data['part-similarity'] || {};
   const shacl = data['shacl-compliance'] || {};
 
+  // Simulation metrics
+  const simRuns = data['simulation-run-status'] || {};
+  const simWf = data['simulation-workflow-coverage'] || {};
+  const simParam = data['simulation-parameter-health'] || {};
+  const simDossier = data['simulation-dossier-health'] || {};
+  const simThread = data['simulation-digital-thread'] || {};
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <PageHeader
         title="AI Insights"
-        description="Live analytics from your knowledge graph — BOM, traceability, classification, and SHACL compliance"
+        description="Live analytics from your knowledge graph — BOM, traceability, classification, SHACL compliance, and simulation"
         icon={<Lightbulb className="h-8 w-8 text-primary" />}
         badge="Live"
         breadcrumbs={[
@@ -185,6 +198,83 @@ export default function AIInsights() {
           error={errors['shacl-compliance']}
           onRefresh={() => fetchMetric('shacl-compliance')}
         />
+      </div>
+
+      {/* ── Simulation Analytics ─────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Activity className="h-5 w-5 text-sky-500" />
+          Simulation Analytics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <InsightCard
+            title="Simulation Run Status"
+            icon={<Activity className="h-5 w-5 text-sky-500" />}
+            color="sky"
+            metric={simRuns.success_rate_pct != null ? `${simRuns.success_rate_pct}%` : undefined}
+            metricLabel={`success rate · ${simRuns.total_runs ?? '?'} total runs`}
+            description={
+              simRuns.by_status
+                ? Object.entries(simRuns.by_status).map(([k, v]) => `${k}: ${v}`).join(' | ')
+                : 'Run breakdown loading…'
+            }
+            loading={loading['simulation-run-status']}
+            error={errors['simulation-run-status']}
+            onRefresh={() => fetchMetric('simulation-run-status')}
+          />
+
+          <InsightCard
+            title="Workflow Coverage"
+            icon={<BarChart2 className="h-5 w-5 text-violet-500" />}
+            color="violet"
+            metric={simWf.coverage_pct != null ? `${simWf.coverage_pct}%` : undefined}
+            metricLabel="runs linked to a WorkflowMethod"
+            description={`${simWf.linked_runs ?? '?'} linked · ${simWf.orphan_runs ?? '?'} orphan · ${simWf.total_workflow_methods ?? '?'} methods`}
+            loading={loading['simulation-workflow-coverage']}
+            error={errors['simulation-workflow-coverage']}
+            onRefresh={() => fetchMetric('simulation-workflow-coverage')}
+          />
+
+          <InsightCard
+            title="Parameter Health"
+            icon={<Cpu className="h-5 w-5 text-emerald-500" />}
+            color="emerald"
+            metric={simParam.constraint_coverage_pct != null ? `${simParam.constraint_coverage_pct}%` : undefined}
+            metricLabel={`constraint coverage · ${simParam.total_parameters ?? '?'} params`}
+            description={
+              simParam.by_data_type
+                ? Object.entries(simParam.by_data_type).map(([k, v]) => `${k}: ${v}`).join(' | ')
+                : 'Parameter type breakdown loading…'
+            }
+            loading={loading['simulation-parameter-health']}
+            error={errors['simulation-parameter-health']}
+            onRefresh={() => fetchMetric('simulation-parameter-health')}
+          />
+
+          <InsightCard
+            title="Dossier Completeness"
+            icon={<Layers className="h-5 w-5 text-amber-500" />}
+            color="amber"
+            metric={simDossier.completeness_pct != null ? `${simDossier.completeness_pct}%` : undefined}
+            metricLabel={`${simDossier.total_dossiers ?? '?'} dossiers`}
+            description={`${simDossier.with_report ?? '?'} with report · ${simDossier.with_artifacts ?? '?'} with artifacts`}
+            loading={loading['simulation-dossier-health']}
+            error={errors['simulation-dossier-health']}
+            onRefresh={() => fetchMetric('simulation-dossier-health')}
+          />
+
+          <InsightCard
+            title="Digital Thread Score"
+            icon={<GitBranch className="h-5 w-5 text-indigo-500" />}
+            color="indigo"
+            metric={simThread.thread_completeness_pct != null ? `${simThread.thread_completeness_pct}%` : undefined}
+            metricLabel="AP239 → AP242 → AP243 coverage"
+            description={`${simThread.linked_ap239 ?? '?'} AP239 · ${simThread.linked_ap242 ?? '?'} AP242 · ${simThread.linked_ap243 ?? '?'} AP243 links`}
+            loading={loading['simulation-digital-thread']}
+            error={errors['simulation-digital-thread']}
+            onRefresh={() => fetchMetric('simulation-digital-thread')}
+          />
+        </div>
       </div>
     </div>
   );
