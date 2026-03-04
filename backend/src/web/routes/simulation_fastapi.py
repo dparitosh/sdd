@@ -1319,3 +1319,79 @@ async def get_approval_history(dossier_id: str):
     except Exception as exc:
         logger.error(f"Approval history fetch failed for dossier {dossier_id}: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ============================================================================
+# WORKFLOW ROUTES  (STEP AP243: WorkflowMethod / TaskElement)
+# ============================================================================
+
+@router.get(
+    "/workflows",
+    response_class=Neo4jJSONResponse,
+    summary="List all simulation workflows (WorkflowMethod nodes)",
+)
+async def get_workflows(
+    sim_type: Optional[str] = Query(None, description="Filter by simulation type"),
+    status:   Optional[str] = Query(None, description="Filter by status"),
+    limit:    int            = Query(50, description="Max results"),
+):
+    """
+    Returns a list of WorkflowMethod nodes representing reusable simulation
+    procedures, following ISO 10303-41 action_method and Part 49
+    method_definition_schema patterns.
+    """
+    try:
+        from src.web.services.simulation_service import SimulationService
+        sim_svc = SimulationService(get_neo4j_service())
+        workflows = sim_svc.get_workflows(sim_type=sim_type, status=status, limit=limit)
+        return {"total": len(workflows), "workflows": workflows}
+    except Exception as exc:
+        logger.error(f"Error fetching workflows: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get(
+    "/workflows/{workflow_id}",
+    response_class=Neo4jJSONResponse,
+    summary="Get a single WorkflowMethod with ordered TaskElement steps",
+)
+async def get_workflow(workflow_id: str):
+    """
+    Returns a WorkflowMethod with:
+    - Ordered TaskElement step chain (sequential_method pattern)
+    - ActionResource list (solver, compute)
+    - Linked SimulationRun instances
+    """
+    try:
+        from src.web.services.simulation_service import SimulationService
+        sim_svc = SimulationService(get_neo4j_service())
+        wf = sim_svc.get_workflow_by_id(workflow_id)
+        if not wf:
+            raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found")
+        return wf
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error fetching workflow {workflow_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get(
+    "/workflows/{workflow_id}/graph",
+    response_class=Neo4jJSONResponse,
+    summary="Get graph nodes+edges for a WorkflowMethod (for visualisation)",
+)
+async def get_workflow_graph(workflow_id: str):
+    """
+    Returns a graph payload (nodes + edges) covering:
+      WorkflowMethod, TaskElement, ActionResource, SimulationRun
+    with relationship types: HAS_STEP, NEXT_STEP, USES_RESOURCE, CHOSEN_METHOD
+    """
+    try:
+        from src.web.services.simulation_service import SimulationService
+        sim_svc = SimulationService(get_neo4j_service())
+        graph = sim_svc.get_workflow_graph(workflow_id)
+        return graph
+    except Exception as exc:
+        logger.error(f"Error fetching workflow graph {workflow_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

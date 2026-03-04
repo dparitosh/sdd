@@ -34,3 +34,15 @@ export const validateParameters = (parameters: Array<{ id: string; value: any }>
 
 export const getUnits = () =>
   apiClient.get<any>('/simulation/units');
+
+export const getWorkflows = (params?: {
+  sim_type?: string; status?: string; limit?: number;
+}) => apiClient.get<{ total: number; workflows: any[] }>('/simulation/workflows', { params });
+
+export const getWorkflow = (id: string) =>
+  apiClient.get<any>(`/simulation/workflows/${encodeURIComponent(id)}`);
+
+export const getWorkflowGraph = (id: string) =>
+  apiClient.get<{ workflow_id: string; nodes: any[]; edges: any[] }>(
+    `/simulation/workflows/${encodeURIComponent(id)}/graph`
+  );

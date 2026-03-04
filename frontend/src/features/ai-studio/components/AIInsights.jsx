@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@ui/card';
 import { Button } from '@ui/button';
 import {
-  Lightbulb, TrendingUp, AlertCircle, Sparkles, Shield, Search, RefreshCw,
+  TrendingUp, AlertCircle, Sparkles, Shield, Search, RefreshCw,
   Loader2, Copy, Activity, GitBranch, Cpu, Layers, BarChart2, Brain,
   AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronRight,
   Zap, Target, Clock, Info, Wand2, Gauge,
@@ -107,15 +107,15 @@ function getAiExplanation(metricKey, data, severity) {
         ? `${num('classified')} items classified — coverage meets the ≥80% engineering target.`
         : `${num('unclassified')} items remain unclassified. Use the Classification feature to assign ontology types.`;
     case 'semantic-duplicates':
-      return data.count === 0
+      return num('count') === 0 || num('count') === '?'
         ? 'No semantic duplicates detected — knowledge graph nodes are clean and unique.'
         : `${num('count')} near-duplicate pairs found. Review in Graph Explorer to merge or disambiguate.`;
     case 'part-similarity':
-      return data.total_groups <= 2
+      return (data.total_groups == null || data.total_groups <= 2)
         ? 'Part revision variants are minimal — BOM structure is lean.'
         : `${num('total_groups')} revision groups (${num('total_variants')} variants) detected. Review for consolidation opportunities.`;
     case 'shacl-compliance':
-      return data.total_violations === 0
+      return (data.total_violations == null || data.total_violations === 0)
         ? 'All nodes pass SHACL shape constraints. Ontology integrity is verified ✓'
         : `${num('total_violations')} constraint violations. Review ontology shape definitions for affected node labels.`;
     case 'simulation-run-status':

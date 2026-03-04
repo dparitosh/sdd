@@ -656,3 +656,161 @@ class SimulationService:
         except Neo4jError as e:
             logger.error(f"Error creating simulation run: {e}")
             raise
+
+    # ========================================================================
+    # WORKFLOW OPERATIONS  (STEP AP243: action_method / task_specification)
+    # ========================================================================
+
+    def get_workflows(
+        self,
+        sim_type: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Return all WorkflowMethod nodes with step count, resource list and
+        linked SimulationRun ids.
+        """
+        where_clauses = []
+        params: Dict[str, Any] = {"limit": limit}
+        if sim_type:
+            where_clauses.append("wm.sim_type = $sim_type")
+            params["sim_type"] = sim_type
+        if status:
+            where_clauses.append("wm.status = $status")
+            params["status"] = status
+
+        where_str = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        query = f"""
+        MATCH (wm:WorkflowMethod)
+        {where_str}
+        OPTIONAL MATCH (wm)-[:HAS_STEP]->(te:TaskElement)
+        OPTIONAL MATCH (wm)-[:USES_RESOURCE]->(ar:ActionResource)
+        OPTIONAL MATCH (sr:SimulationRun)-[:CHOSEN_METHOD]->(wm)
+        WITH wm,
+             collect(DISTINCT te.uid)  AS step_uids,
+             collect(DISTINCT {{id: ar.id, name: ar.name, type: ar.resource_type}}) AS resources,
+             collect(DISTINCT sr.id)   AS run_ids
+        RETURN {{
+            id:          wm.id,
+            name:        wm.name,
+            version:     wm.version,
+            sim_type:    wm.sim_type,
+            purpose:     wm.purpose,
+            consequence: wm.consequence,
+            status:      wm.status,
+            step_count:  wm.step_count,
+            resources:   resources,
+            run_ids:     run_ids
+        }} AS workflow
+        ORDER BY wm.name
+        LIMIT $limit
+        """
+        try:
+            results = self.neo4j.execute_query(query, params)
+            return [r["workflow"] for r in results]
+        except Neo4jError as e:
+            logger.error(f"Error fetching workflows: {e}")
+            raise
+
+    def get_workflow_by_id(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+        """Return a single WorkflowMethod with ordered TaskElement steps."""
+        query = """
+        MATCH (wm:WorkflowMethod {id: $wf_id})
+        OPTIONAL MATCH (wm)-[:HAS_STEP]->(te:TaskElement)
+        OPTIONAL MATCH (wm)-[:USES_RESOURCE]->(ar:ActionResource)
+        OPTIONAL MATCH (sr:SimulationRun)-[:CHOSEN_METHOD]->(wm)
+        WITH wm,
+             collect(DISTINCT {
+                 uid:      te.uid,
+                 name:     te.name,
+                 type:     te.type,
+                 desc:     te.description,
+                 seq:      te.sequence_position
+             }) AS steps,
+             collect(DISTINCT {id: ar.id, name: ar.name, type: ar.resource_type}) AS resources,
+             collect(DISTINCT {
+                 id:     sr.id,
+                 status: sr.status,
+                 ap_level: sr.ap_level
+             }) AS runs
+        RETURN {
+            id:          wm.id,
+            name:        wm.name,
+            version:     wm.version,
+            sim_type:    wm.sim_type,
+            purpose:     wm.purpose,
+            consequence: wm.consequence,
+            status:      wm.status,
+            step_count:  wm.step_count,
+            steps:       steps,
+            resources:   resources,
+            runs:        runs
+        } AS workflow
+        """
+        try:
+            results = self.neo4j.execute_query(query, {"wf_id": workflow_id})
+            if not results:
+                return None
+            wf = results[0]["workflow"]
+            # Sort steps by sequence_position
+            if wf.get("steps"):
+                wf["steps"] = sorted(
+                    [s for s in wf["steps"] if s.get("uid")],
+                    key=lambda s: s.get("seq") or 0
+                )
+            return wf
+        except Neo4jError as e:
+            logger.error(f"Error fetching workflow {workflow_id}: {e}")
+            raise
+
+    def get_workflow_graph(self, workflow_id: str) -> Dict[str, Any]:
+        """
+        Return a graph-ready payload (nodes + edges) for a WorkflowMethod.
+        Nodes:  WorkflowMethod + TaskElement nodes
+        Edges:  HAS_STEP, NEXT_STEP, PARALLEL_WITH, USES_RESOURCE, CHOSEN_METHOD
+        """
+        nodes_query = """
+        MATCH (wm:WorkflowMethod {id: $wf_id})
+        OPTIONAL MATCH (wm)-[:HAS_STEP]->(te:TaskElement)
+        OPTIONAL MATCH (wm)-[:USES_RESOURCE]->(ar:ActionResource)
+        OPTIONAL MATCH (sr:SimulationRun)-[:CHOSEN_METHOD]->(wm)
+        RETURN
+          collect(DISTINCT {id: wm.id,    label: wm.name,  node_type: 'WorkflowMethod', sim_type: wm.sim_type, status: wm.status}) +
+          collect(DISTINCT {id: te.uid,   label: te.name,  node_type: 'TaskElement',    step_type: te.type, seq: te.sequence_position}) +
+          collect(DISTINCT {id: ar.id,    label: ar.name,  node_type: 'ActionResource', resource_type: ar.resource_type}) +
+          collect(DISTINCT {id: sr.id,    label: sr.id,    node_type: 'SimulationRun',  status: sr.status})
+          AS nodes
+        """
+        edges_query = """
+        MATCH (wm:WorkflowMethod {id: $wf_id})
+        OPTIONAL MATCH (wm)-[r1:HAS_STEP]->(te:TaskElement)
+        OPTIONAL MATCH (te)-[r2:NEXT_STEP]->(te2:TaskElement) WHERE te2.workflow_id = $wf_id
+        OPTIONAL MATCH (te)-[r3:PARALLEL_WITH]->(te3:TaskElement) WHERE te3.workflow_id = $wf_id
+        OPTIONAL MATCH (wm)-[r4:USES_RESOURCE]->(ar:ActionResource)
+        OPTIONAL MATCH (sr:SimulationRun)-[r5:CHOSEN_METHOD]->(wm)
+        RETURN
+          collect(DISTINCT {source: wm.id,  target: te.uid,  type: 'HAS_STEP'})      +
+          collect(DISTINCT {source: te.uid, target: te2.uid, type: 'NEXT_STEP'})     +
+          collect(DISTINCT {source: te.uid, target: te3.uid, type: 'PARALLEL_WITH'}) +
+          collect(DISTINCT {source: wm.id,  target: ar.id,   type: 'USES_RESOURCE'}) +
+          collect(DISTINCT {source: sr.id,  target: wm.id,   type: 'CHOSEN_METHOD'})
+          AS edges
+        """
+        try:
+            params = {"wf_id": workflow_id}
+            n_results = self.neo4j.execute_query(nodes_query, params)
+            e_results = self.neo4j.execute_query(edges_query, params)
+
+            raw_nodes = n_results[0]["nodes"] if n_results else []
+            raw_edges = e_results[0]["edges"] if e_results else []
+
+            # Filter out nulls
+            nodes = [n for n in raw_nodes if n.get("id")]
+            edges = [e for e in raw_edges if e.get("source") and e.get("target")]
+
+            return {"workflow_id": workflow_id, "nodes": nodes, "edges": edges}
+        except Neo4jError as e:
+            logger.error(f"Error fetching workflow graph {workflow_id}: {e}")
+            raise

@@ -8,7 +8,7 @@ AI Insights & SmartAnalysis API Routes (FastAPI)
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from loguru import logger
@@ -86,13 +86,13 @@ async def get_ai_narrative():
     a natural-language health assessment with priority issues and recommendations.
     """
     logger.info("AI Narrative: collecting snapshot & calling LLM")
-    snapshot: Dict[str, Callable[[], dict]] = {}
+    snapshot: Dict[str, Any] = {}
     for key, fn in _INSIGHT_MAP.items():
         try:
-            snapshot[key] = fn()  # type: ignore[assignment]
+            snapshot[key] = fn()
         except Exception as exc:
             logger.warning(f"AI Narrative: skipping '{key}' — {exc}")
-    return ai_narrative(snapshot)  # type: ignore[arg-type]
+    return ai_narrative(snapshot)
 
 
 # ── SmartAnalysis per-node endpoint ──────────────────────────────────────────
