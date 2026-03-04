@@ -16,6 +16,7 @@ from loguru import logger
 from src.web.dependencies import get_api_key
 from src.web.services.insights_service import (
     SmartAnalysisResult,
+    ai_narrative,
     bom_completeness,
     classification_coverage,
     part_similarity,
@@ -76,6 +77,22 @@ async def get_insight(metric: str = Path(..., description="Insight metric name")
     except Exception as exc:
         logger.exception(f"Insight '{metric}' failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/ai-narrative")
+async def get_ai_narrative():
+    """
+    Collect all insight metrics and ask the local LLM (Ollama) to produce
+    a natural-language health assessment with priority issues and recommendations.
+    """
+    logger.info("AI Narrative: collecting snapshot & calling LLM")
+    snapshot: Dict[str, Callable[[], dict]] = {}
+    for key, fn in _INSIGHT_MAP.items():
+        try:
+            snapshot[key] = fn()  # type: ignore[assignment]
+        except Exception as exc:
+            logger.warning(f"AI Narrative: skipping '{key}' — {exc}")
+    return ai_narrative(snapshot)  # type: ignore[arg-type]
 
 
 # ── SmartAnalysis per-node endpoint ──────────────────────────────────────────

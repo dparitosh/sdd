@@ -49,6 +49,29 @@ export const getSimulationInsights = () =>
     digitalThread: thread,
   }));
 
+// ── AI Narrative (LLM-powered) ────────────────────────────────
+export interface AiNarrativeResult {
+  overall_score: number;
+  headline: string;
+  summary: string;
+  confidence: 'high' | 'medium' | 'low';
+  generated_at: number;
+  priority_issues: Array<{
+    severity: 'critical' | 'warning' | 'healthy';
+    title: string;
+    detail: string;
+    metric_key: string;
+  }>;
+  recommendations: Array<{
+    action: string;
+    impact: 'high' | 'medium' | 'low';
+    effort: 'high' | 'medium' | 'low';
+  }>;
+}
+
+export const getAiNarrative = () =>
+  apiClient.post<AiNarrativeResult>('/insights/ai-narrative', {});
+
 // ── SmartAnalysis per-node pipeline ───────────────────────────
 export interface SmartAnalysisResult {
   uid: string;

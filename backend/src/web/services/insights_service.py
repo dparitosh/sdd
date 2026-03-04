@@ -444,6 +444,123 @@ def simulation_digital_thread() -> Dict[str, Any]:
     }
 
 
+# ─── AI Narrative (LLM-powered health summary) ───────────────────────────────
+
+def ai_narrative(snapshot: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Call Ollama to generate a natural-language health summary of all insight metrics.
+
+    Returns a dict with keys:
+      overall_score  — 0-100 aggregate health
+      headline       — one-sentence LLM verdict
+      summary        — 2-3 sentence narrative
+      priority_issues — list[{severity, title, detail, metric_key}]
+      recommendations — list[{action, impact, effort}]
+      confidence     — "high" | "medium" | "low"
+      generated_at   — Unix timestamp
+    """
+    import json as _json
+    import os as _os
+    import time as _time
+
+    import requests as _requests
+
+    ollama_url = _os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    chat_model = _os.getenv("OLLAMA_CHAT_MODEL", "llama3:latest")
+
+    # ── Compute scalar health score from key percentage metrics ──
+    scores: list[float] = []
+    _pct_keys = [
+        ("bom-completeness",            "completeness_pct"),
+        ("traceability-gaps",           "coverage_pct"),
+        ("classification-coverage",     "coverage_pct"),
+        ("simulation-run-status",       "success_rate_pct"),
+        ("simulation-workflow-coverage","coverage_pct"),
+        ("simulation-parameter-health", "constraint_coverage_pct"),
+        ("simulation-dossier-health",   "completeness_pct"),
+        ("simulation-digital-thread",   "thread_completeness_pct"),
+    ]
+    for mkey, vkey in _pct_keys:
+        val = snapshot.get(mkey, {}).get(vkey)
+        if val is not None:
+            scores.append(float(val))
+    # SHACL: invert violations (0 = 100 %, each violation drops 5 pts)
+    shacl_viol = snapshot.get("shacl-compliance", {}).get("total_violations")
+    if shacl_viol is not None:
+        scores.append(max(0.0, 100.0 - float(shacl_viol) * 5))
+
+    overall_score = int(sum(scores) / len(scores)) if scores else 0
+
+    # ── Build compact digest for LLM (strip large arrays) ──
+    digest: Dict[str, Any] = {}
+    for k, v in snapshot.items():
+        if isinstance(v, dict):
+            digest[k] = {kk: vv for kk, vv in v.items() if not isinstance(vv, (list, dict))}
+
+    prompt = (
+        "You are an AI engineering analyst for an MBSE / Simulation Data Dossier (SDD) "
+        "knowledge graph system. Analyze these live metrics and produce a structured JSON "
+        "assessment for engineers.\n\n"
+        f"METRICS SNAPSHOT:\n{_json.dumps(digest, indent=2)}\n\n"
+        "Respond ONLY with valid JSON (no markdown code fences, no extra text) "
+        "using exactly this schema:\n"
+        "{\n"
+        '  "headline": "<one verdict sentence, max 12 words>",\n'
+        '  "summary": "<2-3 sentence engineering narrative>",\n'
+        '  "priority_issues": [\n'
+        '    {"severity": "critical|warning|healthy", "title": "...", '
+        '"detail": "...", "metric_key": "..."}\n'
+        "  ],\n"
+        '  "recommendations": [\n'
+        '    {"action": "...", "impact": "high|medium|low", "effort": "high|medium|low"}\n'
+        "  ],\n"
+        '  "confidence": "high|medium|low"\n'
+        "}"
+    )
+
+    _fallback = {
+        "headline": "AI analysis offline — raw metrics displayed",
+        "summary": (
+            "Ollama is not responding. "
+            "All metrics below are sourced directly from the knowledge graph without LLM synthesis. "
+            "Start Ollama and click Re-analyze for AI-powered insights."
+        ),
+        "priority_issues": [],
+        "recommendations": [],
+        "confidence": "low",
+    }
+
+    try:
+        resp = _requests.post(
+            f"{ollama_url.rstrip('/')}/api/chat",
+            json={
+                "model": chat_model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "keep_alive": "10m",
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        content = resp.json().get("message", {}).get("content", "").strip()
+        # Strip markdown fences if the model wraps in ```json ... ```
+        if content.startswith("```"):
+            lines = content.split("\n")
+            content = "\n".join(lines[1:]).rstrip("`").strip()
+        parsed: Dict[str, Any] = _json.loads(content)
+    except _json.JSONDecodeError as exc:
+        logger.warning(f"AI narrative: Ollama returned non-JSON — {exc}")
+        parsed = {**_fallback, "confidence": "low",
+                  "headline": "AI returned unexpected format — check Ollama logs"}
+    except Exception as exc:
+        logger.warning(f"AI narrative: Ollama unavailable — {exc}")
+        parsed = _fallback.copy()
+
+    parsed["overall_score"] = overall_score
+    parsed["generated_at"] = _time.time()
+    return parsed
+
+
 # ─── SmartAnalysis per-node pipeline ─────────────────────────────────────────
 
 @dataclass
