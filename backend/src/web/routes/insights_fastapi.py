@@ -8,7 +8,7 @@ AI Insights & SmartAnalysis API Routes (FastAPI)
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, Dict
+from typing import Callable, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from loguru import logger
@@ -39,7 +39,7 @@ router = APIRouter(
 
 # ── Insight endpoints ────────────────────────────────────────────────────────
 
-_INSIGHT_MAP = {
+_INSIGHT_MAP: Dict[str, Callable[[], dict]] = {
     "bom-completeness":              bom_completeness,
     "traceability-gaps":             traceability_gaps,
     "classification-coverage":       classification_coverage,
@@ -75,7 +75,7 @@ async def get_insight(metric: str = Path(..., description="Insight metric name")
         return fn()
     except Exception as exc:
         logger.exception(f"Insight '{metric}' failed")
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 # ── SmartAnalysis per-node endpoint ──────────────────────────────────────────
@@ -93,4 +93,4 @@ async def run_smart_analysis(uid: str = Path(..., description="Node UID to analy
         return asdict(result)
     except Exception as exc:
         logger.exception(f"SmartAnalysis for '{uid}' failed")
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
