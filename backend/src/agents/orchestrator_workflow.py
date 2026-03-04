@@ -54,6 +54,15 @@ class EngineeringState(TypedDict):
         "ont_classify",
         "export_rdf", "export_csv",
         "kg_expand",
+        # ── Workflow / AP243 orchestration ─────────────────────────────────
+        "workflow_execute",    # Execute a named WorkflowMethod (AP243 action_method)
+        "workflow_validate",   # Validate parameters against AP243 constraints
+        "workflow_query",      # List/search WorkflowMethod nodes
+        # ── Digital Thread ─────────────────────────────────────────────────
+        "digital_thread_trace",  # AP239 Activity → AP242 BOM → AP243 SDD chain
+        "oslc_query",            # OSLC lifecycle resource query & linking
+        "ap_standard_query",     # Direct AP239/AP242/AP243 node query
+        "mossec_overview",       # Full MoSSEC knowledge graph summary
     ]
 
     # MBSE Agent outputs
@@ -75,6 +84,11 @@ class EngineeringState(TypedDict):
     compliance_status: dict | None
     violations: list[dict]
     recommendations: list[str]
+
+    # ── New: Workflow / Digital Thread Agent outputs ────────────────────────
+    workflow_data: dict | None      # WorkflowMethod + steps + resources
+    digital_thread: dict | None     # AP239→AP242→AP243 thread trace
+    ap_standard_data: dict | None   # AP standard level query results
 
     # Shared
     messages: Annotated[Sequence[BaseMessage], operator.add]
@@ -126,6 +140,12 @@ async def mbse_agent_node(state: EngineeringState) -> dict:
     if _task == "kg_expand":
         logger.info("MBSE Agent: delegating KG expansion → semantic_agent")
         return {"next_action": "semantic_agent"}
+    if _task in ("workflow_execute", "workflow_validate", "workflow_query"):
+        logger.info("MBSE Agent: delegating workflow task → workflow_agent")
+        return {"next_action": "workflow_agent"}
+    if _task in ("digital_thread_trace", "oslc_query", "ap_standard_query", "mossec_overview"):
+        logger.info("MBSE Agent: delegating digital thread / AP standard task → digital_thread_agent")
+        return {"next_action": "digital_thread_agent"}
     # ─────────────────────────────────────────────────────────────────────────
 
     try:
@@ -1009,6 +1029,519 @@ async def export_handler_node(state: EngineeringState) -> dict:
 
 
 # ============================================================================
+# WORKFLOW AGENT  (AP243 WorkflowMethod / TaskElement / ActionResource)
+# ============================================================================
+
+
+async def workflow_agent_node(state: EngineeringState) -> dict:
+    """
+    Workflow Agent — AP243-aligned orchestration node.
+
+    Handles:
+      * workflow_query   — list/search :WorkflowMethod nodes with step chains
+      * workflow_execute — validate parameters, record execution intent in KG
+      * workflow_validate — validate parameter values against AP243 constraints
+
+    Maps to STEP schema:
+      :WorkflowMethod  ← action_method (Part 41 / AP243)
+      :TaskElement     ← sequential_method step (Part 49)
+      :ActionResource  ← action_resource (Part 41)
+      [:HAS_STEP]      ← method_relationship
+      [:CHOSEN_METHOD] ← directed_action ← executed_action reference
+    """
+    logger.info("⚙️  Workflow Agent: Processing AP243 workflow request")
+
+    user_query = state.get("user_query", "")
+    q_lower    = user_query.lower()
+    _task      = state.get("task_type", "workflow_query")
+
+    try:
+        from .agent_tools import Neo4jTool
+        neo4j = Neo4jTool()
+
+        def _run(cypher: str, params: dict | None = None, limit: int = 50) -> list[dict]:
+            return neo4j.search_artifacts(cypher, params=params or {}, limit=limit)
+
+        sections: list[str] = []
+        workflow_data: dict = {}
+
+        # ── 1. List / search WorkflowMethod nodes ───────────────────────────
+        if _task in ("workflow_query", "workflow_execute") or any(
+            k in q_lower for k in ("workflow", "method", "step", "task element", "action method")
+        ):
+            # Extract optional workflow id / name filter from query
+            id_match = re.search(r"\b(WF-[\w\-]+)\b", user_query, re.IGNORECASE)
+            filter_val = id_match.group(1).upper() if id_match else None
+
+            if filter_val:
+                rows = _run(
+                    "MATCH (wf:WorkflowMethod) "
+                    "WHERE wf.id = $fv OR toUpper(wf.name) CONTAINS toUpper($fv) "
+                    "OPTIONAL MATCH (wf)-[:HAS_STEP]->(te:TaskElement) "
+                    "WITH wf, collect(te) AS steps "
+                    "RETURN wf.id AS id, wf.name AS name, wf.sim_type AS sim_type, "
+                    "       wf.status AS status, wf.version AS version, "
+                    "       wf.purpose AS purpose, size(steps) AS step_count "
+                    "ORDER BY wf.id LIMIT $limit",
+                    params={"fv": filter_val},
+                    limit=5,
+                )
+            else:
+                rows = _run(
+                    "MATCH (wf:WorkflowMethod) "
+                    "OPTIONAL MATCH (wf)-[:HAS_STEP]->(te:TaskElement) "
+                    "WITH wf, collect(te) AS steps "
+                    "RETURN wf.id AS id, wf.name AS name, wf.sim_type AS sim_type, "
+                    "       wf.status AS status, wf.version AS version, "
+                    "       wf.purpose AS purpose, size(steps) AS step_count "
+                    "ORDER BY wf.id LIMIT $limit",
+                    limit=20,
+                )
+
+            if rows:
+                lines = "\n".join(
+                    f"- **{r['id']}** — {r.get('name','?')}  "
+                    f"| sim_type: `{r.get('sim_type','?')}`  "
+                    f"| status: `{r.get('status','?')}`  "
+                    f"| steps: {r.get('step_count',0)}"
+                    + (f"\n  *{r['purpose']}*" if r.get("purpose") else "")
+                    for r in rows
+                )
+                sections.append(f"### WorkflowMethod nodes ({len(rows)} found)\n{lines}")
+                workflow_data["workflows"] = rows
+
+                # Fetch step chains for the first (or matched) workflow
+                first_id = rows[0]["id"]
+                steps = _run(
+                    "MATCH (wf:WorkflowMethod {id: $wid})-[:HAS_STEP]->(te:TaskElement) "
+                    "RETURN te.uid AS uid, te.name AS name, te.type AS type, "
+                    "       te.sequence_position AS seq, te.description AS desc "
+                    "ORDER BY te.sequence_position",
+                    params={"wid": first_id},
+                    limit=50,
+                )
+                if steps:
+                    step_lines = "\n".join(
+                        f"  {s.get('seq','?')}. [{s.get('type','?')}] **{s.get('name','?')}**"
+                        + (f" — {s['desc']}" if s.get("desc") else "")
+                        for s in steps
+                    )
+                    sections.append(f"### Step Chain for `{first_id}` ({len(steps)} steps)\n{step_lines}")
+                    workflow_data["steps"] = steps
+
+                # Resources
+                resources = _run(
+                    "MATCH (wf:WorkflowMethod {id: $wid})-[:USES_RESOURCE]->(r:ActionResource) "
+                    "RETURN r.id AS id, r.name AS name, r.type AS type",
+                    params={"wid": first_id},
+                    limit=20,
+                )
+                if resources:
+                    res_lines = "\n".join(
+                        f"- **{r.get('name','?')}** (`{r.get('type','?')}`)"
+                        for r in resources
+                    )
+                    sections.append(f"### Action Resources for `{first_id}`\n{res_lines}")
+                    workflow_data["resources"] = resources
+
+                # Linked SimulationRuns via [:CHOSEN_METHOD]
+                runs = _run(
+                    "MATCH (sr:SimulationRun)-[:CHOSEN_METHOD]->(wf:WorkflowMethod {id: $wid}) "
+                    "RETURN sr.id AS id, coalesce(sr.status,'?') AS status, sr.sim_type AS sim_type "
+                    "ORDER BY sr.id LIMIT 20",
+                    params={"wid": first_id},
+                    limit=20,
+                )
+                if runs:
+                    run_lines = "\n".join(
+                        f"- `{r.get('id','?')}` — {r.get('status','?')}"
+                        + (f" | {r['sim_type']}" if r.get("sim_type") else "")
+                        for r in runs
+                    )
+                    sections.append(f"### Linked Simulation Runs\n{run_lines}")
+                    workflow_data["runs"] = runs
+            else:
+                sections.append(
+                    "### WorkflowMethod nodes\nNo WorkflowMethod nodes found in the graph.\n"
+                    "Seed them with: `python backend/scripts/seed_workflows.py`"
+                )
+
+        # ── 2. Parameter validation context for workflow_execute ─────────────
+        if _task == "workflow_execute":
+            param_rows = _run(
+                "MATCH (p:SimulationParameter) "
+                "OPTIONAL MATCH (p)-[:HAS_CONSTRAINT]->(c) "
+                "RETURN p.id AS id, p.name AS name, "
+                "       coalesce(p.data_type,'any') AS data_type, "
+                "       count(c) AS constraint_count "
+                "ORDER BY p.name LIMIT $limit",
+                limit=30,
+            )
+            if param_rows:
+                p_lines = "\n".join(
+                    f"- **{r.get('name','?')}** (`{r.get('data_type','?')}`)"
+                    + (f" — {r['constraint_count']} constraint(s)" if r.get("constraint_count") else "")
+                    for r in param_rows
+                )
+                sections.append(f"### Available Simulation Parameters ({len(param_rows)})\n{p_lines}")
+                workflow_data["parameters"] = param_rows
+
+        # ── 3. Workflow validation ────────────────────────────────────────────
+        if _task == "workflow_validate":
+            # Check for WorkflowMethod nodes with missing required properties
+            issues = _run(
+                "MATCH (wf:WorkflowMethod) "
+                "WHERE wf.purpose IS NULL OR wf.sim_type IS NULL OR wf.status IS NULL "
+                "RETURN wf.id AS id, wf.name AS name, "
+                "       wf.purpose IS NULL AS missing_purpose, "
+                "       wf.sim_type IS NULL AS missing_sim_type, "
+                "       wf.status IS NULL AS missing_status "
+                "LIMIT $limit",
+                limit=20,
+            )
+            # Check for TaskElement nodes with missing sequence_position
+            orphan_steps = _run(
+                "MATCH (te:TaskElement) "
+                "WHERE NOT EXISTS { MATCH ()-[:HAS_STEP]->(te) } "
+                "RETURN te.uid AS uid, te.name AS name LIMIT 20",
+                limit=20,
+            )
+            if issues:
+                issue_lines = "\n".join(
+                    f"- `{r.get('id','?')}`: "
+                    + ", ".join(
+                        f"missing `{k.replace('missing_','')}`"
+                        for k in ("missing_purpose", "missing_sim_type", "missing_status")
+                        if r.get(k)
+                    )
+                    for r in issues
+                )
+                sections.append(f"### WorkflowMethod Validation Issues ({len(issues)})\n{issue_lines}")
+            else:
+                sections.append("### WorkflowMethod Validation\n✅ All WorkflowMethod nodes have required properties.")
+            if orphan_steps:
+                sections.append(
+                    f"### Orphan TaskElement nodes ({len(orphan_steps)})\n"
+                    + "\n".join(f"- `{r.get('uid','?')}` — {r.get('name','?')}" for r in orphan_steps)
+                )
+            workflow_data["validation"] = {"issues": issues, "orphan_steps": orphan_steps}
+
+        # ── Build reply ───────────────────────────────────────────────────────
+        if sections:
+            reply = "## Workflow Orchestration (AP243 WorkflowMethod)\n\n" + "\n\n".join(sections)
+        else:
+            reply = (
+                "No workflow data found for the current query.\n"
+                "Try: 'list workflows', 'show workflow WF-EM-001 steps', or 'validate workflows'."
+            )
+
+        return {
+            "workflow_data": workflow_data,
+            "messages": [AIMessage(content=reply)],
+            "next_action": END,
+        }
+
+    except Exception as e:
+        logger.exception(f"Workflow Agent error: {e}")
+        return {
+            "error": f"Workflow Agent failed: {e}",
+            "messages": [AIMessage(content=f"Workflow Agent error: {e}")],
+            "next_action": END,
+        }
+
+
+# ============================================================================
+# DIGITAL THREAD AGENT  (AP239 ↔ AP242 ↔ AP243 + OSLC lifecycle)
+# ============================================================================
+
+
+async def digital_thread_agent_node(state: EngineeringState) -> dict:
+    """
+    Digital Thread Agent — traces the full engineering lifecycle chain.
+
+    AP239 (programme / activity recording)
+        → AP242 (product data management / BOM / configuration)
+            → AP243 (simulation-based design / SDD dossiers)
+                → OSLC lifecycle resources (requirements, change requests, test plans)
+
+    Handles task types:
+      digital_thread_trace — full AP239→AP242→AP243 chain with OSLC links
+      oslc_query           — OSLC resource query + linked STEP artefacts
+      ap_standard_query    — targeted AP239/AP242/AP243 node browse
+      mossec_overview      — comprehensive MoSSEC knowledge graph summary
+    """
+    logger.info("🧵 Digital Thread Agent: Tracing AP239 ↔ AP242 ↔ AP243 + OSLC lifecycle")
+
+    user_query  = state.get("user_query", "")
+    q_lower     = user_query.lower()
+    _task       = state.get("task_type", "digital_thread_trace")
+
+    try:
+        from .agent_tools import Neo4jTool
+        neo4j = Neo4jTool()
+
+        def _run(cypher: str, params: dict | None = None, limit: int = 50) -> list[dict]:
+            return neo4j.search_artifacts(cypher, params=params or {}, limit=limit)
+
+        sections: list[str] = []
+        thread_data: dict   = {}
+        ap_data: dict       = {}
+
+        # ── AP239: Activity Recording ────────────────────────────────────────
+        if _task in ("digital_thread_trace", "ap_standard_query") or "ap239" in q_lower or "activit" in q_lower:
+            ap239_nodes = _run(
+                "MATCH (n) WHERE n.ap_level = 'AP239' OR n.ap_standard = 'AP239' "
+                "   OR ANY(l IN labels(n) WHERE l CONTAINS 'Ap239') "
+                "RETURN labels(n)[0] AS label, "
+                "       coalesce(n.id, n.uid, n.name, '') AS uid, n.name AS name, "
+                "       coalesce(n.status,'?') AS status "
+                "ORDER BY label, uid LIMIT $limit",
+                limit=30,
+            )
+            if ap239_nodes:
+                lines = "\n".join(
+                    f"- [{r.get('label','?')}] **{r.get('name','?')}** `{r.get('uid','?')}` — {r.get('status','?')}"
+                    for r in ap239_nodes
+                )
+                sections.append(f"### AP239 — Programme / Activity Recording ({len(ap239_nodes)} nodes)\n{lines}")
+                ap_data["ap239"] = ap239_nodes
+            else:
+                # Fallback: look for Activity-labelled nodes from STEP ingestion
+                act_rows = _run(
+                    "MATCH (n) WHERE ANY(l IN labels(n) WHERE l CONTAINS 'Activity') "
+                    "RETURN labels(n)[0] AS label, n.name AS name, "
+                    "       coalesce(n.uid, n.id,'') AS uid LIMIT $limit",
+                    limit=20,
+                )
+                if act_rows:
+                    lines = "\n".join(f"- [{r.get('label')}] **{r.get('name','?')}** `{r.get('uid','?')}`" for r in act_rows)
+                    sections.append(f"### AP239 — Activity nodes ({len(act_rows)} found)\n{lines}")
+                    ap_data["ap239"] = act_rows
+                else:
+                    sections.append(
+                        "### AP239 — Activity Recording\n"
+                        "No AP239 nodes found. Run `002_ap_hierarchy_sample_data.py` to seed AP-level data."
+                    )
+
+        # ── AP242: Product Data Management ───────────────────────────────────
+        if _task in ("digital_thread_trace", "ap_standard_query") or "ap242" in q_lower or any(k in q_lower for k in ("product", "bom", "part", "configuration")):
+            ap242_nodes = _run(
+                "MATCH (n) WHERE n.ap_level = 'AP242' OR n.ap_standard = 'AP242' "
+                "   OR ANY(l IN labels(n) WHERE l CONTAINS 'Ap242') "
+                "RETURN labels(n)[0] AS label, "
+                "       coalesce(n.id, n.uid, n.name, '') AS uid, n.name AS name, "
+                "       coalesce(n.status,'?') AS status "
+                "ORDER BY label, uid LIMIT $limit",
+                limit=30,
+            )
+            if ap242_nodes:
+                lines = "\n".join(
+                    f"- [{r.get('label','?')}] **{r.get('name','?')}** `{r.get('uid','?')}` — {r.get('status','?')}"
+                    for r in ap242_nodes
+                )
+                sections.append(f"### AP242 — Product Data Management ({len(ap242_nodes)} nodes)\n{lines}")
+                ap_data["ap242"] = ap242_nodes
+            else:
+                # Fallback: Part / PLM nodes
+                part_rows = _run(
+                    "MATCH (n:Part) RETURN n.id AS uid, n.name AS name, "
+                    "       coalesce(n.part_number,'') AS pn, coalesce(n.status,'?') AS status "
+                    "ORDER BY n.name LIMIT $limit",
+                    limit=20,
+                )
+                if part_rows:
+                    lines = "\n".join(f"- **{r.get('name','?')}** PN:`{r.get('pn','')}` — {r.get('status','?')}" for r in part_rows)
+                    sections.append(f"### AP242 — Parts / BOM ({len(part_rows)} nodes)\n{lines}")
+                    ap_data["ap242"] = part_rows
+                else:
+                    sections.append(
+                        "### AP242 — Product Data Management\n"
+                        "No AP242 nodes found. Seed with `002_ap_hierarchy_sample_data.py` or import PLMXML."
+                    )
+
+        # ── AP243: Simulation-based Design (MoSSEC) ───────────────────────────
+        if _task in ("digital_thread_trace", "ap_standard_query", "mossec_overview") or "ap243" in q_lower or any(
+            k in q_lower for k in ("simulation dossier", "mossec", "sdd", "simulation run", "sim artifact")
+        ):
+            ap243_nodes = _run(
+                "MATCH (n) WHERE n.ap_level = 'AP243' OR n.ap_standard = 'AP243' "
+                "   OR ANY(l IN labels(n) WHERE l IN ['SimulationDossier','SimulationRun','SimulationArtifact','WorkflowMethod','TaskElement']) "
+                "RETURN labels(n)[0] AS label, "
+                "       coalesce(n.id, n.uid, n.name, '') AS uid, n.name AS name, "
+                "       coalesce(n.status,'?') AS status "
+                "ORDER BY label, uid LIMIT $limit",
+                limit=40,
+            )
+            if ap243_nodes:
+                from itertools import groupby
+                by_label: dict[str, list] = {}
+                for r in ap243_nodes:
+                    by_label.setdefault(r.get("label","?"), []).append(r)
+                label_sections = []
+                for lbl, items in by_label.items():
+                    item_lines = "\n".join(
+                        f"  - **{r.get('name','?')}** `{r.get('uid','?')}` — {r.get('status','?')}"
+                        for r in items[:10]
+                    )
+                    label_sections.append(f"**:{lbl}** ({len(items)})\n{item_lines}")
+                sections.append(
+                    f"### AP243 — Simulation-based Design / MoSSEC ({len(ap243_nodes)} nodes)\n"
+                    + "\n\n".join(label_sections)
+                )
+                ap_data["ap243"] = ap243_nodes
+            else:
+                sections.append(
+                    "### AP243 — Simulation-based Design\n"
+                    "No AP243/SDD nodes found. Run the full ingestion pipeline."
+                )
+
+        # ── Cross-level thread links ──────────────────────────────────────────
+        if _task == "digital_thread_trace":
+            cross_rows = _run(
+                "MATCH (a)-[r]->(b) "
+                "WHERE (a.ap_level IS NOT NULL OR b.ap_level IS NOT NULL) "
+                "  AND a.ap_level <> coalesce(b.ap_level,'') "
+                "RETURN a.ap_level AS from_ap, labels(a)[0] AS from_label, a.name AS from_name, "
+                "       type(r) AS rel, "
+                "       b.ap_level AS to_ap, labels(b)[0] AS to_label, b.name AS to_name "
+                "ORDER BY from_ap, to_ap LIMIT $limit",
+                limit=40,
+            )
+            if cross_rows:
+                lines = "\n".join(
+                    f"- **{r.get('from_ap','?')}**:{r.get('from_name','?')} "
+                    f"—[{r.get('rel','?')}]→ "
+                    f"**{r.get('to_ap','?')}**:{r.get('to_name','?')}"
+                    for r in cross_rows
+                )
+                sections.append(f"### Cross-Standard Digital Thread Links ({len(cross_rows)} edges)\n{lines}")
+                thread_data["cross_links"] = cross_rows
+            else:
+                # Try generic cross-links via common relationship types
+                alt_rows = _run(
+                    "MATCH (a)-[r:IMPLEMENTS|VALIDATES_USING|DERIVED_FROM|SATISFIES|ALLOCATED_TO]->(b) "
+                    "RETURN labels(a)[0] AS from_label, a.name AS from_name, "
+                    "       type(r) AS rel, labels(b)[0] AS to_label, b.name AS to_name "
+                    "ORDER BY rel LIMIT 40",
+                    limit=40,
+                )
+                if alt_rows:
+                    lines = "\n".join(
+                        f"- [{r.get('from_label')}] {r.get('from_name','?')} "
+                        f"—[{r.get('rel')}]→ [{r.get('to_label')}] {r.get('to_name','?')}"
+                        for r in alt_rows
+                    )
+                    sections.append(f"### Digital Thread Relationships ({len(alt_rows)} edges)\n{lines}")
+                    thread_data["cross_links"] = alt_rows
+                else:
+                    sections.append(
+                        "### Digital Thread Links\n"
+                        "No cross-standard links found yet. Run `link_ap_hierarchy.py` and "
+                        "`run_migration_v4.py` to build the digital thread."
+                    )
+
+        # ── OSLC lifecycle resources ──────────────────────────────────────────
+        if _task in ("oslc_query", "digital_thread_trace") or "oslc" in q_lower:
+            oslc_rows = _run(
+                "MATCH (n) "
+                "WHERE n.source = 'oslc' OR ANY(l IN labels(n) WHERE l STARTS WITH 'Oslc') "
+                "   OR n.oslc_domain IS NOT NULL OR n.oslc_type IS NOT NULL "
+                "RETURN labels(n)[0] AS label, "
+                "       coalesce(n.uid, n.id, '') AS uid, "
+                "       coalesce(n.title, n.name, '') AS name, "
+                "       coalesce(n.oslc_domain,'') AS domain "
+                "ORDER BY label, uid LIMIT $limit",
+                limit=30,
+            )
+            if oslc_rows:
+                lines = "\n".join(
+                    f"- [{r.get('label','?')}] **{r.get('name','?')}**"
+                    + (f" | domain: `{r['domain']}`" if r.get("domain") else "")
+                    for r in oslc_rows
+                )
+                sections.append(f"### OSLC Lifecycle Resources ({len(oslc_rows)} nodes)\n{lines}")
+
+                # OSLC → STEP traceability
+                oslc_links = _run(
+                    "MATCH (o)-[r:MAPS_TO_OSLC|OSLC_TRACES|SATISFIES|IMPLEMENTS]->(s) "
+                    "RETURN labels(o)[0] AS oslc_label, o.name AS oslc_name, "
+                    "       type(r) AS rel, labels(s)[0] AS step_label, s.name AS step_name "
+                    "LIMIT 30",
+                    limit=30,
+                )
+                if oslc_links:
+                    link_lines = "\n".join(
+                        f"- **{r.get('oslc_name','?')}** —[{r.get('rel')}]→ {r.get('step_name','?')} ({r.get('step_label','?')})"
+                        for r in oslc_links
+                    )
+                    sections.append(f"### OSLC ↔ STEP Traceability ({len(oslc_links)} links)\n{link_lines}")
+                thread_data["oslc"] = oslc_rows
+            else:
+                sections.append(
+                    "### OSLC Lifecycle Resources\n"
+                    "No OSLC nodes found. Run `load_oslc_seed.py` to import OSLC Core/RM/AP242/AP243 vocabulary nodes."
+                )
+
+        # ── MoSSEC overview ───────────────────────────────────────────────────
+        if _task == "mossec_overview" or any(k in q_lower for k in ("mossec", "overview", "knowledge graph")):
+            node_dist = _run(
+                "MATCH (n) RETURN labels(n)[0] AS label, count(*) AS cnt "
+                "ORDER BY cnt DESC LIMIT 20",
+                limit=20,
+            )
+            rel_dist = _run(
+                "MATCH ()-[r]->() RETURN type(r) AS rel, count(*) AS cnt "
+                "ORDER BY cnt DESC LIMIT 15",
+                limit=15,
+            )
+            ap_dist = _run(
+                "MATCH (n) WHERE n.ap_level IS NOT NULL "
+                "RETURN n.ap_level AS ap, count(*) AS cnt ORDER BY ap",
+                limit=10,
+            )
+            if node_dist:
+                total_nodes = sum(r.get("cnt", 0) for r in node_dist)
+                node_lines = "\n".join(f"- `:{r.get('label','?')}`: {r.get('cnt'):,}" for r in node_dist)
+                sections.append(f"### MoSSEC Node Distribution ({total_nodes:,} total)\n{node_lines}")
+            if rel_dist:
+                total_rels = sum(r.get("cnt", 0) for r in rel_dist)
+                rel_lines = "\n".join(f"- `{r.get('rel','?')}`: {r.get('cnt'):,}" for r in rel_dist)
+                sections.append(f"### Relationship Types ({total_rels:,} total)\n{rel_lines}")
+            if ap_dist:
+                ap_lines = "  |  ".join(f"**{r.get('ap','?')}**: {r.get('cnt'):,}" for r in ap_dist)
+                sections.append(f"### AP Standard Coverage\n{ap_lines}")
+
+        # ── Fallback ──────────────────────────────────────────────────────────
+        if not sections:
+            sections.append(
+                "No digital thread data found for the current query.\n\n"
+                "Try:\n"
+                "- `trace digital thread for FEA-MAXWELL-2D`\n"
+                "- `show AP239 activities`\n"
+                "- `query AP242 BOM`\n"
+                "- `list OSLC resources`\n"
+                "- `mossec overview`"
+            )
+
+        reply = "## Digital Thread — AP239 ↔ AP242 ↔ AP243 + OSLC\n\n" + "\n\n".join(sections)
+
+        return {
+            "digital_thread": thread_data,
+            "ap_standard_data": ap_data,
+            "messages": [AIMessage(content=reply)],
+            "next_action": END,
+        }
+
+    except Exception as e:
+        logger.exception(f"Digital Thread Agent error: {e}")
+        return {
+            "error": f"Digital Thread Agent failed: {e}",
+            "messages": [AIMessage(content=f"Digital Thread Agent error: {e}")],
+            "next_action": END,
+        }
+
+
+# ============================================================================
 # GRAPH CONSTRUCTION
 # ============================================================================
 
@@ -1017,14 +1550,16 @@ def create_engineering_workflow():
     workflow = StateGraph(EngineeringState)
 
     # Add nodes
-    workflow.add_node("mbse_agent", mbse_agent_node)
-    workflow.add_node("plm_agent", plm_agent_node)
-    workflow.add_node("simulation_agent", simulation_agent_node)
-    workflow.add_node("step_agent", step_agent_node)
-    workflow.add_node("ontology_agent", ontology_agent_node)
-    workflow.add_node("semantic_agent", semantic_agent_node)
-    workflow.add_node("shacl_agent", shacl_agent_node)
-    workflow.add_node("export_handler", export_handler_node)
+    workflow.add_node("mbse_agent",           mbse_agent_node)
+    workflow.add_node("plm_agent",            plm_agent_node)
+    workflow.add_node("simulation_agent",     simulation_agent_node)
+    workflow.add_node("step_agent",           step_agent_node)
+    workflow.add_node("ontology_agent",       ontology_agent_node)
+    workflow.add_node("semantic_agent",       semantic_agent_node)
+    workflow.add_node("shacl_agent",          shacl_agent_node)
+    workflow.add_node("export_handler",       export_handler_node)
+    workflow.add_node("workflow_agent",       workflow_agent_node)       # AP243 WorkflowMethod
+    workflow.add_node("digital_thread_agent", digital_thread_agent_node) # AP239↔AP242↔AP243 + OSLC
 
     # set entry point
     workflow.set_entry_point("mbse_agent")
@@ -1037,24 +1572,28 @@ def create_engineering_workflow():
         "mbse_agent",
         router,
         {
-            "plm_agent": "plm_agent",
-            "simulation_agent": "simulation_agent",
-            "step_agent": "step_agent",
-            "ontology_agent": "ontology_agent",
-            "semantic_agent": "semantic_agent",
-            "shacl_agent": "shacl_agent",
-            "export_handler": "export_handler",
-            END: END
-        }
+            "plm_agent":            "plm_agent",
+            "simulation_agent":     "simulation_agent",
+            "step_agent":           "step_agent",
+            "ontology_agent":       "ontology_agent",
+            "semantic_agent":       "semantic_agent",
+            "shacl_agent":          "shacl_agent",
+            "export_handler":       "export_handler",
+            "workflow_agent":       "workflow_agent",
+            "digital_thread_agent": "digital_thread_agent",
+            END: END,
+        },
     )
 
-    workflow.add_edge("plm_agent", END)
-    workflow.add_edge("simulation_agent", END)
-    workflow.add_edge("step_agent", END)
-    workflow.add_edge("ontology_agent", END)
-    workflow.add_edge("semantic_agent", END)
-    workflow.add_edge("shacl_agent", END)
-    workflow.add_edge("export_handler", END)
+    workflow.add_edge("plm_agent",            END)
+    workflow.add_edge("simulation_agent",     END)
+    workflow.add_edge("step_agent",           END)
+    workflow.add_edge("ontology_agent",       END)
+    workflow.add_edge("semantic_agent",       END)
+    workflow.add_edge("shacl_agent",          END)
+    workflow.add_edge("export_handler",       END)
+    workflow.add_edge("workflow_agent",       END)
+    workflow.add_edge("digital_thread_agent", END)
 
     return workflow.compile()
 
@@ -1076,6 +1615,8 @@ async def execute_engineering_workflow(user_query: str, task_type: str = "impact
         "affected_parts": [], "bom_data": None, "change_impact": None,
         "simulation_parameters": None, "validation_results": None, "simulation_summary": None,
         "compliance_status": None, "violations": [], "recommendations": [],
+        # New: workflow + digital thread
+        "workflow_data": None, "digital_thread": None, "ap_standard_data": None,
         "error": None
     }
     
@@ -1132,11 +1673,14 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "baseline"
 
     if mode == "langgraph":
-        # Original LangGraph multi-agent workflow
-        result = execute_engineering_workflow(
-            user_query="What happens if I change the brake caliper material to titanium?",
-            task_type="impact_analysis",
-        )
+        # LangGraph multi-agent workflow (async — must be run with asyncio)
+        async def _run_langgraph():
+            return await execute_engineering_workflow(
+                user_query="What happens if I change the brake caliper material to titanium?",
+                task_type="impact_analysis",
+            )
+
+        result = asyncio.run(_run_langgraph())
 
         print("\n" + "=" * 80)
         print("LANGGRAPH WORKFLOW EXECUTION RESULTS")
@@ -1153,6 +1697,8 @@ if __name__ == "__main__":
         print(f"\n--- Compliance Agent Results ---")
         print(f"Compliance Status: {result.get('compliance_status', 'None')}")
         print(f"Recommendations: {result.get('recommendations', [])}")
+        print(f"\nWorkflow Data: {result.get('workflow_data', 'None')}")
+        print(f"Digital Thread: {result.get('digital_thread', 'None')}")
         print(f"\nError: {result.get('error', 'None')}")
         print("=" * 80)
 
