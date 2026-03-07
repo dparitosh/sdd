@@ -194,9 +194,11 @@ async def get_traceability(
         }
         ALLOWED_REL_TYPES = {
             "OWNS", "DEFINES", "ASSOCIATES_WITH", "HAS_ATTRIBUTE", "TYPED_BY",
-            "GENERALIZES_TO", "HAS_PORT", "CONTAINS", "INSTANCE_OF", "STEP_REF",
-            "ALIGNS_TO", "SATISFIES", "TRACES_TO", "DERIVES_FROM",
-            "IMPLEMENTS", "VERIFIES", "REFINES", None,
+            "GENERALIZES_TO", "SUBCLASS_OF", "HAS_PORT", "CONTAINS", "INSTANCE_OF",
+            "STEP_REF", "ALIGNS_TO", "SATISFIES", "TRACES_TO", "DERIVES_FROM",
+            "IMPLEMENTS", "VERIFIES", "REFINES", "HAS_CONSTRAINT", "HAS_COMPONENT",
+            "USED_IN", "USES_MATERIAL", "HAS_GEOMETRY", "HAS_VERSION",
+            "LINKED_TO_REQUIREMENT", None,
         }
         if source_type and source_type not in ALLOWED_NODE_TYPES:
             raise HTTPException(status_code=400, detail=f"Invalid source_type: {source_type}")
@@ -409,7 +411,7 @@ async def get_impact_analysis(
         # Find upstream impact (who references/depends on this node)
         upstream_query = f"""
         MATCH path = (dependent)-[r*1..{depth}]->(node {{id: $node_id}})
-        WHERE type(r[0]) IN ['TYPED_BY', 'GENERALIZES', 'DEPENDS_ON', 'USES', 'ASSOCIATES_WITH']
+        WHERE type(r[0]) IN ['TYPED_BY', 'GENERALIZES_TO', 'SUBCLASS_OF', 'DEPENDS_ON', 'USES', 'ASSOCIATES_WITH']
         RETURN DISTINCT
                dependent.id as dependent_id,
                dependent.name as dependent_name,
@@ -425,7 +427,7 @@ async def get_impact_analysis(
         # Find downstream impact (what this node references/depends on)
         downstream_query = f"""
         MATCH path = (node {{id: $node_id}})-[r*1..{depth}]->(dependency)
-        WHERE type(r[0]) IN ['TYPED_BY', 'GENERALIZES', 'DEPENDS_ON', 'USES', 'ASSOCIATES_WITH']
+        WHERE type(r[0]) IN ['TYPED_BY', 'GENERALIZES_TO', 'SUBCLASS_OF', 'DEPENDS_ON', 'USES', 'ASSOCIATES_WITH']
         RETURN DISTINCT
                dependency.id as dependency_id,
                dependency.name as dependency_name,
@@ -611,12 +613,12 @@ async def get_constraints(
         params = {"limit": limit}
 
         if element_id:
-            query_parts.append("MATCH (e {id: $element_id})-[:HAS_RULE]->(c)")
+            query_parts.append("MATCH (e {id: $element_id})-[:HAS_CONSTRAINT]->(c)")
             params["element_id"] = element_id
 
         query_parts.append(
             f"""
-        OPTIONAL MATCH (owner)-[:HAS_RULE]->(c)
+        OPTIONAL MATCH (owner)-[:HAS_CONSTRAINT]->(c)
         RETURN c.id as id,
                c.name as name,
                c.body as body,

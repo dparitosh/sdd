@@ -201,7 +201,7 @@ async def get_simulation_parameters(
         MATCH (p:Property)
         OPTIONAL MATCH (p)-[:TYPED_BY]->(type)
         OPTIONAL MATCH (owner)-[:HAS_ATTRIBUTE]->(p)
-        OPTIONAL MATCH (p)-[r:HAS_RULE]->(constraint:Constraint)
+        OPTIONAL MATCH (p)-[:HAS_CONSTRAINT]->(constraint:Constraint)
         """
 
         # Add filters
@@ -343,7 +343,7 @@ async def validate_simulation_parameters(validation_request: ValidationRequest):
             # Get constraints for this parameter
             query = """
             MATCH (p:Property {id: $param_id})
-            OPTIONAL MATCH (p)-[:HAS_RULE]->(c:Constraint)
+            OPTIONAL MATCH (p)-[:HAS_CONSTRAINT]->(c:Constraint)
             RETURN p.id as id,
                    p.name as name,
                    p.lower as lower,
@@ -735,6 +735,8 @@ class CreateDossierInput(BaseModel):
     motor_id: Optional[str] = Field(None, description="Motor ID")
     project_name: str = Field(..., description="Project name")
     engineer: str = Field(..., description="Engineer name")
+    ap_level: str = Field(default="AP243", description="AP level (e.g., AP242, AP243)")
+    ap_schema: str = Field(default="AP243", description="AP schema identifier")
 
 
 class UpdateDossierInput(BaseModel):

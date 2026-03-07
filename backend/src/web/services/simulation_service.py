@@ -189,8 +189,8 @@ class SimulationService:
             engineer: $engineer,
             last_updated: datetime(),
             created_at: datetime(),
-            ap_level: 'AP243',
-            ap_schema: 'AP243'
+            ap_level: $ap_level,
+            ap_schema: $ap_schema
         })
         RETURN {
             id: d.id,

@@ -1,5 +1,6 @@
 """XMI file parser for ISO 10303 SMRL"""
 
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -12,11 +13,18 @@ class XMIParser:
 
     def __init__(self):
         """Initialize XMI parser"""
+        # XMI 2.0 spec namespace (canonical); kept alongside legacy URI for compat
         self.namespaces = {
-            "xmi": "http://www.omg.org/XMI",
+            "xmi": "http://www.omg.org/spec/XMI/20131001",
+            "xmi_legacy": "http://www.omg.org/XMI",
             "uml": "http://www.omg.org/spec/UML/20131001",
             "smrl": "http://www.omg.org/spec/SysML/20150301/SysML",
         }
+        # Ordered list of XMI namespace URIs to probe when reading attributes
+        self._xmi_ns_candidates = [
+            "http://www.omg.org/spec/XMI/20131001",
+            "http://www.omg.org/XMI",
+        ]
 
     def parse(self, file_path: Path) -> Dict[str, Any]:
         """
@@ -123,10 +131,13 @@ class XMIParser:
         )
         name = element.get("name", "")
 
-        # Generate ID if missing
+        # Generate ID if missing — use stable content hash so re-parses are idempotent
         if not xmi_id:
-            # Use a combination of type and name as fallback
-            xmi_id = f"{xmi_type}_{name}" if name else f"{xmi_type}_{id(element)}"
+            if name:
+                xmi_id = f"{xmi_type}_{name}"
+            else:
+                _content = etree.tostring(element, encoding="unicode")
+                xmi_id = f"{xmi_type}_{hashlib.md5(_content.encode()).hexdigest()[:10]}"
 
         # Determine node label based on type
         label = self._determine_label(xmi_type)
@@ -198,7 +209,12 @@ class XMIParser:
             List of relationship dictionaries
         """
         relationships = []
-        source_id = element.get("{http://www.omg.org/XMI}id") or element.get("id")
+        # Probe both XMI namespace URIs for backward compatibility
+        source_id = (
+            element.get("{http://www.omg.org/spec/XMI/20131001}id")
+            or element.get("{http://www.omg.org/XMI}id")
+            or element.get("id")
+        )
 
         if not source_id:
             return relationships
